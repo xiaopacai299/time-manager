@@ -14,8 +14,25 @@ export class TimeMonitorService extends EventEmitter {
     this.latestSnapshot = this.engine.getSnapshot();
   }
 
-  buildAppId(processName, windowTitle, processId = 0) {
+  extractTitleAppName(windowTitle) {
+    const title = String(windowTitle || '').trim();
+    if (!title) return '';
+    const parts = title.split(' - ').map((x) => x.trim()).filter(Boolean);
+    return (parts.length > 1 ? parts[parts.length - 1] : parts[0]).toLowerCase();
+  }
+
+  resolveProcessName(processName, windowTitle) {
     const normalized = normalizeProcessName(processName);
+    const shellHosts = new Set(['powershell', 'cmd', 'windowsterminal', 'conhost']);
+    if (shellHosts.has(normalized)) {
+      const titleApp = this.extractTitleAppName(windowTitle);
+      if (titleApp) return titleApp;
+    }
+    return normalized || 'unknown';
+  }
+
+  buildAppId(processName, windowTitle, processId = 0) {
+    const normalized = this.resolveProcessName(processName, windowTitle);
     const isInvalidProcessName =
       !normalized || normalized === 'unknown' || normalized === 'permissionorruntimeerror';
 
@@ -49,16 +66,17 @@ export class TimeMonitorService extends EventEmitter {
     const now = Date.now();
     const idleSeconds = powerMonitor.getSystemIdleTime();
     const fg = await getForegroundContext();
+    const effectiveProcessName = this.resolveProcessName(fg.processName, fg.windowTitle);
     const memLoad = 1 - os.freemem() / os.totalmem();
     const cpuLoad = os.platform() === 'win32' ? null : os.loadavg()[0] / os.cpus().length;
 
     return {
       timestamp: now,
-      processName: fg.processName,
+      processName: effectiveProcessName,
       windowTitle: fg.windowTitle,
-      appId: this.buildAppId(fg.processName, fg.windowTitle, fg.processId),
-      isTrackerApp: this.isTrackerWindow(fg.processName, fg.windowTitle),
-      isFilteredOut: !this.shouldTrackApp(fg.processName),
+      appId: this.buildAppId(effectiveProcessName, fg.windowTitle, fg.processId),
+      isTrackerApp: this.isTrackerWindow(effectiveProcessName, fg.windowTitle),
+      isFilteredOut: !this.shouldTrackApp(effectiveProcessName),
       processId: fg.processId || 0,
       idleSeconds,
       cpuLoad,

@@ -14,6 +14,7 @@ function safeJsonParse(text) {
 
 async function getWindowsForegroundContext() {
   const psScript = `
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -36,7 +37,15 @@ $titleBuilder = New-Object System.Text.StringBuilder 1024
 [void][WinApi]::GetWindowText($handle, $titleBuilder, $titleBuilder.Capacity)
 $title = $titleBuilder.ToString()
 $processName = "Unknown"
-try { $processName = (Get-Process -Id $pid -ErrorAction Stop).ProcessName } catch {}
+try {
+  $procByHandle = Get-Process | Where-Object { $_.MainWindowHandle -eq [int64]$handle } | Select-Object -First 1
+  if ($null -ne $procByHandle) {
+    $pid = $procByHandle.Id
+    $processName = $procByHandle.ProcessName
+  } else {
+    $processName = (Get-Process -Id $pid -ErrorAction Stop).ProcessName
+  }
+} catch {}
 $obj = [PSCustomObject]@{
   processName = $processName
   windowTitle = $title

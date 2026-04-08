@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "react-start": "vite --port 5173 --strictPort",
     "electron-start": "concurrently \"npm run react-start\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron-main-only": "electron .",
+    "electron-start-debug": "concurrently -n WEB,ELECTRON -c blue,green \"npm run react-start\" \"wait-on http://localhost:5173 && npm run electron-main-only\"",
     "electron-build": "vite build && electron-builder"
   },
   "dependencies": {

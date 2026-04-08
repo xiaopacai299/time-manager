@@ -93,11 +93,7 @@ export class ActivityEngine {
       this.perAppToday[this.currentSession.appId].durationMs += deltaMs;
     }
 
-    const hasAppSwitch =
-      !isTrackerApp &&
-      !isFilteredOut &&
-      (sample.appId !== this.currentSession.appId ||
-        Number(sample.processId || 0) !== Number(this.currentSession.processId || 0));
+    const hasAppSwitch = !isTrackerApp && !isFilteredOut && sample.appId !== this.currentSession.appId;
 
     if (hasAppSwitch) {
       this.transitions.push({
