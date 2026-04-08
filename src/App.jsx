@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const EMPTY_SNAPSHOT = {
@@ -26,6 +26,8 @@ function formatDuration(ms = 0) {
 
 function App() {
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT)
+  const [stableCurrentEnteredAt, setStableCurrentEnteredAt] = useState(0)
+  const lastProcessNameRef = useRef('')
   const isBridgeReady = typeof window !== 'undefined' && Boolean(window.timeManagerAPI)
   // console.log('代码执行了1')
   useEffect(() => {
@@ -46,12 +48,53 @@ function App() {
     }
   }, [])
 
-  const topApps = useMemo(() => snapshot.perAppToday.slice(0, 8), [snapshot.perAppToday])
-  const currentEnteredAt = snapshot.current?.enteredAt || 0
+  useEffect(() => {
+    const processName = snapshot.current?.processName || ''
+    const enteredAt = snapshot.current?.enteredAt || 0
+
+    // Keep the "entered time" stable while still in the same process.
+    if (processName && processName !== lastProcessNameRef.current) {
+      lastProcessNameRef.current = processName
+      setStableCurrentEnteredAt(enteredAt)
+    }
+  }, [snapshot.current?.appId, snapshot.current?.processName, snapshot.current?.enteredAt])
+
+  const topApps = useMemo(() => {
+    const groupedApps = new Map()
+
+    snapshot.perAppToday.forEach((item) => {
+      const windowTitle = (item.windowTitle || '').trim()
+      const titleParts = windowTitle.split('-')
+      const titleAfterDash = titleParts.length > 1 ? titleParts[titleParts.length - 1].trim() : windowTitle
+      const appName = titleAfterDash || item.processName || item.appId
+      const groupKey = appName.toLowerCase()
+
+      const existing = groupedApps.get(groupKey)
+      if (existing) {
+        existing.durationMs += item.durationMs || 0
+        return
+      }
+
+      groupedApps.set(groupKey, {
+        appId: groupKey,
+        appName,
+        durationMs: item.durationMs || 0,
+      })
+    })
+
+    return Array.from(groupedApps.values())
+      .sort((a, b) => b.durationMs - a.durationMs)
+      .slice(0, 8)
+  }, [snapshot.perAppToday])
+  const currentEnteredAt = stableCurrentEnteredAt || snapshot.current?.enteredAt || 0
   const currentAppElapsedMs = useMemo(() => {
     if (!currentEnteredAt) return 0
-    return Math.max(0, (snapshot.timestamp || 0) - currentEnteredAt)
+    return Math.max(0, (snapshot.timestamp || Date.now()) - currentEnteredAt)
   }, [snapshot.timestamp, currentEnteredAt])
+  const todayTotalMs = useMemo(
+    () => snapshot.perAppToday.reduce((total, item) => total + (item.durationMs || 0), 0),
+    [snapshot.perAppToday]
+  )
 
   return (
     <main className="dashboard">
@@ -70,9 +113,9 @@ function App() {
           <h2>当前使用应用</h2>
           <p className="strong">{snapshot.current.processName}</p>
           <p className="muted">{snapshot.current.windowTitle || '无窗口标题'}</p>
-          <p>最新进入当前应用时间：{new Date(snapshot.current.enteredAt).toLocaleTimeString()}</p>
-          <p>当前应用已使用：{formatDuration(currentAppElapsedMs)}</p>
-          <p>连续使用：{formatDuration(snapshot.continuousUseMs)}</p>
+          <p>最新进入当前应用时间：{currentEnteredAt ? new Date(currentEnteredAt).toLocaleTimeString() : 'N/A'}</p>
+          <p>当前应用使用时长：{formatDuration(currentAppElapsedMs)}</p>
+          <p>今日使用总时长：{formatDuration(todayTotalMs)}</p>
           <p className="muted">规则：无键鼠操作 10 分钟后暂停当前应用计时</p>
           <p className="muted">打开本应用查看统计时，不会把本应用计入使用时长</p>
           <p>休息完成：{formatDuration(snapshot.breakCompletedMs)}</p>
@@ -96,7 +139,7 @@ function App() {
             ) : (
               topApps.map((item) => (
                 <tr key={item.appId}>
-                  <td>{item.windowTitle || item.processName}</td>
+                  <td>{item.appName}</td>
                   <td>{formatDuration(item.durationMs)}</td>
                 </tr>
               ))
