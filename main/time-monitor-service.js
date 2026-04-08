@@ -1,0 +1,105 @@
+import os from 'os';
+import { EventEmitter } from 'events';
+import { powerMonitor } from 'electron';
+import { getForegroundContext } from './foreground.js';
+import { ActivityEngine } from './activity-engine.js';
+import { APP_FILTER_CONFIG, normalizeProcessName } from './app-filter-config.js';
+
+export class TimeMonitorService extends EventEmitter {
+  constructor({ sampleIntervalMs = 1000, breakThresholdSeconds = 600 } = {}) {
+    super();
+    this.sampleIntervalMs = sampleIntervalMs;
+    this.engine = new ActivityEngine({ breakThresholdSeconds });
+    this.timer = null;
+    this.latestSnapshot = this.engine.getSnapshot();
+  }
+
+  buildAppId(processName, windowTitle, processId = 0) {
+    const normalized = normalizeProcessName(processName);
+    const isInvalidProcessName =
+      !normalized || normalized === 'unknown' || normalized === 'permissionorruntimeerror';
+
+    if (!isInvalidProcessName) {
+      return normalized;
+    }
+    if (Number(processId) > 0) {
+      return `pid::${processId}`;
+    }
+
+    const safeTitle = String(windowTitle || 'Unknown').trim().toLowerCase() || 'unknown';
+    return `unknown::${safeTitle}`;
+  }
+
+  isTrackerWindow(processName, windowTitle) {
+    const p = normalizeProcessName(processName);
+    const t = String(windowTitle || '').toLowerCase();
+    return p === 'electron' || t.includes('time manager') || t.includes('time-manger');
+  }
+
+  shouldTrackApp(processName) {
+    const app = normalizeProcessName(processName);
+    const whitelist = APP_FILTER_CONFIG.whitelist.map(normalizeProcessName).filter(Boolean);
+    const blacklist = APP_FILTER_CONFIG.blacklist.map(normalizeProcessName).filter(Boolean);
+    if (blacklist.includes(app)) return false;
+    if (whitelist.length === 0) return true;
+    return whitelist.includes(app);
+  }
+
+  async collectSample() {
+    const now = Date.now();
+    const idleSeconds = powerMonitor.getSystemIdleTime();
+    const fg = await getForegroundContext();
+    const memLoad = 1 - os.freemem() / os.totalmem();
+    const cpuLoad = os.platform() === 'win32' ? null : os.loadavg()[0] / os.cpus().length;
+
+    return {
+      timestamp: now,
+      processName: fg.processName,
+      windowTitle: fg.windowTitle,
+      appId: this.buildAppId(fg.processName, fg.windowTitle, fg.processId),
+      isTrackerApp: this.isTrackerWindow(fg.processName, fg.windowTitle),
+      isFilteredOut: !this.shouldTrackApp(fg.processName),
+      processId: fg.processId || 0,
+      idleSeconds,
+      cpuLoad,
+      memoryLoad: Number.isFinite(memLoad) ? Number(memLoad.toFixed(3)) : null,
+      isFullscreen: null,
+    };
+  }
+
+  async tick() {
+    const sample = await this.collectSample();
+    console.log('[sample]', {
+      processName: sample.processName,
+      processId: sample.processId,
+      windowTitle: sample.windowTitle,
+      appId: sample.appId,
+      isTrackerApp: sample.isTrackerApp,
+      isFilteredOut: sample.isFilteredOut,
+      idleSeconds: sample.idleSeconds,
+    });
+    this.latestSnapshot = this.engine.ingest(sample);
+    this.emit('update', this.latestSnapshot);
+  }
+
+  start() {
+    if (this.timer) return;
+    this.tick();
+    this.timer = setInterval(() => {
+      this.tick().catch(() => {
+        // Keep collector resilient against transient platform command failures.
+      });
+    }, this.sampleIntervalMs);
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  getSnapshot() {
+    return this.latestSnapshot;
+  }
+}

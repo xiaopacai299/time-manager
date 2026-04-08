@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test",
     "preview": "vite preview",
     "react-start": "vite --port 5173 --strictPort",
     "electron-start": "concurrently \"npm run react-start\" \"wait-on http://localhost:5173 && electron .\"",
