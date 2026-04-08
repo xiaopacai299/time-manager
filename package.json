@@ -14,6 +14,7 @@
     "electron-start": "concurrently \"npm run react-start\" \"wait-on http://localhost:5173 && electron .\"",
     "electron-main-only": "electron .",
     "electron-start-debug": "concurrently -n WEB,ELECTRON -c blue,green \"npm run react-start\" \"wait-on http://localhost:5173 && npm run electron-main-only\"",
+    "electron-start-debug-log": "concurrently \"npm run react-start\" \"wait-on http://localhost:5173 && set DEBUG_LOG=true&& electron .\"",
     "electron-build": "vite build && electron-builder"
   },
   "dependencies": {

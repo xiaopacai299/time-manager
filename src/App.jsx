@@ -29,14 +29,11 @@ function App() {
   const [stableCurrentEnteredAt, setStableCurrentEnteredAt] = useState(0)
   const lastProcessNameRef = useRef('')
   const isBridgeReady = typeof window !== 'undefined' && Boolean(window.timeManagerAPI)
-  // console.log('代码执行了1')
   useEffect(() => {
-    console.log('代码执行了23')
     let unsubscribe = null
     if (!window.timeManagerAPI) return undefined
 
     window.timeManagerAPI.getSnapshot().then((data) => {
-      console.log('data1222222', data)
       if (data) setSnapshot(data)
     })
     unsubscribe = window.timeManagerAPI.onUpdate((data) => {
@@ -86,11 +83,14 @@ function App() {
       .sort((a, b) => b.durationMs - a.durationMs)
       .slice(0, 8)
   }, [snapshot.perAppToday])
+  // 当前应用进入时间
   const currentEnteredAt = stableCurrentEnteredAt || snapshot.current?.enteredAt || 0
+  // 当前应用使用时长
   const currentAppElapsedMs = useMemo(() => {
     if (!currentEnteredAt) return 0
     return Math.max(0, (snapshot.timestamp || Date.now()) - currentEnteredAt)
   }, [snapshot.timestamp, currentEnteredAt])
+  // 今日使用总时长
   const todayTotalMs = useMemo(
     () => snapshot.perAppToday.reduce((total, item) => total + (item.durationMs || 0), 0),
     [snapshot.perAppToday]

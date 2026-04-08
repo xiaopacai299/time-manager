@@ -31,8 +31,8 @@ if ($handle -eq [IntPtr]::Zero) {
   Write-Output "{""processName"":""Unknown"",""windowTitle"":""Unknown"",""processId"":0}"
   exit 0
 }
-$pid = 0
-[void][WinApi]::GetWindowThreadProcessId($handle, [ref]$pid)
+$fgPid = 0
+[void][WinApi]::GetWindowThreadProcessId($handle, [ref]$fgPid)
 $titleBuilder = New-Object System.Text.StringBuilder 1024
 [void][WinApi]::GetWindowText($handle, $titleBuilder, $titleBuilder.Capacity)
 $title = $titleBuilder.ToString()
@@ -40,16 +40,16 @@ $processName = "Unknown"
 try {
   $procByHandle = Get-Process | Where-Object { $_.MainWindowHandle -eq [int64]$handle } | Select-Object -First 1
   if ($null -ne $procByHandle) {
-    $pid = $procByHandle.Id
+    $fgPid = $procByHandle.Id
     $processName = $procByHandle.ProcessName
   } else {
-    $processName = (Get-Process -Id $pid -ErrorAction Stop).ProcessName
+    $processName = (Get-Process -Id $fgPid -ErrorAction Stop).ProcessName
   }
 } catch {}
 $obj = [PSCustomObject]@{
   processName = $processName
   windowTitle = $title
-  processId = $pid
+  processId = $fgPid
 }
 $obj | ConvertTo-Json -Compress
 `;

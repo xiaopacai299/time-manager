@@ -4,6 +4,7 @@ import { powerMonitor } from 'electron';
 import { getForegroundContext } from './foreground.js';
 import { ActivityEngine } from './activity-engine.js';
 import { APP_FILTER_CONFIG, normalizeProcessName } from './app-filter-config.js';
+import { debugLog } from './debug-log.js';
 
 export class TimeMonitorService extends EventEmitter {
   constructor({ sampleIntervalMs = 1000, breakThresholdSeconds = 600 } = {}) {
@@ -69,7 +70,19 @@ export class TimeMonitorService extends EventEmitter {
     const effectiveProcessName = this.resolveProcessName(fg.processName, fg.windowTitle);
     const memLoad = 1 - os.freemem() / os.totalmem();
     const cpuLoad = os.platform() === 'win32' ? null : os.loadavg()[0] / os.cpus().length;
-
+    debugLog('收集到的快照数据', {
+      timestamp: now,
+      processName: effectiveProcessName,
+      windowTitle: fg.windowTitle,
+      appId: this.buildAppId(effectiveProcessName, fg.windowTitle, fg.processId),
+      isTrackerApp: this.isTrackerWindow(effectiveProcessName, fg.windowTitle),
+      isFilteredOut: !this.shouldTrackApp(effectiveProcessName),
+      processId: fg.processId || 0,
+      idleSeconds,
+      cpuLoad,
+      memoryLoad: Number.isFinite(memLoad) ? Number(memLoad.toFixed(3)) : null,
+      isFullscreen: null,
+    });
     return {
       timestamp: now,
       processName: effectiveProcessName,
@@ -87,7 +100,7 @@ export class TimeMonitorService extends EventEmitter {
 
   async tick() {
     const sample = await this.collectSample();
-    console.log('[sample]', {
+    debugLog('[sample]', {
       processName: sample.processName,
       processId: sample.processId,
       windowTitle: sample.windowTitle,

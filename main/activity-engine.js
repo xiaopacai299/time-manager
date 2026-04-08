@@ -1,3 +1,5 @@
+import { debugLog } from './debug-log.js';
+
 function toDayKey(timestamp) {
   return new Date(timestamp).toLocaleDateString('sv-SE');
 }
@@ -102,7 +104,7 @@ export class ActivityEngine {
         leftAt: timestamp,
         enteredAt: timestamp,
       });
-      console.log('历史记录添加了',this.transitions)
+      debugLog('历史记录添加了', this.transitions);
       if (this.transitions.length > this.transitionHistoryLimit) {
         this.transitions.shift();
       }
