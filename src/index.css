@@ -10,4 +10,7 @@ body,
   height: 100%;
   margin: 0;
   background: transparent;
+  overflow: hidden;
+  touch-action: none;
+  -ms-touch-action: none;
 }

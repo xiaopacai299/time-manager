@@ -8,6 +8,7 @@
   align-items: center;
   gap: 8px;
   user-select: none;
+  overflow-x: hidden;
 }
 
 .warning {
@@ -22,34 +23,59 @@
 
 .bubble {
   width: 100%;
+  max-width: 100%;
   min-height: 44px;
   border-radius: 14px;
   padding: 10px 12px;
   font-size: 13px;
+  line-height: 1.35;
   color: #15212f;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(140, 160, 190, 0.4);
   box-shadow: 0 6px 20px rgba(20, 30, 60, 0.15);
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .pet-avatar {
   width: 132px;
   height: 132px;
+  position: relative;
   border-radius: 999px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  cursor: move;
-  -webkit-app-region: drag;
-  transition: transform 0.2s ease;
+  cursor: grab;
+  -webkit-app-region: no-drag;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
   background: radial-gradient(circle at 30% 30%, #f8d5ff 0%, #b983ff 70%);
   border: 2px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 10px 24px rgba(62, 0, 103, 0.35);
 }
 
 .pet-avatar:active {
-  transform: scale(0.97);
+  cursor: grabbing;
+  transform: none;
+}
+
+.pet-menu-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(47, 35, 71, 0.2);
+  color: #2f2347;
+  font-size: 16px;
+  line-height: 22px;
+  padding: 0;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
 .pet-face {
@@ -76,10 +102,12 @@
 
 .mood-warn {
   background: radial-gradient(circle at 30% 30%, #ffd79f 0%, #ff9f67 70%);
+  animation: petWarnPulse 0.8s ease-in-out infinite;
 }
 
 .mood-sleep {
   background: radial-gradient(circle at 30% 30%, #cae8ff 0%, #7da5ff 70%);
+  animation: petSleepFloat 1.8s ease-in-out infinite;
 }
 
 .mood-happy {
@@ -87,7 +115,43 @@
 }
 
 .mood-active {
-  transform: scale(0.95);
+  transform: translateY(1px);
+}
+
+.mood-nod {
+  animation: petNod 0.45s ease-in-out 2;
+}
+
+.mood-celebrate {
+  background: radial-gradient(circle at 30% 30%, #fff0a8 0%, #ff8f6f 70%);
+  animation: petCelebrate 0.9s ease-in-out;
+}
+
+@keyframes petNod {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(9px); }
+  60% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes petWarnPulse {
+  0% { box-shadow: 0 10px 24px rgba(120, 50, 0, 0.25); filter: brightness(1); transform: translateY(0); }
+  50% { box-shadow: 0 14px 30px rgba(180, 70, 0, 0.45); filter: brightness(1.06); transform: translateY(-2px); }
+  100% { box-shadow: 0 10px 24px rgba(120, 50, 0, 0.25); filter: brightness(1); transform: translateY(0); }
+}
+
+@keyframes petSleepFloat {
+  0% { transform: translateY(0); filter: saturate(0.9); }
+  50% { transform: translateY(6px); filter: saturate(0.75); }
+  100% { transform: translateY(0); filter: saturate(0.9); }
+}
+
+@keyframes petCelebrate {
+  0% { transform: rotate(0deg) translateY(0); filter: brightness(1); }
+  25% { transform: rotate(-8deg) translateY(-2px); filter: brightness(1.05); }
+  50% { transform: rotate(8deg) translateY(-4px); filter: brightness(1.12); }
+  75% { transform: rotate(-4deg) translateY(-2px); filter: brightness(1.06); }
+  100% { transform: rotate(0deg) translateY(0); filter: brightness(1); }
 }
 
 .pet-actions {

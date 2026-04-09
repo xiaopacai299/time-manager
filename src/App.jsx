@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const EMPTY_SNAPSHOT = {
@@ -29,10 +29,19 @@ function App() {
   const [petState, setPetState] = useState({
     clickThrough: false,
     showStatsPanel: true,
+    compactMode: false,
   })
-  const [interactionMood] = useState('')
+  const [transientAction, setTransientAction] = useState('')
   const tempInteractiveRef = useRef(false)
+  const actionTimerRef = useRef(null)
+  const dragRef = useRef({ dragging: false, pointerId: null })
   const isBridgeReady = typeof window !== 'undefined' && Boolean(window.timeManagerAPI)
+
+  const triggerAction = useCallback((action) => {
+    if (actionTimerRef.current) clearTimeout(actionTimerRef.current)
+    setTransientAction(action)
+    actionTimerRef.current = setTimeout(() => setTransientAction(''), 1200)
+  }, [])
 
   useEffect(() => {
     let unsubscribe = null
@@ -47,6 +56,12 @@ function App() {
     const unbindPetState = window.timeManagerAPI.onPetStateChanged?.((data) => {
       if (data) setPetState(data)
     })
+    const unbindPetAction = window.timeManagerAPI.onPetAction?.((payload) => {
+      const action = payload?.action
+      if (typeof action === 'string' && action.length > 0) {
+        triggerAction(action)
+      }
+    })
     unsubscribe = window.timeManagerAPI.onUpdate((data) => {
       setSnapshot(data)
     })
@@ -54,8 +69,9 @@ function App() {
     return () => {
       if (unsubscribe) unsubscribe()
       if (unbindPetState) unbindPetState()
+      if (unbindPetAction) unbindPetAction()
     }
-  }, [])
+  }, [triggerAction])
 
   useEffect(() => {
     if (!window.timeManagerAPI) return undefined
@@ -91,25 +107,36 @@ function App() {
     }
   }, [petState.clickThrough])
 
+  useEffect(() => {
+    return () => {
+      if (actionTimerRef.current) clearTimeout(actionTimerRef.current)
+    }
+  }, [])
+
   const petView = useMemo(() => {
     const continuousMs = snapshot.continuousUseMs || 0
     const breakMs = snapshot.breakCompletedMs || 0
     const currentApp = snapshot.current?.processName || 'Unknown'
+    let baseText = `当前专注：${currentApp}`
 
-    if (interactionMood) {
-      return { mood: interactionMood, text: `当前专注：${currentApp}` }
-    }
     if (breakMs >= 5 * 60 * 1000) {
-      return { mood: 'happy', text: '休息完成！做得很好，继续保持。' }
+      baseText = '休息完成！做得很好，继续保持。'
+    } else if (continuousMs >= 50 * 60 * 1000) {
+      baseText = `你已连续使用 ${formatDuration(continuousMs)}，建议活动一下。`
+    } else if (snapshot.current?.isOnBreak) {
+      baseText = '检测到你在休息，我会安静陪着你。'
     }
-    if (continuousMs >= 50 * 60 * 1000) {
-      return { mood: 'warn', text: `你已连续使用 ${formatDuration(continuousMs)}，建议活动一下。` }
-    }
-    if (snapshot.current?.isOnBreak) {
-      return { mood: 'sleep', text: '检测到你在休息，我会安静陪着你。' }
-    }
-    return { mood: 'idle', text: `当前专注：${currentApp}` }
-  }, [snapshot, interactionMood])
+
+    const mood = transientAction || (breakMs >= 5 * 60 * 1000
+      ? 'happy'
+      : continuousMs >= 50 * 60 * 1000
+        ? 'warn'
+        : snapshot.current?.isOnBreak
+          ? 'sleep'
+          : 'idle')
+
+    return { mood, text: baseText }
+  }, [snapshot, transientAction])
 
   const topApps = useMemo(() => {
     const groupedApps = new Map()
@@ -150,14 +177,34 @@ function App() {
     [snapshot.perAppToday]
   )
 
-  async function toggleClickThrough() {
-    const next = await window.timeManagerAPI?.toggleClickThrough?.()
-    setPetState((prev) => ({ ...prev, clickThrough: Boolean(next) }))
+  function openPetMenu(event) {
+    event.preventDefault()
+    const x = Number.isFinite(event.clientX) ? Math.max(0, Math.round(event.clientX + 8)) : 12
+    const y = Number.isFinite(event.clientY) ? Math.max(0, Math.round(event.clientY + 8)) : 12
+    window.timeManagerAPI?.openContextMenu?.(x, y)
   }
 
-  async function toggleStatsPanel() {
-    const next = await window.timeManagerAPI?.toggleStatsPanel?.()
-    setPetState((prev) => ({ ...prev, showStatsPanel: Boolean(next) }))
+  function onAvatarPointerDown(event) {
+    if (event.button !== 0) return
+    dragRef.current = { dragging: true, pointerId: event.pointerId }
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // ignore capture failures
+    }
+    window.timeManagerAPI?.startDrag?.(event.clientX, event.clientY)
+  }
+
+  function onAvatarPointerUp(event) {
+    try {
+      if (dragRef.current.pointerId !== null) {
+        event.currentTarget.releasePointerCapture(dragRef.current.pointerId)
+      }
+    } catch {
+      // ignore capture release failures
+    }
+    dragRef.current = { dragging: false, pointerId: null }
+    window.timeManagerAPI?.endDrag?.()
   }
 
   return (
@@ -167,7 +214,14 @@ function App() {
 
       <section
         className={`pet-avatar mood-${petView.mood}`}
+        onContextMenu={openPetMenu}
+        onPointerDown={onAvatarPointerDown}
+        onPointerUp={onAvatarPointerUp}
+        onPointerCancel={onAvatarPointerUp}
       >
+        <button className="pet-menu-btn" onClick={openPetMenu} onContextMenu={openPetMenu} title="打开宠物菜单">
+          ⋯
+        </button>
         <div className="pet-face">
           <span className="eye" />
           <span className="eye" />
@@ -175,18 +229,10 @@ function App() {
         <div className="pet-label">{snapshot.current.processName || 'companion'}</div>
       </section>
 
-      <section className="pet-actions">
-        <button onClick={toggleClickThrough}>
-          {petState.clickThrough ? '关闭穿透' : '开启穿透'}
-        </button>
-        <button onClick={toggleStatsPanel}>
-          {petState.showStatsPanel ? '隐藏面板' : '显示面板'}
-        </button>
-      </section>
-
-      {petState.showStatsPanel && (
+      {!petState.compactMode && petState.showStatsPanel && (
         <section className="stats-panel">
           <p>快捷键：按住 Alt 临时关闭穿透，松开恢复。</p>
+          <p>控制项：右键宠物或托盘菜单 -&gt; 穿透/面板/模式/动作测试。</p>
           <p>当前应用：{snapshot.current.windowTitle || '无窗口标题'}</p>
           <p>当前应用时长：{formatDuration(currentAppElapsedMs)}</p>
           <p>今日总时长：{formatDuration(todayTotalMs)}</p>
