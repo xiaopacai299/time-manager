@@ -26,9 +26,14 @@ function formatDuration(ms = 0) {
 
 function App() {
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT)
-  const [stableCurrentEnteredAt, setStableCurrentEnteredAt] = useState(0)
-  const lastProcessNameRef = useRef('')
+  const [petState, setPetState] = useState({
+    clickThrough: false,
+    showStatsPanel: true,
+  })
+  const [interactionMood] = useState('')
+  const tempInteractiveRef = useRef(false)
   const isBridgeReady = typeof window !== 'undefined' && Boolean(window.timeManagerAPI)
+
   useEffect(() => {
     let unsubscribe = null
     if (!window.timeManagerAPI) return undefined
@@ -36,25 +41,75 @@ function App() {
     window.timeManagerAPI.getSnapshot().then((data) => {
       if (data) setSnapshot(data)
     })
+    window.timeManagerAPI.getPetState?.().then((data) => {
+      if (data) setPetState(data)
+    })
+    const unbindPetState = window.timeManagerAPI.onPetStateChanged?.((data) => {
+      if (data) setPetState(data)
+    })
     unsubscribe = window.timeManagerAPI.onUpdate((data) => {
       setSnapshot(data)
     })
 
     return () => {
       if (unsubscribe) unsubscribe()
+      if (unbindPetState) unbindPetState()
     }
   }, [])
 
   useEffect(() => {
-    const processName = snapshot.current?.processName || ''
-    const enteredAt = snapshot.current?.enteredAt || 0
+    if (!window.timeManagerAPI) return undefined
 
-    // Keep the "entered time" stable while still in the same process.
-    if (processName && processName !== lastProcessNameRef.current) {
-      lastProcessNameRef.current = processName
-      setStableCurrentEnteredAt(enteredAt)
+    const syncTempInteractive = (active) => {
+      if (tempInteractiveRef.current === active) return
+      tempInteractiveRef.current = active
+      window.timeManagerAPI.setTempInteractive?.(active)
     }
-  }, [snapshot.current?.appId, snapshot.current?.processName, snapshot.current?.enteredAt])
+
+    const onMouseMove = (event) => {
+      const shouldEnableTempInteractive = petState.clickThrough && event.altKey
+      syncTempInteractive(shouldEnableTempInteractive)
+    }
+
+    const onKeyUp = (event) => {
+      if (event.key === 'Alt') {
+        syncTempInteractive(false)
+      }
+    }
+
+    const onBlur = () => syncTempInteractive(false)
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      syncTempInteractive(false)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [petState.clickThrough])
+
+  const petView = useMemo(() => {
+    const continuousMs = snapshot.continuousUseMs || 0
+    const breakMs = snapshot.breakCompletedMs || 0
+    const currentApp = snapshot.current?.processName || 'Unknown'
+
+    if (interactionMood) {
+      return { mood: interactionMood, text: `当前专注：${currentApp}` }
+    }
+    if (breakMs >= 5 * 60 * 1000) {
+      return { mood: 'happy', text: '休息完成！做得很好，继续保持。' }
+    }
+    if (continuousMs >= 50 * 60 * 1000) {
+      return { mood: 'warn', text: `你已连续使用 ${formatDuration(continuousMs)}，建议活动一下。` }
+    }
+    if (snapshot.current?.isOnBreak) {
+      return { mood: 'sleep', text: '检测到你在休息，我会安静陪着你。' }
+    }
+    return { mood: 'idle', text: `当前专注：${currentApp}` }
+  }, [snapshot, interactionMood])
 
   const topApps = useMemo(() => {
     const groupedApps = new Map()
@@ -83,91 +138,73 @@ function App() {
       .sort((a, b) => b.durationMs - a.durationMs)
       .slice(0, 8)
   }, [snapshot.perAppToday])
-  // 当前应用进入时间
-  const currentEnteredAt = stableCurrentEnteredAt || snapshot.current?.enteredAt || 0
-  // 当前应用使用时长
+
+  const currentEnteredAt = snapshot.current?.enteredAt || 0
   const currentAppElapsedMs = useMemo(() => {
     if (!currentEnteredAt) return 0
-    return Math.max(0, (snapshot.timestamp || Date.now()) - currentEnteredAt)
+    return Math.max(0, (snapshot.timestamp || 0) - currentEnteredAt)
   }, [snapshot.timestamp, currentEnteredAt])
-  // 今日使用总时长
+
   const todayTotalMs = useMemo(
     () => snapshot.perAppToday.reduce((total, item) => total + (item.durationMs || 0), 0),
     [snapshot.perAppToday]
   )
 
+  async function toggleClickThrough() {
+    const next = await window.timeManagerAPI?.toggleClickThrough?.()
+    setPetState((prev) => ({ ...prev, clickThrough: Boolean(next) }))
+  }
+
+  async function toggleStatsPanel() {
+    const next = await window.timeManagerAPI?.toggleStatsPanel?.()
+    setPetState((prev) => ({ ...prev, showStatsPanel: Boolean(next) }))
+  }
+
   return (
-    <main className="dashboard">
-      <header className="panel">
-        <h1>Time Manager</h1>
-        <p>日期：{snapshot.dayKey || 'N/A'}</p>
-        {!isBridgeReady && (
-          <p className="warning">
-            未检测到 Electron 数据桥接。请先关闭旧窗口后重新执行 <code>npm run electron-start</code>。
-          </p>
-        )}
-      </header>
+    <main className="pet-shell">
+      {!isBridgeReady && <div className="warning">请通过 electron-start 启动宠物模式。</div>}
+      <section className="bubble">{petView.text}</section>
 
-      <section className="grid">
-        <div className="panel">
-          <h2>当前使用应用</h2>
-          <p className="strong">{snapshot.current.processName}</p>
-          <p className="muted">{snapshot.current.windowTitle || '无窗口标题'}</p>
-          <p>最新进入当前应用时间：{currentEnteredAt ? new Date(currentEnteredAt).toLocaleTimeString() : 'N/A'}</p>
-          <p>当前应用使用时长：{formatDuration(currentAppElapsedMs)}</p>
-          <p>今日使用总时长：{formatDuration(todayTotalMs)}</p>
-          <p className="muted">规则：无键鼠操作 10 分钟后暂停当前应用计时</p>
-          <p className="muted">打开本应用查看统计时，不会把本应用计入使用时长</p>
-          <p>休息完成：{formatDuration(snapshot.breakCompletedMs)}</p>
+      <section
+        className={`pet-avatar mood-${petView.mood}`}
+      >
+        <div className="pet-face">
+          <span className="eye" />
+          <span className="eye" />
         </div>
+        <div className="pet-label">{snapshot.current.processName || 'companion'}</div>
       </section>
 
-      <section className="panel">
-        <h2>今日应用时长</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>应用</th>
-              <th>时长</th>
-            </tr>
-          </thead>
-          <tbody>
+      <section className="pet-actions">
+        <button onClick={toggleClickThrough}>
+          {petState.clickThrough ? '关闭穿透' : '开启穿透'}
+        </button>
+        <button onClick={toggleStatsPanel}>
+          {petState.showStatsPanel ? '隐藏面板' : '显示面板'}
+        </button>
+      </section>
+
+      {petState.showStatsPanel && (
+        <section className="stats-panel">
+          <p>快捷键：按住 Alt 临时关闭穿透，松开恢复。</p>
+          <p>当前应用：{snapshot.current.windowTitle || '无窗口标题'}</p>
+          <p>当前应用时长：{formatDuration(currentAppElapsedMs)}</p>
+          <p>今日总时长：{formatDuration(todayTotalMs)}</p>
+          <p>休息累计：{formatDuration(snapshot.breakCompletedMs)}</p>
+          <h4>今日 Top 应用</h4>
+          <ul>
             {topApps.length === 0 ? (
-              <tr>
-                <td colSpan={2}>暂无数据</td>
-              </tr>
+              <li>暂无数据</li>
             ) : (
-              topApps.map((item) => (
-                <tr key={item.appId}>
-                  <td>{item.appName}</td>
-                  <td>{formatDuration(item.durationMs)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="panel">
-        <h2>最近切换</h2>
-        <p className="muted">
-          白名单/黑名单可在 <code>main/app-filter-config.js</code> 配置（按进程名，如 wps、chrome）。
-        </p>
-        <ul className="transitions">
-          {snapshot.transitions.length === 0 ? (
-            <li>暂无切换记录</li>
-          ) : (
-            snapshot.transitions
-              .slice(-8)
-              .reverse()
-              .map((item, idx) => (
-                <li key={`${item.leftAt}-${idx}`}>
-                  {new Date(item.leftAt).toLocaleTimeString()}：{item.fromAppId} → {item.toAppId}
+              topApps.slice(0, 5).map((item) => (
+                <li key={item.appId}>
+                  {item.appName}: {formatDuration(item.durationMs)}
                 </li>
               ))
-          )}
-        </ul>
-      </section>
+            )}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }
