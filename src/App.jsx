@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import AnimatedPet from './components/AnimatedPet.jsx'
 
 const EMPTY_SNAPSHOT = {
   dayKey: '',
@@ -219,13 +220,7 @@ function App() {
         onPointerUp={onAvatarPointerUp}
         onPointerCancel={onAvatarPointerUp}
       >
-        <button className="pet-menu-btn" onClick={openPetMenu} onContextMenu={openPetMenu} title="打开宠物菜单">
-          ⋯
-        </button>
-        <div className="pet-face">
-          <span className="eye" />
-          <span className="eye" />
-        </div>
+        <AnimatedPet mood={petView.mood} />
         <div className="pet-label">{snapshot.current.processName || 'companion'}</div>
       </section>
 
