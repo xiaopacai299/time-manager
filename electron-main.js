@@ -13,8 +13,12 @@ let mainWindow;
 let tray;
 let dragTimer = null;
 let followTimer = null;
-let followBurstUntilTs = 0;
 let globalMouseHookReady = false;
+const followTarget = {
+  active: false,
+  x: 0,
+  y: 0,
+};
 const dragState = {
   active: false,
   offsetX: 0,
@@ -161,7 +165,7 @@ function stopFollowMouse() {
     clearInterval(followTimer);
     followTimer = null;
   }
-  followBurstUntilTs = 0;
+  followTarget.active = false;
 }
 
 function startFollowMouse() {
@@ -171,17 +175,19 @@ function startFollowMouse() {
   const maxStep = 22;
   followTimer = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed() || !petState.followMouse) return;
-    if (Date.now() > followBurstUntilTs) return;
+    if (!followTarget.active) return;
     if (dragState.active) return;
-    const cursor = screen.getCursorScreenPoint();
     const [tw, th] = getTargetSize();
     const bounds = mainWindow.getBounds();
     const centerX = bounds.x + Math.round(bounds.width / 2);
     const centerY = bounds.y + Math.round(bounds.height / 2);
-    const dx = cursor.x - centerX;
-    const dy = cursor.y - centerY;
+    const dx = followTarget.x - centerX;
+    const dy = followTarget.y - centerY;
     const dist = Math.hypot(dx, dy);
-    if (dist < 3) return;
+    if (dist < 6) {
+      followTarget.active = false;
+      return;
+    }
     const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
     const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
     mainWindow.setBounds({
@@ -193,9 +199,13 @@ function startFollowMouse() {
   }, 16);
 }
 
-function triggerFollowBurst(durationMs = 1500) {
+function triggerFollowBurst() {
   if (!petState.followMouse) return false;
-  followBurstUntilTs = Date.now() + Math.max(200, Number(durationMs) || 1500);
+  if (followTarget.active) return false;
+  const cursor = screen.getCursorScreenPoint();
+  followTarget.x = cursor.x;
+  followTarget.y = cursor.y;
+  followTarget.active = true;
   if (!followTimer) startFollowMouse();
   return true;
 }
@@ -206,7 +216,7 @@ function setupGlobalMouseHook() {
     uIOhook.on('mousedown', (event) => {
       // uiohook-napi: left button is 1
       if (event?.button !== 1) return;
-      triggerFollowBurst(1500);
+      triggerFollowBurst();
     });
     uIOhook.start();
     globalMouseHookReady = true;
