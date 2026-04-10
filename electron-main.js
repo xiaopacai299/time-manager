@@ -1,14 +1,20 @@
 import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, globalShortcut, screen } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import fs from 'fs';
 import { TimeMonitorService } from './main/time-monitor-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+const { uIOhook } = require('uiohook-napi');
 let mainWindow;
 let tray;
 let dragTimer = null;
+let followTimer = null;
+let followBurstUntilTs = 0;
+let globalMouseHookReady = false;
 const dragState = {
   active: false,
   offsetX: 0,
@@ -26,6 +32,7 @@ const petState = {
   windowBounds: null,
   tempInteractive: false,
   compactMode: false,
+  followMouse: false,
 };
 
 function getStateFilePath() {
@@ -41,6 +48,7 @@ function loadPetState() {
       petState.showStatsPanel = parsed.showStatsPanel !== false;
       petState.windowBounds = parsed.windowBounds || null;
       petState.compactMode = Boolean(parsed.compactMode);
+      petState.followMouse = Boolean(parsed.followMouse);
     }
   } catch {
     // Use defaults when state file does not exist.
@@ -148,6 +156,77 @@ function applyMouseMode() {
   mainWindow.setIgnoreMouseEvents(shouldIgnoreMouse, { forward: true });
 }
 
+function stopFollowMouse() {
+  if (followTimer) {
+    clearInterval(followTimer);
+    followTimer = null;
+  }
+  followBurstUntilTs = 0;
+}
+
+function startFollowMouse() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  stopFollowMouse();
+  const speedFactor = 0.2;
+  const maxStep = 22;
+  followTimer = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed() || !petState.followMouse) return;
+    if (Date.now() > followBurstUntilTs) return;
+    if (dragState.active) return;
+    const cursor = screen.getCursorScreenPoint();
+    const [tw, th] = getTargetSize();
+    const bounds = mainWindow.getBounds();
+    const centerX = bounds.x + Math.round(bounds.width / 2);
+    const centerY = bounds.y + Math.round(bounds.height / 2);
+    const dx = cursor.x - centerX;
+    const dy = cursor.y - centerY;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 3) return;
+    const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
+    const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
+    mainWindow.setBounds({
+      x: Math.round(bounds.x + stepX),
+      y: Math.round(bounds.y + stepY),
+      width: tw,
+      height: th,
+    });
+  }, 16);
+}
+
+function triggerFollowBurst(durationMs = 1500) {
+  if (!petState.followMouse) return false;
+  followBurstUntilTs = Date.now() + Math.max(200, Number(durationMs) || 1500);
+  if (!followTimer) startFollowMouse();
+  return true;
+}
+
+function setupGlobalMouseHook() {
+  if (globalMouseHookReady) return;
+  try {
+    uIOhook.on('mousedown', (event) => {
+      // uiohook-napi: left button is 1
+      if (event?.button !== 1) return;
+      triggerFollowBurst(1500);
+    });
+    uIOhook.start();
+    globalMouseHookReady = true;
+  } catch (error) {
+    console.error('[global-mouse-hook-error]', error);
+  }
+}
+
+function teardownGlobalMouseHook() {
+  if (!globalMouseHookReady) return;
+  try {
+    uIOhook.removeAllListeners('mousedown');
+    uIOhook.stop();
+  } catch (error) {
+    console.error('[global-mouse-hook-stop-error]', error);
+  } finally {
+    globalMouseHookReady = false;
+  }
+}
+
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
     {
@@ -169,6 +248,12 @@ function buildTrayMenu() {
       label: petState.compactMode ? '切换为展开模式' : '切换为紧凑模式',
       click: () => {
         toggleCompactMode();
+      },
+    },
+    {
+      label: petState.followMouse ? '关闭追鼠标模式' : '开启追鼠标模式',
+      click: () => {
+        toggleFollowMouse();
       },
     },
     {
@@ -217,6 +302,7 @@ function toggleClickThrough() {
       clickThrough: petState.clickThrough,
       showStatsPanel: petState.showStatsPanel,
       compactMode: petState.compactMode,
+      followMouse: petState.followMouse,
     });
   }
   persistPetState();
@@ -232,11 +318,29 @@ function toggleCompactMode() {
       clickThrough: petState.clickThrough,
       showStatsPanel: petState.showStatsPanel,
       compactMode: petState.compactMode,
+      followMouse: petState.followMouse,
     });
   }
   persistPetState();
   if (tray) tray.setContextMenu(buildTrayMenu());
   return petState.compactMode;
+}
+
+function toggleFollowMouse() {
+  petState.followMouse = !petState.followMouse;
+  if (petState.followMouse) startFollowMouse();
+  else stopFollowMouse();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('pet:state-changed', {
+      clickThrough: petState.clickThrough,
+      showStatsPanel: petState.showStatsPanel,
+      compactMode: petState.compactMode,
+      followMouse: petState.followMouse,
+    });
+  }
+  persistPetState();
+  if (tray) tray.setContextMenu(buildTrayMenu());
+  return petState.followMouse;
 }
 
 process.on('uncaughtException', (error) => {
@@ -258,6 +362,7 @@ function setupIpc() {
     clickThrough: petState.clickThrough,
     showStatsPanel: petState.showStatsPanel,
     compactMode: petState.compactMode,
+    followMouse: petState.followMouse,
   }));
   ipcMain.handle('pet:toggle-click-through', () => {
     return toggleClickThrough();
@@ -269,6 +374,9 @@ function setupIpc() {
   });
   ipcMain.handle('pet:toggle-compact-mode', () => {
     return toggleCompactMode();
+  });
+  ipcMain.handle('pet:toggle-follow-mouse', () => {
+    return toggleFollowMouse();
   });
   ipcMain.handle('pet:open-context-menu', (_event, payload) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -290,8 +398,13 @@ function setupIpc() {
             clickThrough: petState.clickThrough,
             showStatsPanel: petState.showStatsPanel,
             compactMode: petState.compactMode,
+            followMouse: petState.followMouse,
           });
         },
+      },
+      {
+        label: petState.followMouse ? '关闭追鼠标模式' : '开启追鼠标模式',
+        click: () => toggleFollowMouse(),
       },
       {
         label: '动作测试',
@@ -374,6 +487,8 @@ app.whenReady().then(() => {
   createMainWindow();
   applyWindowMode();
   createTray();
+  setupGlobalMouseHook();
+  if (petState.followMouse) startFollowMouse();
   monitor.start();
   globalShortcut.register('CommandOrControl+Shift+P', () => {
     toggleClickThrough();
@@ -397,6 +512,8 @@ app.on('before-quit', () => {
     clearInterval(dragTimer);
     dragTimer = null;
   }
+  stopFollowMouse();
+  teardownGlobalMouseHook();
   globalShortcut.unregisterAll();
   persistPetState();
   monitor.stop();

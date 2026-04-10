@@ -31,6 +31,7 @@ function App() {
     clickThrough: false,
     showStatsPanel: true,
     compactMode: false,
+    followMouse: false,
   })
   const [transientAction, setTransientAction] = useState('')
   const tempInteractiveRef = useRef(false)
