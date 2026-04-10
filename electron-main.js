@@ -80,10 +80,12 @@ function createMainWindow() {
     maxHeight: 540,
     frame: false,
     transparent: true,
+    backgroundColor: '#00000000',
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: false,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -109,6 +111,11 @@ function createMainWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.setZoomFactor(1);
     mainWindow.webContents.setZoomLevel(0);
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.showInactive();
   });
 
   mainWindow.loadURL('http://localhost:4567');
@@ -286,10 +293,18 @@ function buildTrayMenu() {
 
 function createTray() {
   try {
+    const trayPngPath = path.join(__dirname, 'assets', 'tray-icon.png');
     const traySvgPath = path.join(__dirname, 'assets', 'tray-icon.svg');
-    const traySvgRaw = fs.readFileSync(traySvgPath, 'utf8');
-    const trayDataUrl = `data:image/svg+xml;base64,${Buffer.from(traySvgRaw).toString('base64')}`;
-    const image = nativeImage.createFromDataURL(trayDataUrl).resize({ width: 16, height: 16 });
+    let image = nativeImage.createFromPath(trayPngPath);
+    if (image.isEmpty()) {
+      const traySvgRaw = fs.readFileSync(traySvgPath, 'utf8');
+      const trayDataUrl = `data:image/svg+xml;base64,${Buffer.from(traySvgRaw).toString('base64')}`;
+      image = nativeImage.createFromDataURL(trayDataUrl);
+    }
+    if (image.isEmpty()) {
+      throw new Error('Tray icon image is empty for both PNG and SVG');
+    }
+    image = image.resize({ width: 16, height: 16 });
     tray = new Tray(image);
     tray.setToolTip('Time Manager Pet');
     tray.setContextMenu(buildTrayMenu());

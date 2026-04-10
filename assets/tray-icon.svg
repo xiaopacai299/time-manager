@@ -1,12 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <defs>
-    <radialGradient id="g" cx="35%" cy="30%">
-      <stop offset="0%" stop-color="#f6dcff"/>
-      <stop offset="100%" stop-color="#8f6bff"/>
-    </radialGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f9cff" />
+      <stop offset="100%" stop-color="#3768ff" />
+    </linearGradient>
   </defs>
-  <circle cx="32" cy="32" r="29" fill="url(#g)" stroke="#ffffff" stroke-width="3"/>
-  <ellipse cx="23" cy="27" rx="4" ry="6" fill="#2f2347"/>
-  <ellipse cx="41" cy="27" rx="4" ry="6" fill="#2f2347"/>
-  <path d="M20 42c3.5 4 8 6 12 6s8.5-2 12-6" fill="none" stroke="#2f2347" stroke-width="3.2" stroke-linecap="round"/>
+
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)" />
+
+  <circle cx="32" cy="30" r="14" fill="none" stroke="#ffffff" stroke-width="4" />
+  <path d="M32 30V22" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+  <path d="M32 30L38 34" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+
+  <path
+    d="M22 45l6 6 14-14"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 </svg>
