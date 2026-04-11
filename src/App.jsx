@@ -10,7 +10,7 @@ import { getSnapshotDurationStats } from './utils/snapshotDurationStats'
 import { topAppsFromPerAppToday } from './utils/topAppsFromPerAppToday'
 
 function App() {
-  const { snapshot, petState, isBridgeReady, transientAction } = useTimeManagerPetBridge()
+  const { snapshot, petState, isBridgeReady, transientAction, petMotion } = useTimeManagerPetBridge()
   usePetTempInteractive(petState.clickThrough)
   const mood = usePetMood(snapshot, transientAction)
   const topApps = useMemo(() => topAppsFromPerAppToday(snapshot.perAppToday), [snapshot.perAppToday])
@@ -22,7 +22,7 @@ function App() {
         <div className="warning">请通过 electron-start 启动宠物模式。</div>
       )}
       <PetBubble snapshot={snapshot} />
-      <PetAvatarArea mood={mood} processName={snapshot.current?.processName} />
+      <PetAvatarArea mood={mood} processName={snapshot.current?.processName} petMotion={petMotion} />
       {!petState.compactMode && petState.showStatsPanel && (
         <PetStatsPanel snapshot={snapshot} topApps={topApps} durationStats={durationStats} />
       )}

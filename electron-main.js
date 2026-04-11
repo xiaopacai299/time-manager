@@ -44,6 +44,9 @@ const followTarget = {
   x: 0,
   y: 0,
 };
+/** 宠物右键菜单弹出期间，以及关闭后极短时间内，忽略全局左键触发的追鼠标 */
+let petContextMenuOpen = false;
+let suppressFollowMouseUntil = 0;
 const dragState = {
   active: false,
   offsetX: 0,
@@ -129,6 +132,14 @@ function refreshTrayMenu() {
   if (tray) tray.setContextMenu(buildTrayMenu());
 }
 
+/** 通知渲染进程：追鼠标时用奔跑 Lottie；mirrorX 表示水平翻转（朝左），不用旋转避免颠倒 */
+function sendPetMotion(payload) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const wc = mainWindow.webContents;
+  if (!wc || wc.isDestroyed()) return;
+  wc.send('pet:motion', payload);
+}
+
 function resetPetDragState() {
   dragState.active = false;
   dragState.started = false;
@@ -136,6 +147,7 @@ function resetPetDragState() {
     clearInterval(dragTimer);
     dragTimer = null;
   }
+  sendPetMotion({ running: false, mirrorX: false });
 }
 
 function openStatsDetailWindow() {
@@ -381,6 +393,7 @@ function stopFollowMouse() {
     followTimer = null;
   }
   followTarget.active = false;
+  sendPetMotion({ running: false, mirrorX: false });
 }
 
 function startFollowMouse() {
@@ -401,8 +414,12 @@ function startFollowMouse() {
     const dist = Math.hypot(dx, dy);
     if (dist < 6) {
       followTarget.active = false;
+      sendPetMotion({ running: false, mirrorX: false });
       return;
     }
+    // 原画默认朝右：光标在窗口右侧 (dx>0) 时水平翻转。与上一版相反时改回 dx < 0
+    const mirrorX = dx > 0;
+    sendPetMotion({ running: true, mirrorX });
     const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
     const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
     mainWindow.setBounds({
@@ -416,6 +433,8 @@ function startFollowMouse() {
 
 function triggerFollowBurst() {
   if (!petState.followMouse) return false;
+  if (petContextMenuOpen) return false;
+  if (Date.now() < suppressFollowMouseUntil) return false;
   if (followTarget.active) return false;
   const cursor = screen.getCursorScreenPoint();
   followTarget.x = cursor.x;
@@ -655,7 +674,7 @@ function setupIpc() {
         },
       },
       {
-        label: petState.followMouse ? '关闭追鼠标模式' : '开启追鼠标模式',
+        label: petState.followMouse ? '关闭猫捉老鼠' : '猫捉老鼠',
         click: () => toggleFollowMouse(),
       },
       {
@@ -671,10 +690,15 @@ function setupIpc() {
       { type: 'separator' },
       { label: '退出', click: () => app.quit() },
     ]);
+    petContextMenuOpen = true;
     menu.popup({
       window: mainWindow,
       x: Number(payload?.x) || undefined,
       y: Number(payload?.y) || undefined,
+      callback: () => {
+        petContextMenuOpen = false;
+        suppressFollowMouseUntil = Date.now() + 280;
+      },
     });
   });
   ipcMain.on('pet:set-temp-interactive', (_event, active) => {
@@ -715,6 +739,10 @@ function setupIpc() {
     if (dragTimer) {
       clearInterval(dragTimer);
       dragTimer = null;
+    }
+    const chasing = petState.followMouse && followTarget.active;
+    if (!chasing) {
+      sendPetMotion({ running: false, mirrorX: false });
     }
   });
   ipcMain.on('pet:drag-by', (_event, delta) => {

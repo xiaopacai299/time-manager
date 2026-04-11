@@ -8,6 +8,8 @@ const DEFAULT_PET_STATE = {
   followMouse: false,
 }
 
+const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
+
 /**
  * 订阅 preload 暴露的 timeManagerAPI：快照、宠物窗口状态、托盘动作测试。
  * 1. 使用：`src/App.jsx`
@@ -16,6 +18,7 @@ export function useTimeManagerPetBridge() {
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT)
   const [petState, setPetState] = useState(DEFAULT_PET_STATE)
   const [transientAction, setTransientAction] = useState('')
+  const [petMotion, setPetMotion] = useState(DEFAULT_PET_MOTION)
   const actionTimerRef = useRef(null)
 
   const triggerAction = useCallback((action) => {
@@ -44,6 +47,11 @@ export function useTimeManagerPetBridge() {
         triggerAction(action)
       }
     })
+    const unbindPetMotion = window.timeManagerAPI.onPetMotion?.((payload) => {
+      const running = Boolean(payload?.running)
+      const mirrorX = Boolean(payload?.mirrorX)
+      setPetMotion({ running, mirrorX })
+    })
     const unsubscribe = window.timeManagerAPI.onUpdate((data) => {
       setSnapshot(data)
     })
@@ -52,6 +60,7 @@ export function useTimeManagerPetBridge() {
       if (unsubscribe) unsubscribe()
       if (unbindPetState) unbindPetState()
       if (unbindPetAction) unbindPetAction()
+      if (unbindPetMotion) unbindPetMotion()
     }
   }, [triggerAction])
 
@@ -61,5 +70,5 @@ export function useTimeManagerPetBridge() {
     }
   }, [])
 
-  return { snapshot, petState, isBridgeReady, transientAction }
+  return { snapshot, petState, isBridgeReady, transientAction, petMotion }
 }

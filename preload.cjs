@@ -27,4 +27,9 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
     ipcRenderer.on('pet:action', handler);
     return () => ipcRenderer.removeListener('pet:action', handler);
   },
+  onPetMotion: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('pet:motion', handler);
+    return () => ipcRenderer.removeListener('pet:motion', handler);
+  },
 });
