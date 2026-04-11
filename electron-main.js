@@ -31,7 +31,7 @@ const PET_WINDOW_HEIGHT = 280;
 const PET_COMPACT_WIDTH = 190;
 const PET_COMPACT_HEIGHT = 210;
 const PET_RENDERER_ORIGIN = 'http://localhost:4567';
-const STATS_DETAIL_WINDOW_WIDTH = 600;
+const STATS_DETAIL_WINDOW_WIDTH = 650;
 const STATS_DETAIL_WINDOW_HEIGHT = 800;
 
 function petRendererUrl(hash) {
