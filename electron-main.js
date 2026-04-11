@@ -67,13 +67,60 @@ function persistPetState() {
   }
 }
 
+function defaultPetCornerBounds(width, height) {
+  const primary = screen.getPrimaryDisplay();
+  const wa = primary.workArea;
+  const margin = 16;
+  return {
+    x: wa.x + wa.width - width - margin,
+    y: wa.y + wa.height - height - margin,
+    width,
+    height,
+  };
+}
+
+/** 若窗口与任一显示器工作区不相交（例如外接屏拔掉后坐标失效），则摆回主屏右下角。 */
+function clampPetBoundsToVisibleDisplay(x, y, width, height) {
+  const displays = screen.getAllDisplays();
+  const intersects = displays.some((d) => {
+    const wa = d.workArea;
+    return x + width > wa.x && x < wa.x + wa.width && y + height > wa.y && y < wa.y + wa.height;
+  });
+  if (intersects) {
+    return { x, y, width, height };
+  }
+  return defaultPetCornerBounds(width, height);
+}
+
+/** 解析创建窗口时的位置与尺寸；必要时修正并标记是否写回状态文件。 */
+function resolveInitialPetWindowBounds() {
+  const [width, height] = getTargetSize();
+  const saved = petState.windowBounds;
+  if (!saved || !Number.isFinite(saved.x) || !Number.isFinite(saved.y)) {
+    return { ...defaultPetCornerBounds(width, height), didAdjust: true };
+  }
+  const next = clampPetBoundsToVisibleDisplay(saved.x, saved.y, width, height);
+  const didAdjust = next.x !== saved.x || next.y !== saved.y;
+  return { ...next, didAdjust };
+}
+
 function createMainWindow() {
-  const bounds = petState.windowBounds || {};
+  const initial = resolveInitialPetWindowBounds();
+  if (initial.didAdjust) {
+    petState.windowBounds = {
+      x: initial.x,
+      y: initial.y,
+      width: initial.width,
+      height: initial.height,
+    };
+    persistPetState();
+  }
+
   mainWindow = new BrowserWindow({
-    width: bounds.width || (petState.compactMode ? PET_COMPACT_WIDTH : PET_WINDOW_WIDTH),
-    height: bounds.height || (petState.compactMode ? PET_COMPACT_HEIGHT : PET_WINDOW_HEIGHT),
-    x: bounds.x,
-    y: bounds.y,
+    width: initial.width,
+    height: initial.height,
+    x: initial.x,
+    y: initial.y,
     minWidth: PET_COMPACT_WIDTH,
     minHeight: PET_COMPACT_HEIGHT,
     maxWidth: 420,
@@ -115,7 +162,8 @@ function createMainWindow() {
 
   mainWindow.once('ready-to-show', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.showInactive();
+    // show() 在 Windows 上比 showInactive 更可靠，避免窗口在屏外或层级异常时「存在但看不见」
+    mainWindow.show();
   });
 
   mainWindow.loadURL('http://localhost:4567');

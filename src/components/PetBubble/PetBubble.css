@@ -1,0 +1,177 @@
+/* Q 版气泡：粗藤条花边 + 粉小花 + 右下指向宠物的尾巴 */
+
+.pet-bubble {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-height: 58px;
+  padding: 10px;
+  padding-bottom: 16px;
+  box-sizing: border-box;
+  overflow: visible;
+  isolation: isolate;
+  filter: drop-shadow(var(--pb-drop, 0 8px 18px rgba(34, 72, 28, 0.24)));
+
+  /* rest / default greens */
+  --pb-frame-outer: #2d5a22;
+  --pb-frame-mid: #6aa83d;
+  --pb-frame-inner: rgba(165, 220, 130, 0.62);
+  --pb-frame-outline: rgba(38, 70, 28, 0.4);
+  --pb-dash: rgba(44, 78, 32, 0.5);
+  --pb-vine-a: rgba(48, 92, 34, 0.16);
+  --pb-vine-b: rgba(72, 128, 48, 0.14);
+  --pb-inner-top: rgba(255, 255, 255, 0.55);
+  --pb-inner-a: #dff3d4;
+  --pb-inner-b: #bfe8a8;
+  --pb-inner-c: #95cf72;
+  --pb-text: #15321c;
+  --pb-tail-a: #c5e6a8;
+  --pb-tail-b: #a5d98f;
+  --pb-tail-stroke: #3d6b28;
+}
+
+.pet-bubble--work {
+  --pb-frame-outer: #1e4a6e;
+  --pb-frame-mid: #4a8bc8;
+  --pb-frame-inner: rgba(140, 190, 235, 0.55);
+  --pb-frame-outline: rgba(24, 56, 88, 0.38);
+  --pb-dash: rgba(36, 72, 110, 0.48);
+  --pb-vine-a: rgba(30, 80, 120, 0.14);
+  --pb-vine-b: rgba(50, 100, 150, 0.12);
+  --pb-inner-a: #e3f2ff;
+  --pb-inner-b: #b8daf5;
+  --pb-inner-c: #8bc4eb;
+  --pb-text: #12324d;
+  --pb-tail-a: #b8daf5;
+  --pb-tail-b: #93c5ef;
+  --pb-tail-stroke: #2563a8;
+  --pb-drop: 0 8px 18px rgba(24, 56, 100, 0.22);
+}
+
+.pet-bubble--remind {
+  --pb-frame-outer: #b45309;
+  --pb-frame-mid: #ea9c3a;
+  --pb-frame-inner: rgba(255, 214, 150, 0.65);
+  --pb-frame-outline: rgba(120, 55, 10, 0.35);
+  --pb-dash: rgba(140, 70, 18, 0.5);
+  --pb-vine-a: rgba(180, 90, 20, 0.14);
+  --pb-vine-b: rgba(220, 130, 40, 0.12);
+  --pb-inner-a: #fff8e6;
+  --pb-inner-b: #ffe0a8;
+  --pb-inner-c: #ffc96d;
+  --pb-text: #5c2e08;
+  --pb-tail-a: #ffe0a8;
+  --pb-tail-b: #ffcc70;
+  --pb-tail-stroke: #c2410c;
+  --pb-drop: 0 8px 18px rgba(160, 70, 10, 0.22);
+}
+
+.pet-bubble--long-work {
+  --pb-frame-outer: #7f1d1d;
+  --pb-frame-mid: #dc2626;
+  --pb-frame-inner: rgba(252, 165, 165, 0.55);
+  --pb-frame-outline: rgba(90, 10, 10, 0.45);
+  --pb-dash: rgba(120, 20, 20, 0.55);
+  --pb-vine-a: rgba(140, 20, 20, 0.16);
+  --pb-vine-b: rgba(200, 40, 40, 0.14);
+  --pb-inner-a: #ffe8e8;
+  --pb-inner-b: #ffc9c9;
+  --pb-inner-c: #f87171;
+  --pb-text: #450a0a;
+  --pb-tail-a: #fecaca;
+  --pb-tail-b: #f87171;
+  --pb-tail-stroke: #991b1b;
+  --pb-drop: 0 10px 22px rgba(120, 20, 20, 0.28);
+}
+
+.pet-bubble__vine {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 24px 30px 22px 28px;
+  background:
+    /* 粉小花（加量） */
+    radial-gradient(circle at 5% 14%, #ff9eb5 0 5px, transparent 6px),
+    radial-gradient(circle at 12% 6%, #ffb8c8 0 4px, transparent 5px),
+    radial-gradient(circle at 22% 12%, #ff8fab 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at 50% 4%, #ffb8c8 0 4px, transparent 5px),
+    radial-gradient(circle at 78% 8%, #ff9eb5 0 4.5px, transparent 5.5px),
+    radial-gradient(circle at 90% 16%, #ffb8c8 0 4px, transparent 5px),
+    radial-gradient(circle at 96% 32%, #ff8fab 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at 4% 50%, #ffb8c8 0 3px, transparent 4px),
+    radial-gradient(circle at 96% 55%, #ff9eb5 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at 8% 88%, #ffb8c8 0 4px, transparent 5px),
+    radial-gradient(circle at 16% 96%, #ff8fab 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at 30% 98%, #ffb8c8 0 3px, transparent 4px),
+    radial-gradient(circle at 70% 94%, #ff9eb5 0 4px, transparent 5px),
+    radial-gradient(circle at 88% 86%, #ffb8c8 0 3.5px, transparent 4.5px),
+    /* 点缀小黄蕊 */
+    radial-gradient(circle at 14% 8%, #fff6a8 0 2px, transparent 3px),
+    radial-gradient(circle at 88% 12%, #fff6c2 0 2px, transparent 3px),
+    radial-gradient(circle at 10% 90%, #fff6a8 0 2px, transparent 3px),
+    repeating-linear-gradient(
+      125deg,
+      var(--pb-vine-a) 0 2px,
+      transparent 2px 10px
+    ),
+    repeating-linear-gradient(
+      -115deg,
+      var(--pb-vine-b) 0 2px,
+      transparent 2px 11px
+    );
+  box-shadow:
+    inset 0 0 0 5px var(--pb-frame-outer),
+    inset 0 0 0 11px var(--pb-frame-mid),
+    inset 0 0 0 17px var(--pb-frame-inner),
+    0 0 0 2px var(--pb-frame-outline);
+}
+
+.pet-bubble__vine::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 20px 24px 18px 22px;
+  border: 3px dashed var(--pb-dash);
+  opacity: 0.88;
+}
+
+.pet-bubble__inner {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 2px;
+  border-radius: 18px 22px 16px 20px;
+  padding: 12px 15px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--pb-text);
+  font-family: ui-rounded, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background:
+    radial-gradient(ellipse 100% 55% at 50% -10%, var(--pb-inner-top) 0%, transparent 58%),
+    linear-gradient(168deg, var(--pb-inner-a) 0%, var(--pb-inner-b) 42%, var(--pb-inner-c) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* 右下角小三角，指向下方小狐狸 */
+.pet-bubble__tail {
+  position: absolute;
+  z-index: 2;
+  right: 16%;
+  bottom: -6px;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: linear-gradient(145deg, var(--pb-tail-a) 35%, var(--pb-tail-b) 100%);
+  border-right: 4px solid var(--pb-tail-stroke);
+  border-bottom: 4px solid var(--pb-tail-stroke);
+  border-radius: 0 0 10px 0;
+  transform: rotate(45deg);
+  transform-origin: center center;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.05);
+}

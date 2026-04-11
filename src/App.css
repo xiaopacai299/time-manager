@@ -21,24 +21,6 @@
   font-size: 12px;
 }
 
-.bubble {
-  width: 100%;
-  max-width: 100%;
-  min-height: 44px;
-  border-radius: 14px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.35;
-  color: #15212f;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(140, 160, 190, 0.4);
-  box-shadow: 0 6px 20px rgba(20, 30, 60, 0.15);
-  box-sizing: border-box;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
-}
-
 .pet-avatar {
   width: 132px;
   height: 132px;

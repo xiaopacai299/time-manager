@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import AnimatedPet from './components/AnimatedPet.jsx'
+import PetBubble from './components/PetBubble'
+import {
+  BREAK_COMPLETED_CELEBRATION_MS,
+  LONG_WORK_CONTINUOUS_MS,
+} from './configKeys'
+import { formatDuration } from './utils/formatDuration'
 
 const EMPTY_SNAPSHOT = {
   dayKey: '',
@@ -15,14 +21,6 @@ const EMPTY_SNAPSHOT = {
   continuousUseMs: 0,
   breakCompletedMs: 0,
   transitions: [],
-}
-
-function formatDuration(ms = 0) {
-  const total = Math.max(0, Math.floor(ms / 1000))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
 }
 
 function App() {
@@ -118,26 +116,14 @@ function App() {
   const petView = useMemo(() => {
     const continuousMs = snapshot.continuousUseMs || 0
     const breakMs = snapshot.breakCompletedMs || 0
-    const currentApp = snapshot.current?.processName || 'Unknown'
-    let baseText = `当前专注：${currentApp}`
-
-    if (breakMs >= 5 * 60 * 1000) {
-      baseText = '休息完成！做得很好，继续保持。'
-    } else if (continuousMs >= 50 * 60 * 1000) {
-      baseText = `你已连续使用 ${formatDuration(continuousMs)}，建议活动一下。`
-    } else if (snapshot.current?.isOnBreak) {
-      baseText = '检测到你在休息，我会安静陪着你。'
-    }
-
-    const mood = transientAction || (breakMs >= 5 * 60 * 1000
+    const mood = transientAction || (breakMs >= BREAK_COMPLETED_CELEBRATION_MS
       ? 'happy'
-      : continuousMs >= 50 * 60 * 1000
+      : continuousMs >= LONG_WORK_CONTINUOUS_MS
         ? 'warn'
         : snapshot.current?.isOnBreak
           ? 'sleep'
           : 'idle')
-
-    return { mood, text: baseText }
+    return { mood }
   }, [snapshot, transientAction])
 
   const topApps = useMemo(() => {
@@ -212,8 +198,7 @@ function App() {
   return (
     <main className="pet-shell">
       {!isBridgeReady && <div className="warning">请通过 electron-start 启动宠物模式。</div>}
-      <section className="bubble">{petView.text}</section>
-
+      <PetBubble snapshot={snapshot} />
       <section
         className={`pet-avatar mood-${petView.mood}`}
         onContextMenu={openPetMenu}
