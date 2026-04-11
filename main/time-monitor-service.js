@@ -115,9 +115,11 @@ export class TimeMonitorService extends EventEmitter {
 
   start() {
     if (this.timer) return;
-    this.tick();
+    void this.tick().catch((err) => {
+      console.error('[time-monitor-tick]', err);
+    });
     this.timer = setInterval(() => {
-      this.tick().catch(() => {
+      void this.tick().catch(() => {
         // Keep collector resilient against transient platform command failures.
       });
     }, this.sampleIntervalMs);

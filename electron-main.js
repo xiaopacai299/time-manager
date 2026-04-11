@@ -1,14 +1,38 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, globalShortcut, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  Tray,
+  nativeImage,
+  globalShortcut,
+  screen,
+} from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import fs from 'fs';
+import os from 'os';
 import { TimeMonitorService } from './main/time-monitor-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
-const { uIOhook } = require('uiohook-napi');
+
+/** 惰性加载：未安装 Python/VS 构建链或二进制与 Electron 不匹配时仍可启动（仅失去「追鼠标」全局左键触发）。 */
+let uIOhookCached;
+function getUIOhook() {
+  if (uIOhookCached !== undefined) return uIOhookCached;
+  try {
+    uIOhookCached = require('uiohook-napi').uIOhook;
+  } catch (error) {
+    console.error('[uiohook-load-error]', error);
+    uIOhookCached = null;
+  }
+  return uIOhookCached;
+}
+
 let mainWindow;
 let statsWindow = null;
 let tray;
@@ -34,8 +58,71 @@ const PET_RENDERER_ORIGIN = 'http://localhost:4567';
 const STATS_DETAIL_WINDOW_WIDTH = 650;
 const STATS_DETAIL_WINDOW_HEIGHT = 800;
 
-function petRendererUrl(hash) {
-  return hash ? `${PET_RENDERER_ORIGIN}/#${String(hash).replace(/^#/, '')}` : `${PET_RENDERER_ORIGIN}/`;
+const petIndexHtmlPath = path.join(__dirname, 'dist', 'index.html');
+
+function appendLaunchLog(line) {
+  try {
+    let dir;
+    try {
+      dir = app.getPath('userData');
+    } catch {
+      dir = os.tmpdir();
+    }
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(path.join(dir, 'launch.log'), `${new Date().toISOString()} ${line}\n`, 'utf8');
+  } catch {
+    // ignore
+  }
+}
+
+process.on('uncaughtException', (err) => {
+  appendLaunchLog(`uncaughtException: ${err?.stack || err}`);
+  try {
+    dialog.showErrorBox('Time Pet 异常退出', String(err?.message || err));
+  } catch {
+    // ignore
+  }
+});
+
+process.on('unhandledRejection', (reason) => {
+  appendLaunchLog(`unhandledRejection: ${reason}`);
+});
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (statsWindow && !statsWindow.isDestroyed()) {
+      statsWindow.show();
+      statsWindow.focus();
+      return;
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+/** 开发态走本地 Vite；安装包内从 dist 以 file:// 加载（勿再用 localhost:4567）。 */
+function loadPetRenderer(win, hash) {
+  if (app.isPackaged) {
+    if (!fs.existsSync(petIndexHtmlPath)) {
+      const msg = `未找到界面文件：\n${petIndexHtmlPath}\n请确认使用「npm run build」后再打包。`;
+      appendLaunchLog(`missing dist: ${petIndexHtmlPath}`);
+      dialog.showErrorBox('Time Pet 无法启动', msg);
+      return;
+    }
+    const h = hash ? String(hash).replace(/^#/, '') : '';
+    if (h) win.loadFile(petIndexHtmlPath, { hash: h });
+    else win.loadFile(petIndexHtmlPath);
+    return;
+  }
+  const url = hash
+    ? `${PET_RENDERER_ORIGIN}/#${String(hash).replace(/^#/, '')}`
+    : `${PET_RENDERER_ORIGIN}/`;
+  win.loadURL(url);
 }
 
 function refreshTrayMenu() {
@@ -68,6 +155,7 @@ function openStatsDetailWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
+      webSecurity: !app.isPackaged,
     },
   });
 
@@ -75,7 +163,7 @@ function openStatsDetailWindow() {
     if (statsWindow && !statsWindow.isDestroyed()) statsWindow.show();
   });
 
-  statsWindow.loadURL(petRendererUrl('stats'));
+  loadPetRenderer(statsWindow, 'stats');
 
   statsWindow.on('closed', () => {
     statsWindow = null;
@@ -198,6 +286,7 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       zoomFactor: 1.0,
+      webSecurity: !app.isPackaged,
     },
   });
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -221,13 +310,21 @@ function createMainWindow() {
     mainWindow.webContents.setZoomLevel(0);
   });
 
+  if (app.isPackaged) {
+    mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
+      const msg = `错误码 ${code}\n${desc}\n${url}`;
+      appendLaunchLog(`did-fail-load: ${msg}`);
+      dialog.showErrorBox('Time Pet 页面加载失败', msg);
+    });
+  }
+
   mainWindow.once('ready-to-show', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     // show() 在 Windows 上比 showInactive 更可靠，避免窗口在屏外或层级异常时「存在但看不见」
     mainWindow.show();
   });
 
-  mainWindow.loadURL(petRendererUrl());
+  loadPetRenderer(mainWindow);
 
   mainWindow.on('resize', () => {
     if (mainWindow.isDestroyed()) return;
@@ -328,13 +425,15 @@ function triggerFollowBurst() {
 
 function setupGlobalMouseHook() {
   if (globalMouseHookReady) return;
+  const hook = getUIOhook();
+  if (!hook) return;
   try {
-    uIOhook.on('mousedown', (event) => {
+    hook.on('mousedown', (event) => {
       // uiohook-napi: left button is 1
       if (event?.button !== 1) return;
       triggerFollowBurst();
     });
-    uIOhook.start();
+    hook.start();
     globalMouseHookReady = true;
   } catch (error) {
     console.error('[global-mouse-hook-error]', error);
@@ -343,9 +442,12 @@ function setupGlobalMouseHook() {
 
 function teardownGlobalMouseHook() {
   if (!globalMouseHookReady) return;
+  const hook = getUIOhook();
   try {
-    uIOhook.removeAllListeners('mousedown');
-    uIOhook.stop();
+    if (hook) {
+      hook.removeAllListeners('mousedown');
+      hook.stop();
+    }
   } catch (error) {
     console.error('[global-mouse-hook-stop-error]', error);
   } finally {
@@ -627,29 +729,38 @@ function setupIpc() {
 }
 
 app.whenReady().then(() => {
-  loadPetState();
-  // Keep startup behavior predictable: always start with click-through disabled.
-  petState.clickThrough = false;
-  petState.tempInteractive = false;
-  setupIpc();
-  createMainWindow();
-  applyWindowMode();
-  createTray();
-  setupGlobalMouseHook();
-  if (petState.followMouse) startFollowMouse();
-  monitor.start();
-  globalShortcut.register('CommandOrControl+Shift+P', () => {
-    toggleClickThrough();
-  });
+  if (!gotSingleInstanceLock) return;
 
-  monitor.on('update', (payload) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('time-stats:update', payload);
-    }
-    if (statsWindow && !statsWindow.isDestroyed()) {
-      statsWindow.webContents.send('time-stats:update', payload);
-    }
-  });
+  try {
+    appendLaunchLog('app ready, starting main flow');
+    loadPetState();
+    // Keep startup behavior predictable: always start with click-through disabled.
+    petState.clickThrough = false;
+    petState.tempInteractive = false;
+    setupIpc();
+    createMainWindow();
+    applyWindowMode();
+    createTray();
+    setupGlobalMouseHook();
+    if (petState.followMouse) startFollowMouse();
+    monitor.start();
+    globalShortcut.register('CommandOrControl+Shift+P', () => {
+      toggleClickThrough();
+    });
+
+    monitor.on('update', (payload) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('time-stats:update', payload);
+      }
+      if (statsWindow && !statsWindow.isDestroyed()) {
+        statsWindow.webContents.send('time-stats:update', payload);
+      }
+    });
+  } catch (err) {
+    appendLaunchLog(`whenReady error: ${err?.stack || err}`);
+    dialog.showErrorBox('Time Pet 启动失败', String(err?.message || err));
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {

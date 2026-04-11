@@ -15,7 +15,7 @@
     "electron-main-only": "electron .",
     "electron-start-debug": "concurrently -n WEB,ELECTRON -c blue,green \"npm run react-start\" \"wait-on http://localhost:4567 && npm run electron-main-only\"",
     "electron-start-debug-log": "concurrently \"npm run react-start\" \"wait-on http://localhost:4567 && set DEBUG_LOG=true&& electron .\"",
-    "electron-build": "vite build && electron-builder"
+    "electron-build": "vite build && node scripts/electron-build.mjs"
   },
   "dependencies": {
     "react": "^19.2.4",
@@ -37,5 +37,28 @@
     "globals": "^17.4.0",
     "vite": "^8.0.4",
     "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.timemanager.pet",
+    "productName": "Time Pet",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main.js",
+      "preload.cjs",
+      "main/**/*",
+      "assets/**/*"
+    ],
+    "npmRebuild": false,
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    }
   }
 }
