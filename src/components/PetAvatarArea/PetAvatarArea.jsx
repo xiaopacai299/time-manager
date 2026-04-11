@@ -1,4 +1,5 @@
 import AnimatedPet from '../AnimatedPet.jsx'
+import PetRenderErrorBoundary from '../PetRenderErrorBoundary.jsx'
 import { usePetAvatarInteractions } from '../../hooks/usePetAvatarInteractions'
 
 /**
@@ -27,7 +28,9 @@ export default function PetAvatarArea({ mood, processName }) {
       onPointerCancel={onAvatarPointerCancel}
       onDoubleClick={onAvatarDoubleClick}
     >
-      <AnimatedPet mood={mood} />
+      <PetRenderErrorBoundary>
+        <AnimatedPet mood={mood} />
+      </PetRenderErrorBoundary>
       <div className="pet-label">{processName || 'companion'}</div>
     </section>
   )

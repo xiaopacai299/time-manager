@@ -155,7 +155,8 @@ function openStatsDetailWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
-      webSecurity: !app.isPackaged,
+      // 与开发态一致；file:// + 透明窗下 webSecurity:true 易导致 Lottie/画布不绘制
+      webSecurity: false,
     },
   });
 
@@ -286,7 +287,8 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       zoomFactor: 1.0,
-      webSecurity: !app.isPackaged,
+      // 与开发态一致；file:// + 透明窗下 webSecurity:true 易导致 Lottie/画布不绘制
+      webSecurity: false,
     },
   });
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
