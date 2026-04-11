@@ -12,6 +12,12 @@ export default function PetAvatarArea({ mood, processName }) {
     onAvatarPointerCancel,
   } = usePetAvatarInteractions()
 
+  function onAvatarDoubleClick(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    window.timeManagerAPI?.openStatsWindow?.()
+  }
+
   return (
     <section
       className={`pet-avatar mood-${mood}`}
@@ -19,6 +25,7 @@ export default function PetAvatarArea({ mood, processName }) {
       onPointerDown={onAvatarPointerDown}
       onPointerUp={onAvatarPointerUp}
       onPointerCancel={onAvatarPointerCancel}
+      onDoubleClick={onAvatarDoubleClick}
     >
       <AnimatedPet mood={mood} />
       <div className="pet-label">{processName || 'companion'}</div>

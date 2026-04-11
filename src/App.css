@@ -1,3 +1,20 @@
+/* 独立统计窗口（#stats） */
+.stats-window-shell {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 16px;
+  overflow-y: auto;
+  user-select: none;
+}
+
+.stats-window-heading {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a2d3d;
+}
+
 .pet-shell {
   width: 100%;
   height: 100%;

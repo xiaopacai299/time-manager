@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 const { uIOhook } = require('uiohook-napi');
 let mainWindow;
+let statsWindow = null;
 let tray;
 let dragTimer = null;
 let followTimer = null;
@@ -29,6 +30,66 @@ const PET_WINDOW_WIDTH = 260;
 const PET_WINDOW_HEIGHT = 280;
 const PET_COMPACT_WIDTH = 190;
 const PET_COMPACT_HEIGHT = 210;
+const PET_RENDERER_ORIGIN = 'http://localhost:4567';
+const STATS_DETAIL_WINDOW_WIDTH = 600;
+const STATS_DETAIL_WINDOW_HEIGHT = 800;
+
+function petRendererUrl(hash) {
+  return hash ? `${PET_RENDERER_ORIGIN}/#${String(hash).replace(/^#/, '')}` : `${PET_RENDERER_ORIGIN}/`;
+}
+
+function refreshTrayMenu() {
+  if (tray) tray.setContextMenu(buildTrayMenu());
+}
+
+function resetPetDragState() {
+  dragState.active = false;
+  dragState.started = false;
+  if (dragTimer) {
+    clearInterval(dragTimer);
+    dragTimer = null;
+  }
+}
+
+function openStatsDetailWindow() {
+  if (statsWindow && !statsWindow.isDestroyed()) {
+    statsWindow.show();
+    statsWindow.focus();
+    return;
+  }
+
+  resetPetDragState();
+
+  statsWindow = new BrowserWindow({
+    width: STATS_DETAIL_WINDOW_WIDTH,
+    height: STATS_DETAIL_WINDOW_HEIGHT,
+    show: false,
+    title: '使用统计',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+    },
+  });
+
+  statsWindow.once('ready-to-show', () => {
+    if (statsWindow && !statsWindow.isDestroyed()) statsWindow.show();
+  });
+
+  statsWindow.loadURL(petRendererUrl('stats'));
+
+  statsWindow.on('closed', () => {
+    statsWindow = null;
+    refreshTrayMenu();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  });
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+  refreshTrayMenu();
+}
 const monitor = new TimeMonitorService({ sampleIntervalMs: 1000, breakThresholdSeconds: 600 });
 const petState = {
   clickThrough: false,
@@ -166,7 +227,7 @@ function createMainWindow() {
     mainWindow.show();
   });
 
-  mainWindow.loadURL('http://localhost:4567');
+  mainWindow.loadURL(petRendererUrl());
 
   mainWindow.on('resize', () => {
     if (mainWindow.isDestroyed()) return;
@@ -293,10 +354,15 @@ function teardownGlobalMouseHook() {
 }
 
 function buildTrayMenu() {
+  const statsOpen = Boolean(statsWindow && !statsWindow.isDestroyed());
   return Menu.buildFromTemplate([
     {
-      label: mainWindow?.isVisible() ? '隐藏宠物' : '显示宠物',
+      label: statsOpen ? '关闭统计窗口' : mainWindow?.isVisible() ? '隐藏宠物' : '显示宠物',
       click: () => {
+        if (statsOpen) {
+          statsWindow.close();
+          return;
+        }
         if (!mainWindow) return;
         if (mainWindow.isVisible()) mainWindow.hide();
         else mainWindow.show();
@@ -357,6 +423,11 @@ function createTray() {
     tray.setToolTip('Time Manager Pet');
     tray.setContextMenu(buildTrayMenu());
     tray.on('click', () => {
+      if (statsWindow && !statsWindow.isDestroyed()) {
+        statsWindow.show();
+        statsWindow.focus();
+        return;
+      }
       if (!mainWindow) return;
       if (mainWindow.isVisible()) mainWindow.focus();
       else mainWindow.show();
@@ -450,6 +521,10 @@ function setupIpc() {
   });
   ipcMain.handle('pet:toggle-follow-mouse', () => {
     return toggleFollowMouse();
+  });
+  ipcMain.handle('pet:open-stats-window', () => {
+    openStatsDetailWindow();
+    return true;
   });
   ipcMain.handle('pet:open-context-menu', (_event, payload) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -570,6 +645,9 @@ app.whenReady().then(() => {
   monitor.on('update', (payload) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('time-stats:update', payload);
+    }
+    if (statsWindow && !statsWindow.isDestroyed()) {
+      statsWindow.webContents.send('time-stats:update', payload);
     }
   });
 });

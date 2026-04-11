@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
   toggleClickThrough: () => ipcRenderer.invoke('pet:toggle-click-through'),
   toggleStatsPanel: () => ipcRenderer.invoke('pet:toggle-stats-panel'),
   toggleCompactMode: () => ipcRenderer.invoke('pet:toggle-compact-mode'),
+  openStatsWindow: () => ipcRenderer.invoke('pet:open-stats-window'),
   openContextMenu: (x, y) => ipcRenderer.invoke('pet:open-context-menu', { x, y }),
   startDrag: (offsetX, offsetY) => ipcRenderer.send('pet:start-drag', { offsetX, offsetY }),
   endDrag: () => ipcRenderer.send('pet:end-drag'),

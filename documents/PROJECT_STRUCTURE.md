@@ -30,6 +30,7 @@ src/
 ├── main.jsx                  # React 挂载入口
 ├── index.css                 # 全局基础样式
 ├── App.jsx                   # 应用壳：仅组装 hook 与子组件，不写具体业务
+├── StatsWindowApp.jsx        # 独立统计窗口 UI（仅当地址为 `#stats` 时由 main.jsx 挂载）
 ├── App.css                   # 宠物窗口布局与宠物相关样式（.pet-shell、.stats-panel 等）
 ├── configKeys/
 │   └── index.js              # 前端可调阈值（连续使用提醒、休息庆祝等），附注释说明用途与引用处
@@ -77,6 +78,12 @@ usePetMood / topAppsFromPerAppToday / getSnapshotDurationStats
         ↓
 PetBubble / PetAvatarArea / PetStatsPanel
 ```
+
+### 2.4 双窗口（宠物 + 统计详情）
+
+- 主进程在 `electron-main.js` 中维护宠物窗口与可选的 **`statsWindow`**（600×800，加载同源页面并带 hash `#stats`）。
+- 左键**双击**宠物头像调用 `timeManagerAPI.openStatsWindow()`：隐藏宠物窗口、打开统计窗口；关闭统计窗口后自动 `mainWindow.show()`。
+- `src/main.jsx` 根据 `location.hash === '#stats'` 选择渲染 `StatsWindowApp`（仅 `PetStatsPanel` 与数据订阅）或 `App`（完整宠物界面）。
 
 ---
 
