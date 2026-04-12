@@ -2,25 +2,27 @@ import { useMemo } from 'react'
 import {
   BREAK_COMPLETED_CELEBRATION_MS,
   LONG_WORK_CONTINUOUS_MS,
+  REMIND_CONTINUOUS_MS,
 } from '../configKeys'
+import { PET_VIEW_VARIANT_SET } from '../constants/petViewVariants'
 
 /**
- * 根据快照与托盘触发的短时动作，推导宠物表情 mood。
+ * 根据快照与托盘「动作测试」推导宠物 mood，与 `PetBubble` 四态优先级一致。
  * 1. 使用：`src/App.jsx`、`PetAvatarArea`
  */
 export function usePetMood(snapshot, transientAction) {
   return useMemo(() => {
+    if (typeof transientAction === 'string' && PET_VIEW_VARIANT_SET.has(transientAction)) {
+      return transientAction
+    }
+
     const continuousMs = snapshot.continuousUseMs || 0
     const breakMs = snapshot.breakCompletedMs || 0
-    return (
-      transientAction ||
-      (breakMs >= BREAK_COMPLETED_CELEBRATION_MS
-        ? 'happy'
-        : continuousMs >= LONG_WORK_CONTINUOUS_MS
-          ? 'warn'
-          : snapshot.current?.isOnBreak
-            ? 'sleep'
-            : 'idle')
-    )
+
+    if (snapshot.current?.isOnBreak) return 'rest'
+    if (continuousMs >= LONG_WORK_CONTINUOUS_MS) return 'long-work'
+    if (continuousMs >= REMIND_CONTINUOUS_MS) return 'remind'
+    if (breakMs >= BREAK_COMPLETED_CELEBRATION_MS) return 'rest'
+    return 'work'
   }, [snapshot, transientAction])
 }

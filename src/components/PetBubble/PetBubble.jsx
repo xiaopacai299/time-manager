@@ -5,9 +5,8 @@ import {
   LONG_WORK_CONTINUOUS_MS,
   REMIND_CONTINUOUS_MS,
 } from '../../configKeys'
+import { PET_VIEW_VARIANT_SET } from '../../constants/petViewVariants'
 import { formatDuration } from '../../utils/formatDuration'
-
-const VARIANTS = new Set(['rest', 'work', 'remind', 'long-work'])
 
 /**
  * 宠物气泡：根据主进程快照计算文案与主题 variant，并渲染 Q 版花边气泡。
@@ -43,7 +42,7 @@ export default function PetBubble({ snapshot }) {
     return { text: baseText, variant: v }
   }, [snapshot])
 
-  const safeVariant = VARIANTS.has(variant) ? variant : 'work'
+  const safeVariant = PET_VIEW_VARIANT_SET.has(variant) ? variant : 'work'
 
   return (
     <section

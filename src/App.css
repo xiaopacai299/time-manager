@@ -124,6 +124,40 @@
   transition: transform 0.12s ease-out;
 }
 
+.pet-visual__stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pet-visual__lottie--idle-layer,
+.pet-visual__lottie--chase-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pet-visual__lottie--idle-layer {
+  z-index: 0;
+  opacity: 1;
+}
+
+.pet-visual__lottie--chase-layer {
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pet-visual--chasing .pet-visual__lottie--idle-layer {
+  opacity: 0;
+}
+
+.pet-visual--chasing .pet-visual__lottie--chase-layer {
+  opacity: 1;
+}
+
 .pet-visual__lottie {
   display: block;
   width: 100%;
@@ -131,7 +165,9 @@
 }
 
 /* lottie-web 有时给 svg 写死 400×400，在透明 Electron 窗里会错位或不可见 */
-.pet-visual__lottie svg {
+.pet-visual__lottie svg,
+.pet-visual__stack .pet-visual__lottie--idle-layer svg,
+.pet-visual__stack .pet-visual__lottie--chase-layer svg {
   width: 100% !important;
   height: 100% !important;
   display: block;
@@ -162,37 +198,26 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
-.pet-visual--warn .pet-visual__bob {
-  animation: petWarnHeadShake 0.22s ease-in-out infinite;
-  filter: saturate(1.08) contrast(1.02);
+/* long-work：报警 — 整体震动（眩晕与红区在 PetMoodOverlay 内） */
+.pet-visual--long-work .pet-visual__bob {
+  animation: petLongWorkVibrate 0.1s linear infinite;
+  filter: saturate(1.12) contrast(1.05);
 }
 
-.pet-visual--warn .pet-warn-mark {
-  animation: petWarnMarkBlink 0.55s ease-in-out infinite;
+/* rest：悠闲喝咖啡 — 身体轻晃（与 Lottie 半速一致，整体再慢一倍） */
+.pet-visual--rest .pet-visual__bob {
+  animation: petSleepBodyFloat 4.2s ease-in-out infinite;
 }
 
-.pet-visual--sleep .pet-visual__bob {
-  animation: petSleepBodyFloat 2.1s ease-in-out infinite;
+/* work：干劲 — 略快 bob */
+.pet-visual--work .pet-visual__bob {
+  animation: petBodyBob 0.68s ease-in-out infinite;
 }
 
-.pet-visual--sleep .pet-sleep-z {
-  animation: petSleepZFloat 1.2s ease-in-out infinite;
-}
-
-.pet-visual--happy .pet-visual__bob {
-  animation-duration: 0.85s;
-}
-
-.pet-visual--nod .pet-visual__bob {
-  animation: petNodHead 0.42s ease-in-out 2;
-}
-
-.pet-visual--celebrate .pet-visual__bob {
-  animation: petCelebrateBody 0.9s ease-in-out;
-}
-
-.pet-visual--celebrate .pet-celebrate-stars {
-  animation: petStarPop 0.9s ease-in-out infinite;
+/* remind：缓和左右晃（角标与慢写在 PetMoodOverlay 内） */
+.pet-visual--remind .pet-visual__bob {
+  animation: petRemindSway 2.4s ease-in-out infinite;
+  transform-origin: 50% 62%;
 }
 
 .pet-label {
@@ -214,49 +239,28 @@
   100% { transform: translateY(0); }
 }
 
-@keyframes petNodHead {
-  0% { transform: translateY(0) rotate(0deg); }
-  30% { transform: translateY(6px) rotate(0.2deg); }
-  65% { transform: translateY(-2px) rotate(-0.4deg); }
-  100% { transform: translateY(0) rotate(0deg); }
+@keyframes petRemindSway {
+  0%,
+  100% {
+    transform: translateX(-2px) rotate(-2.6deg);
+  }
+  50% {
+    transform: translateX(2px) rotate(2.6deg);
+  }
 }
 
-@keyframes petCelebrateBody {
-  0% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-4px) rotate(-6deg); }
-  50% { transform: translateY(-6px) rotate(7deg); }
-  75% { transform: translateY(-3px) rotate(-4deg); }
-  100% { transform: translateY(0) rotate(0deg); }
-}
-
-@keyframes petWarnHeadShake {
-  0% { transform: rotate(0deg) translateY(0); }
-  25% { transform: rotate(-2.8deg) translateY(-0.3px); }
-  75% { transform: rotate(2.8deg) translateY(-0.3px); }
-  100% { transform: rotate(0deg) translateY(0); }
-}
-
-@keyframes petWarnMarkBlink {
-  0%, 100% { opacity: 0.55; transform: scale(0.95); }
-  50% { opacity: 1; transform: scale(1.08); }
+@keyframes petLongWorkVibrate {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  75% { transform: translate(-1.5px, -1px); }
+  100% { transform: translate(0, 0); }
 }
 
 @keyframes petSleepBodyFloat {
   0% { transform: translateY(0); filter: saturate(0.86); }
   50% { transform: translateY(4.5px); filter: saturate(0.76); }
   100% { transform: translateY(0); filter: saturate(0.86); }
-}
-
-@keyframes petSleepZFloat {
-  0% { opacity: 0.35; transform: translateY(0); }
-  50% { opacity: 1; transform: translateY(-4px); }
-  100% { opacity: 0.35; transform: translateY(-8px); }
-}
-
-@keyframes petStarPop {
-  0% { opacity: 0; transform: scale(0.7); }
-  30% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.15); }
 }
 
 .pet-actions {

@@ -513,11 +513,10 @@ function buildTrayMenu() {
     {
       label: '动作测试',
       submenu: [
-        { label: '待机 idle', click: () => emitPetAction('idle') },
-        { label: '点头 nod', click: () => emitPetAction('nod') },
-        { label: '困倦 sleep', click: () => emitPetAction('sleep') },
-        { label: '庆祝 celebrate', click: () => emitPetAction('celebrate') },
-        { label: '提醒 warn', click: () => emitPetAction('warn') },
+        { label: '休息 rest', click: () => emitPetAction('rest') },
+        { label: '工作 work', click: () => emitPetAction('work') },
+        { label: '提醒 remind', click: () => emitPetAction('remind') },
+        { label: '报警 long-work', click: () => emitPetAction('long-work') },
       ],
     },
     { type: 'separator' },
@@ -681,11 +680,10 @@ function setupIpc() {
       {
         label: '动作测试',
         submenu: [
-          { label: '待机 idle', click: () => emitPetAction('idle') },
-          { label: '点头 nod', click: () => emitPetAction('nod') },
-          { label: '困倦 sleep', click: () => emitPetAction('sleep') },
-          { label: '庆祝 celebrate', click: () => emitPetAction('celebrate') },
-          { label: '提醒 warn', click: () => emitPetAction('warn') },
+          { label: '休息 rest', click: () => emitPetAction('rest') },
+          { label: '工作 work', click: () => emitPetAction('work') },
+          { label: '提醒 remind', click: () => emitPetAction('remind') },
+          { label: '报警 long-work', click: () => emitPetAction('long-work') },
         ],
       },
       { type: 'separator' },

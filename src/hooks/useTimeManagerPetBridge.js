@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EMPTY_SNAPSHOT } from '../constants/emptySnapshot'
+import { PET_VIEW_VARIANT_SET } from '../constants/petViewVariants'
 
 const DEFAULT_PET_STATE = {
   clickThrough: false,
@@ -11,7 +12,7 @@ const DEFAULT_PET_STATE = {
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
 
 /**
- * 订阅 preload 暴露的 timeManagerAPI：快照、宠物窗口状态、托盘动作测试。
+ * 订阅 preload 暴露的 timeManagerAPI：快照、宠物窗口状态、托盘四态动作测试。
  * 1. 使用：`src/App.jsx`
  */
 export function useTimeManagerPetBridge() {
@@ -24,7 +25,7 @@ export function useTimeManagerPetBridge() {
   const triggerAction = useCallback((action) => {
     if (actionTimerRef.current) clearTimeout(actionTimerRef.current)
     setTransientAction(action)
-    actionTimerRef.current = setTimeout(() => setTransientAction(''), 1200)
+    actionTimerRef.current = setTimeout(() => setTransientAction(''), 3200)
   }, [])
 
   const isBridgeReady = typeof window !== 'undefined' && Boolean(window.timeManagerAPI)
@@ -43,7 +44,7 @@ export function useTimeManagerPetBridge() {
     })
     const unbindPetAction = window.timeManagerAPI.onPetAction?.((payload) => {
       const action = payload?.action
-      if (typeof action === 'string' && action.length > 0) {
+      if (typeof action === 'string' && PET_VIEW_VARIANT_SET.has(action)) {
         triggerAction(action)
       }
     })
