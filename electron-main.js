@@ -38,12 +38,15 @@ let statsWindow = null;
 let tray;
 let dragTimer = null;
 let followTimer = null;
+let chaosCatTimer = null;
 let globalMouseHookReady = false;
 const followTarget = {
   active: false,
   x: 0,
   y: 0,
 };
+/** 捣乱模式：随机游走目标（屏幕坐标，指向宠物窗口中心） */
+const rambleTarget = { x: 0, y: 0 };
 /** 宠物右键菜单弹出期间，以及关闭后极短时间内，忽略全局左键触发的追鼠标 */
 let petContextMenuOpen = false;
 let suppressFollowMouseUntil = 0;
@@ -147,7 +150,10 @@ function resetPetDragState() {
     clearInterval(dragTimer);
     dragTimer = null;
   }
-  sendPetMotion({ running: false, mirrorX: false });
+  const chasingFollow = petState.followMouse && followTarget.active;
+  if (!chasingFollow && !petState.chaosCat) {
+    sendPetMotion({ running: false, mirrorX: false });
+  }
 }
 
 function openStatsDetailWindow() {
@@ -199,6 +205,8 @@ const petState = {
   tempInteractive: false,
   compactMode: false,
   followMouse: false,
+  /** 桌面随机乱跑；不写入状态文件 */
+  chaosCat: false,
 };
 
 function getStateFilePath() {
@@ -223,7 +231,9 @@ function loadPetState() {
 
 function persistPetState() {
   try {
-    fs.writeFileSync(getStateFilePath(), JSON.stringify(petState, null, 2), 'utf8');
+    const persistable = { ...petState };
+    delete persistable.chaosCat;
+    fs.writeFileSync(getStateFilePath(), JSON.stringify(persistable, null, 2), 'utf8');
   } catch {
     // Ignore persistence errors to keep app resilient.
   }
@@ -393,7 +403,98 @@ function stopFollowMouse() {
     followTimer = null;
   }
   followTarget.active = false;
-  sendPetMotion({ running: false, mirrorX: false });
+  const stillRambling = petState.chaosCat;
+  if (!stillRambling) {
+    sendPetMotion({ running: false, mirrorX: false });
+  }
+}
+
+/** 在工作区内取一点作为宠物窗口中心目标，避免跑出屏外 */
+function pickRandomRamblePoint(tw, th) {
+  const displays = screen.getAllDisplays();
+  if (!displays.length) {
+    return { x: 0, y: 0 };
+  }
+  const d = displays[Math.floor(Math.random() * displays.length)];
+  const wa = d.workArea;
+  const halfW = Math.round(tw / 2);
+  const halfH = Math.round(th / 2);
+  const minX = wa.x + halfW;
+  const maxX = wa.x + wa.width - halfW;
+  const minY = wa.y + halfH;
+  const maxY = wa.y + wa.height - halfH;
+  if (minX >= maxX || minY >= maxY) {
+    return {
+      x: wa.x + Math.round(wa.width / 2),
+      y: wa.y + Math.round(wa.height / 2),
+    };
+  }
+  return {
+    x: minX + Math.random() * (maxX - minX),
+    y: minY + Math.random() * (maxY - minY),
+  };
+}
+
+function stopChaosCat() {
+  if (chaosCatTimer) {
+    clearInterval(chaosCatTimer);
+    chaosCatTimer = null;
+  }
+  petState.chaosCat = false;
+  const chasingFollow = petState.followMouse && followTarget.active;
+  if (!chasingFollow) {
+    sendPetMotion({ running: false, mirrorX: false });
+  }
+}
+
+function startChaosCat() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (chaosCatTimer) {
+    clearInterval(chaosCatTimer);
+    chaosCatTimer = null;
+  }
+  petState.chaosCat = true;
+  const speedFactor = 0.2;
+  const maxStep = 22;
+  const armNextTarget = () => {
+    const [tw, th] = getTargetSize();
+    const bounds = mainWindow.getBounds();
+    const cx = bounds.x + Math.round(bounds.width / 2);
+    const cy = bounds.y + Math.round(bounds.height / 2);
+    let p = pickRandomRamblePoint(tw, th);
+    for (let i = 0; i < 14; i++) {
+      if (Math.hypot(p.x - cx, p.y - cy) > 48) break;
+      p = pickRandomRamblePoint(tw, th);
+    }
+    rambleTarget.x = p.x;
+    rambleTarget.y = p.y;
+  };
+  armNextTarget();
+  chaosCatTimer = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed() || !petState.chaosCat) return;
+    if (dragState.active) return;
+    const [tw, th] = getTargetSize();
+    const bounds = mainWindow.getBounds();
+    const centerX = bounds.x + Math.round(bounds.width / 2);
+    const centerY = bounds.y + Math.round(bounds.height / 2);
+    const dx = rambleTarget.x - centerX;
+    const dy = rambleTarget.y - centerY;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 6) {
+      armNextTarget();
+      return;
+    }
+    const mirrorX = dx > 0;
+    sendPetMotion({ running: true, mirrorX });
+    const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
+    const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
+    mainWindow.setBounds({
+      x: Math.round(bounds.x + stepX),
+      y: Math.round(bounds.y + stepY),
+      width: tw,
+      height: th,
+    });
+  }, 16);
 }
 
 function startFollowMouse() {
@@ -487,6 +588,12 @@ function buildTrayMenu() {
       },
     },
     {
+      label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
+      click: () => {
+        toggleChaosCat();
+      },
+    },
+    {
       label: '动作测试',
       submenu: [
         { label: '休息 rest', click: () => emitPetAction('rest') },
@@ -571,8 +678,12 @@ function toggleCompactMode() {
 
 function toggleFollowMouse() {
   petState.followMouse = !petState.followMouse;
-  if (petState.followMouse) startFollowMouse();
-  else stopFollowMouse();
+  if (petState.followMouse) {
+    stopChaosCat();
+    startFollowMouse();
+  } else {
+    stopFollowMouse();
+  }
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('pet:state-changed', {
       clickThrough: petState.clickThrough,
@@ -584,6 +695,29 @@ function toggleFollowMouse() {
   persistPetState();
   if (tray) tray.setContextMenu(buildTrayMenu());
   return petState.followMouse;
+}
+
+function toggleChaosCat() {
+  if (petState.chaosCat) {
+    stopChaosCat();
+  } else {
+    if (petState.followMouse) {
+      petState.followMouse = false;
+      stopFollowMouse();
+    }
+    startChaosCat();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('pet:state-changed', {
+      clickThrough: petState.clickThrough,
+      showStatsPanel: petState.showStatsPanel,
+      compactMode: petState.compactMode,
+      followMouse: petState.followMouse,
+    });
+  }
+  persistPetState();
+  if (tray) tray.setContextMenu(buildTrayMenu());
+  return petState.chaosCat;
 }
 
 process.on('uncaughtException', (error) => {
@@ -632,6 +766,10 @@ function setupIpc() {
       {
         label: petState.followMouse ? '关闭猫捉老鼠' : '猫捉老鼠',
         click: () => toggleFollowMouse(),
+      },
+      {
+        label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
+        click: () => toggleChaosCat(),
       },
       {
         label: '动作测试',
@@ -696,7 +834,7 @@ function setupIpc() {
       dragTimer = null;
     }
     const chasing = petState.followMouse && followTarget.active;
-    if (!chasing) {
+    if (!chasing && !petState.chaosCat) {
       sendPetMotion({ running: false, mirrorX: false });
     }
   });
@@ -759,6 +897,7 @@ app.on('before-quit', () => {
     clearInterval(dragTimer);
     dragTimer = null;
   }
+  stopChaosCat();
   stopFollowMouse();
   teardownGlobalMouseHook();
   globalShortcut.unregisterAll();
