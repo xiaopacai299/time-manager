@@ -543,7 +543,8 @@ function createTray() {
     }
     image = image.resize({ width: 16, height: 16 });
     tray = new Tray(image);
-    tray.setToolTip('Time Manager Pet');
+    // 隐藏栏应用名称
+    tray.setToolTip('时间小精灵');
     tray.setContextMenu(buildTrayMenu());
     tray.on('click', () => {
       if (statsWindow && !statsWindow.isDestroyed()) {

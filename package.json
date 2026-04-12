@@ -42,7 +42,7 @@
   },
   "build": {
     "appId": "com.timemanager.pet",
-    "productName": "Time Pet",
+    "productName": "时间小精灵",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -59,8 +59,7 @@
       "mirror": "https://npmmirror.com/mirrors/electron/"
     },
     "win": {
-      "icon": "build/icon.png",
-      "signAndEditExecutable": false
+      "icon": "build/icon.png"
     }
   }
 }
