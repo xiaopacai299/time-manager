@@ -4,6 +4,7 @@ import badCatAnimation from '../assets/bad-cat.json'
 import runCatAnimation from '../assets/run-cat.json'
 import { getBadCatRestAnimationData } from '../utils/badCatRestVariant.js'
 import PetMoodOverlay from './PetMoodOverlay.jsx'
+import RunCatTailSparks from './RunCatTailSparks.jsx'
 
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
 
@@ -122,6 +123,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
         <div className="pet-visual__facing-wrap" style={faceStyle}>
           <div className="pet-visual__stack">
             <div ref={idleRef} className="pet-visual__lottie pet-visual__lottie--idle-layer" />
+            {chasing && <RunCatTailSparks />}
             <div ref={chaseRef} className="pet-visual__lottie pet-visual__lottie--chase-layer" />
             {!chasing && <PetMoodOverlay mood={mood} />}
           </div>

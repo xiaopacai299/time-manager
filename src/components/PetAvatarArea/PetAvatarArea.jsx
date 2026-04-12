@@ -3,9 +3,9 @@ import PetRenderErrorBoundary from '../PetRenderErrorBoundary.jsx'
 import { usePetAvatarInteractions } from '../../hooks/usePetAvatarInteractions'
 
 /**
- * 可拖拽宠物头像 + 进程标签（样式沿用 `App.css` 的 `.pet-avatar`）。
+ * 可拖拽宠物头像（样式沿用 `App.css` 的 `.pet-avatar`）。
  */
-export default function PetAvatarArea({ mood, processName, petMotion }) {
+export default function PetAvatarArea({ mood, petMotion }) {
   const {
     openPetMenu,
     onAvatarPointerDown,
@@ -31,7 +31,6 @@ export default function PetAvatarArea({ mood, processName, petMotion }) {
       <PetRenderErrorBoundary>
         <AnimatedPet mood={mood} petMotion={petMotion} />
       </PetRenderErrorBoundary>
-      <div className="pet-label">{processName || 'companion'}</div>
     </section>
   )
 }

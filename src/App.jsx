@@ -17,12 +17,12 @@ function App() {
   const durationStats = useMemo(() => getSnapshotDurationStats(snapshot), [snapshot])
 
   return (
-    <main className="pet-shell">
+    <main className={`pet-shell${petMotion.running ? ' pet-shell--chasing' : ''}`}>
       {!isBridgeReady && (
         <div className="warning">请通过 electron-start 启动宠物模式。</div>
       )}
-      <PetBubble snapshot={snapshot} />
-      <PetAvatarArea mood={mood} processName={snapshot.current?.processName} petMotion={petMotion} />
+      {!petMotion.running && <PetBubble snapshot={snapshot} />}
+      <PetAvatarArea mood={mood} petMotion={petMotion} />
       {!petState.compactMode && petState.showStatsPanel && (
         <PetStatsPanel snapshot={snapshot} topApps={topApps} durationStats={durationStats} />
       )}

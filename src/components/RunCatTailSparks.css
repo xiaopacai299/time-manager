@@ -1,0 +1,195 @@
+/* 奔跑时火星：更长、更亮、拖尾更明显 */
+
+.run-cat-tail-sparks {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.run-cat-tail-sparks__origin {
+  position: absolute;
+  right: 10%;
+  bottom: 26%;
+  left: auto;
+  width: 1px;
+  height: 1px;
+  transform-origin: 50% 50%;
+}
+
+.run-cat-tail-sparks__spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+
+/* 细长拖尾：加长条身 */
+.run-cat-tail-sparks__spark--streak {
+  border-radius: 999px;
+  width: 26px;
+  height: 7px;
+  background: linear-gradient(
+    270deg,
+    #ffffff 0%,
+    #fff4c4 18%,
+    #ffd54a 42%,
+    #ff9120 72%,
+    #ff4810 100%
+  );
+  box-shadow:
+    0 0 4px 1px rgba(255, 255, 255, 0.95),
+    0 0 12px 2px rgba(255, 150, 50, 1),
+    0 0 22px 4px rgba(255, 90, 30, 0.75),
+    0 0 36px 6px rgba(255, 60, 20, 0.45);
+  filter: brightness(1.12) saturate(1.15);
+}
+
+.run-cat-tail-sparks__spark--dot {
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle at 28% 28%, #ffffff, #fff2a8 32%, #ffc93d 58%, #ff7a28 88%);
+  box-shadow:
+    0 0 5px 1px rgba(255, 255, 255, 0.9),
+    0 0 10px 2px rgba(255, 200, 100, 1),
+    0 0 18px 4px rgba(255, 100, 40, 0.85);
+  filter: brightness(1.1);
+}
+
+.run-cat-tail-sparks__spark--tiny {
+  width: 7px;
+  height: 7px;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #ffe8a0 55%, #ffb04a);
+  box-shadow:
+    0 0 4px rgba(255, 240, 200, 1),
+    0 0 10px rgba(255, 150, 70, 0.95);
+}
+
+.run-cat-tail-sparks__spark--0 {
+  animation: rcts-burst-0 0.62s ease-out infinite;
+}
+.run-cat-tail-sparks__spark--1 {
+  animation: rcts-burst-1 0.62s ease-out infinite;
+  animation-delay: 0.08s;
+}
+.run-cat-tail-sparks__spark--2 {
+  animation: rcts-burst-2 0.58s ease-out infinite;
+  animation-delay: 0.04s;
+}
+.run-cat-tail-sparks__spark--3 {
+  animation: rcts-burst-3 0.65s ease-out infinite;
+  animation-delay: 0.12s;
+}
+.run-cat-tail-sparks__spark--4 {
+  animation: rcts-burst-4 0.56s ease-out infinite;
+  animation-delay: 0.16s;
+}
+.run-cat-tail-sparks__spark--5 {
+  animation: rcts-burst-5 0.64s ease-out infinite;
+  animation-delay: 0.06s;
+}
+
+@keyframes rcts-burst-0 {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(62px, -18px) scale(0.22) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+@keyframes rcts-burst-1 {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(70px, 12px) scale(0.2) rotate(-10deg);
+    opacity: 0;
+  }
+}
+
+@keyframes rcts-burst-2 {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(48px, 24px) scale(0.26);
+    opacity: 0;
+  }
+}
+
+@keyframes rcts-burst-3 {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(78px, -28px) scale(0.18) rotate(18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes rcts-burst-4 {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  54% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(38px, -34px) scale(0.28);
+    opacity: 0;
+  }
+}
+
+@keyframes rcts-burst-5 {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(58px, 26px) scale(0.22) rotate(-14deg);
+    opacity: 0;
+  }
+}
