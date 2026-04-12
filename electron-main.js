@@ -476,36 +476,12 @@ function teardownGlobalMouseHook() {
   }
 }
 
+// 隐藏栏中的右键菜单
 function buildTrayMenu() {
   const statsOpen = Boolean(statsWindow && !statsWindow.isDestroyed());
   return Menu.buildFromTemplate([
     {
-      label: statsOpen ? '关闭统计窗口' : mainWindow?.isVisible() ? '隐藏宠物' : '显示宠物',
-      click: () => {
-        if (statsOpen) {
-          statsWindow.close();
-          return;
-        }
-        if (!mainWindow) return;
-        if (mainWindow.isVisible()) mainWindow.hide();
-        else mainWindow.show();
-      },
-    },
-    {
-      label: petState.clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透',
-      click: () => {
-        if (!mainWindow) return;
-        toggleClickThrough();
-      },
-    },
-    {
-      label: petState.compactMode ? '切换为展开模式' : '切换为紧凑模式',
-      click: () => {
-        toggleCompactMode();
-      },
-    },
-    {
-      label: petState.followMouse ? '关闭追鼠标模式' : '开启追鼠标模式',
+      label: petState.followMouse ? '猫捉老鼠' : '关闭猫捉老鼠',
       click: () => {
         toggleFollowMouse();
       },
@@ -649,30 +625,10 @@ function setupIpc() {
     openStatsDetailWindow();
     return true;
   });
+  // 宠物上的右键菜单
   ipcMain.handle('pet:open-context-menu', (_event, payload) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const menu = Menu.buildFromTemplate([
-      {
-        label: petState.compactMode ? '切换为展开模式' : '切换为紧凑模式',
-        click: () => toggleCompactMode(),
-      },
-      {
-        label: petState.clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透',
-        click: () => toggleClickThrough(),
-      },
-      {
-        label: petState.showStatsPanel ? '隐藏统计面板' : '显示统计面板',
-        click: () => {
-          petState.showStatsPanel = !petState.showStatsPanel;
-          persistPetState();
-          mainWindow.webContents.send('pet:state-changed', {
-            clickThrough: petState.clickThrough,
-            showStatsPanel: petState.showStatsPanel,
-            compactMode: petState.compactMode,
-            followMouse: petState.followMouse,
-          });
-        },
-      },
       {
         label: petState.followMouse ? '关闭猫捉老鼠' : '猫捉老鼠',
         click: () => toggleFollowMouse(),
