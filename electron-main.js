@@ -4,6 +4,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  shell,
   Tray,
   nativeImage,
   globalShortcut,
@@ -35,6 +36,7 @@ function getUIOhook() {
 
 let mainWindow;
 let statsWindow = null;
+let favoritesWindow = null;
 let tray;
 let dragTimer = null;
 let followTimer = null;
@@ -207,6 +209,7 @@ const petState = {
   followMouse: false,
   /** 桌面随机乱跑；不写入状态文件 */
   chaosCat: false,
+  favorites: [],
 };
 
 function getStateFilePath() {
@@ -223,6 +226,7 @@ function loadPetState() {
       petState.windowBounds = parsed.windowBounds || null;
       petState.compactMode = Boolean(parsed.compactMode);
       petState.followMouse = Boolean(parsed.followMouse);
+      petState.favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
     }
   } catch {
     // Use defaults when state file does not exist.
@@ -237,6 +241,155 @@ function persistPetState() {
   } catch {
     // Ignore persistence errors to keep app resilient.
   }
+}
+
+function sanitizeFavoriteItem(item) {
+  const fullPath = String(item?.path || '').trim();
+  if (!fullPath) return null;
+  const name = String(item?.name || path.basename(fullPath) || fullPath).trim();
+  return { path: fullPath, name };
+}
+
+function isWindowsAppShortcut(filePath) {
+  const p = String(filePath || '').trim();
+  if (!p || path.extname(p).toLowerCase() !== '.lnk') return false;
+  if (process.platform !== 'win32') return true;
+  try {
+    const info = shell.readShortcutLink(p);
+    const target = String(info?.target || '').trim();
+    return target.toLowerCase().endsWith('.exe');
+  } catch {
+    return false;
+  }
+}
+
+function isDesktopShortcut(filePath) {
+  const p = String(filePath || '').trim();
+  if (!p) return false;
+  if (path.extname(p).toLowerCase() !== '.lnk') return false;
+  const desktop = app.getPath('desktop');
+  const rel = path.relative(desktop, p);
+  return rel && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+function getFavoritesList() {
+  return (petState.favorites || [])
+    .map((item) => sanitizeFavoriteItem(item))
+    .filter(Boolean);
+}
+
+function broadcastFavoritesUpdate() {
+  if (!favoritesWindow || favoritesWindow.isDestroyed()) return;
+  favoritesWindow.webContents.send('favorites:updated', getFavoritesList());
+}
+
+function addFavoritesByPaths(paths = []) {
+  const exists = new Set(getFavoritesList().map((item) => item.path.toLowerCase()));
+  const merged = [...getFavoritesList()];
+  const rejected = [];
+  let added = 0;
+  for (const rawPath of paths) {
+    const p = String(rawPath || '').trim();
+    if (!p) continue;
+    if (!isWindowsAppShortcut(p)) {
+      rejected.push(p);
+      continue;
+    }
+    const key = p.toLowerCase();
+    if (exists.has(key)) continue;
+    merged.push({ path: p, name: path.basename(p) || p });
+    exists.add(key);
+    added += 1;
+  }
+  petState.favorites = merged;
+  persistPetState();
+  broadcastFavoritesUpdate();
+  return { list: getFavoritesList(), rejected, added };
+}
+
+function addFavoritesAndOptionallyMoveShortcuts(paths = [], moveDesktopShortcuts = false) {
+  const result = addFavoritesByPaths(paths);
+  if (!moveDesktopShortcuts) return result;
+  for (const p of paths) {
+    const fullPath = String(p || '').trim();
+    if (!isDesktopShortcut(fullPath)) continue;
+    try {
+      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    } catch (error) {
+      console.error('[favorites-remove-shortcut-error]', fullPath, error);
+    }
+  }
+  return result;
+}
+
+function removeFavoriteByPath(targetPath) {
+  const normalized = String(targetPath || '').trim().toLowerCase();
+  if (!normalized) return getFavoritesList();
+  petState.favorites = getFavoritesList().filter((item) => item.path.toLowerCase() !== normalized);
+  persistPetState();
+  broadcastFavoritesUpdate();
+  return getFavoritesList();
+}
+
+function openFavoritePath(targetPath) {
+  const p = String(targetPath || '').trim();
+  if (!p) return false;
+  shell.openPath(p);
+  return true;
+}
+
+async function getFavoriteIconDataUrl(targetPath) {
+  const p = String(targetPath || '').trim();
+  if (!p) return '';
+  try {
+    let iconTarget = p;
+    if (process.platform === 'win32' && path.extname(p).toLowerCase() === '.lnk') {
+      try {
+        const info = shell.readShortcutLink(p);
+        if (info?.target && fs.existsSync(info.target)) iconTarget = info.target;
+      } catch {
+        // keep .lnk path fallback
+      }
+    }
+    const icon = await app.getFileIcon(iconTarget, { size: 'normal' });
+    if (!icon || icon.isEmpty()) return '';
+    return icon.toDataURL();
+  } catch (error) {
+    console.error('[favorites-get-icon-error]', p, error);
+    return '';
+  }
+}
+
+function openFavoritesWindow() {
+  if (favoritesWindow && !favoritesWindow.isDestroyed()) {
+    favoritesWindow.show();
+    favoritesWindow.focus();
+    return;
+  }
+
+  favoritesWindow = new BrowserWindow({
+    width: 380,
+    height: 520,
+    show: false,
+    title: '收藏夹',
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-favorites.cjs'),
+      contextIsolation: true,
+    },
+  });
+
+  favoritesWindow.once('ready-to-show', () => {
+    if (!favoritesWindow || favoritesWindow.isDestroyed()) return;
+    favoritesWindow.show();
+    broadcastFavoritesUpdate();
+  });
+
+  favoritesWindow.on('closed', () => {
+    favoritesWindow = null;
+  });
+
+  favoritesWindow.loadFile(path.join(__dirname, 'favorites.html'));
 }
 
 function defaultPetCornerBounds(width, height) {
@@ -579,7 +732,6 @@ function teardownGlobalMouseHook() {
 
 // 隐藏栏中的右键菜单
 function buildTrayMenu() {
-  const statsOpen = Boolean(statsWindow && !statsWindow.isDestroyed());
   return Menu.buildFromTemplate([
     {
       label: petState.followMouse ? '猫捉老鼠' : '关闭猫捉老鼠',
@@ -591,6 +743,12 @@ function buildTrayMenu() {
       label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
       click: () => {
         toggleChaosCat();
+      },
+    },
+    {
+      label: '收藏夹',
+      click: () => {
+        openFavoritesWindow();
       },
     },
     {
@@ -759,6 +917,21 @@ function setupIpc() {
     openStatsDetailWindow();
     return true;
   });
+  ipcMain.handle('favorites:get-list', () => getFavoritesList());
+  ipcMain.handle('favorites:add-paths', (_event, payload) => {
+    const paths = Array.isArray(payload?.paths) ? payload.paths : [];
+    const moveDesktopShortcuts = Boolean(payload?.moveDesktopShortcuts);
+    return addFavoritesAndOptionallyMoveShortcuts(paths, moveDesktopShortcuts);
+  });
+  ipcMain.handle('favorites:remove', (_event, payload) => {
+    return removeFavoriteByPath(payload?.path);
+  });
+  ipcMain.handle('favorites:open', (_event, payload) => {
+    return openFavoritePath(payload?.path);
+  });
+  ipcMain.handle('favorites:get-icon', async (_event, payload) => {
+    return getFavoriteIconDataUrl(payload?.path);
+  });
   // 宠物上的右键菜单
   ipcMain.handle('pet:open-context-menu', (_event, payload) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -770,6 +943,10 @@ function setupIpc() {
       {
         label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
         click: () => toggleChaosCat(),
+      },
+      {
+        label: '收藏夹',
+        click: () => openFavoritesWindow(),
       },
       {
         label: '动作测试',

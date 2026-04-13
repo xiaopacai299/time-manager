@@ -51,6 +51,8 @@
       "dist/**/*",
       "electron-main.js",
       "preload.cjs",
+      "preload-favorites.cjs",
+      "favorites.html",
       "main/**/*",
       "assets/**/*"
     ],
