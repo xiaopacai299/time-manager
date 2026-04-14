@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
   removeFavorite: (path) => ipcRenderer.invoke('favorites:remove', { path }),
   openFavorite: (path) => ipcRenderer.invoke('favorites:open', { path }),
   getFavoriteIcon: (path) => ipcRenderer.invoke('favorites:get-icon', { path }),
+  startFavoriteDrag: (path, iconDataUrl) => ipcRenderer.send('favorites:start-drag', { path, iconDataUrl }),
   resolveDropPaths: (files, uriListText) => {
     const list = [];
     for (const file of Array.from(files || [])) {

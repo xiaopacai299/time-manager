@@ -136,13 +136,30 @@ function FavoriteItem({ item, onOpen, onContextMenu, resolveIcon }) {
   return (
     <div
       className="favorites-item"
+      draggable
+      onDragStart={(event) => {
+        // Keep native drag lifecycle so dragend can fire reliably.
+        event.dataTransfer.effectAllowed = 'copyMove'
+        try {
+          // Required by Chromium to establish a real drag session.
+          event.dataTransfer.setData('text/plain', item.path)
+        } catch {
+          // ignore
+        }
+        window.timeManagerAPI?.startFavoriteDrag?.(item.path, iconSrc)
+      }}
+      onDragEnd={async (event) => {
+        // Only remove after an actual drop target accepted the drag.
+        if (event.dataTransfer?.dropEffect === 'none') return
+        await window.timeManagerAPI?.removeFavorite?.(item.path)
+      }}
       onDoubleClick={onOpen}
       onContextMenu={(event) => {
         event.preventDefault()
         onContextMenu(event.clientX, event.clientY)
       }}
     >
-      <img className="favorites-icon" src={iconSrc} alt="" />
+      <img className="favorites-icon" src={iconSrc} alt="" draggable={false} />
       <div className="favorites-name" title={item.path}>
         {item.name || item.path}
       </div>

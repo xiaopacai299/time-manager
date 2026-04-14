@@ -13,6 +13,7 @@ import {
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+import { createHash } from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import { TimeMonitorService } from './main/time-monitor-service.js';
@@ -436,6 +437,53 @@ function cacheFavoriteIconData(pathKey, dataUrl) {
   });
   petState.favorites = updated;
   persistPetState();
+}
+
+function toSafeFileName(text) {
+  return String(text || 'favorite')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 48) || 'favorite';
+}
+
+function getFavoriteDragShortcutPath(item) {
+  const cacheDir = path.join(app.getPath('userData'), 'favorites-drag-cache');
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const hash = createHash('sha1').update(String(item.path || '')).digest('hex').slice(0, 10);
+  const baseName = `${toSafeFileName(item.name)}_${hash}.lnk`;
+  return path.join(cacheDir, baseName);
+}
+
+function ensureFavoriteDragFile(item) {
+  const originalPath = String(item?.path || '').trim();
+  if (originalPath && originalPath.toLowerCase().endsWith('.lnk') && fs.existsSync(originalPath)) {
+    return originalPath;
+  }
+  if (process.platform !== 'win32') {
+    const launchPath = String(item?.launchPath || '').trim();
+    return launchPath && fs.existsSync(launchPath) ? launchPath : '';
+  }
+  const launchPath = String(item?.launchPath || '').trim();
+  if (!launchPath || !fs.existsSync(launchPath)) return '';
+  const dragLnkPath = getFavoriteDragShortcutPath(item);
+  const iconHint = String(item?.iconHint || '').trim();
+  const iconPath = iconHint.includes(',') ? iconHint.split(',')[0].trim() : iconHint;
+  const options = {
+    target: launchPath,
+    cwd: path.dirname(launchPath),
+    description: String(item?.name || ''),
+  };
+  if (iconPath && fs.existsSync(iconPath)) {
+    options.icon = iconPath;
+  }
+  try {
+    shell.writeShortcutLink(dragLnkPath, 'create', options);
+    if (fs.existsSync(dragLnkPath)) return dragLnkPath;
+  } catch (error) {
+    console.error('[favorites-create-drag-shortcut-error]', error);
+  }
+  return '';
 }
 
 function openFavoritePath(targetPath) {
@@ -1087,6 +1135,35 @@ function setupIpc() {
   });
   ipcMain.handle('favorites:get-icon', async (_event, payload) => {
     return getFavoriteIconDataUrl(payload?.path);
+  });
+  ipcMain.on('favorites:start-drag', (event, payload) => {
+    try {
+      const itemPath = String(payload?.path || '').trim().toLowerCase();
+      if (!itemPath) return;
+      const senderWindow = BrowserWindow.fromWebContents(event.sender);
+      if (!senderWindow || senderWindow.isDestroyed()) return;
+      const item = getFavoritesList().find((entry) => entry.path.toLowerCase() === itemPath);
+      if (!item) return;
+      const dragFile = ensureFavoriteDragFile(item);
+      if (!dragFile) {
+        console.warn('[favorites-start-drag-skip]', { reason: 'drag-file-missing', itemPath });
+        return;
+      }
+      let icon = null;
+      const iconDataUrl = String(payload?.iconDataUrl || '').trim();
+      if (iconDataUrl.startsWith('data:image/')) {
+        icon = nativeImage.createFromDataURL(iconDataUrl);
+      }
+      if (!icon || icon.isEmpty()) {
+        icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray-icon.png'));
+      }
+      senderWindow.webContents.startDrag({
+        file: dragFile,
+        icon: icon && !icon.isEmpty() ? icon : nativeImage.createEmpty(),
+      });
+    } catch (error) {
+      console.error('[favorites-start-drag-error]', error);
+    }
   });
   // 宠物上的右键菜单
   ipcMain.handle('pet:open-context-menu', (_event, payload) => {
