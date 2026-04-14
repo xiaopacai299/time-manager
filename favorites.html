@@ -180,7 +180,12 @@
           const icon = document.createElement('img');
           icon.className = 'icon';
           icon.alt = '';
-          icon.src = iconCache.get(item.path) || fallbackIcon();
+          const persistedIcon = typeof item.iconDataUrl === 'string' ? item.iconDataUrl : '';
+          const cachedIcon = iconCache.get(item.path) || persistedIcon;
+          icon.src = cachedIcon || fallbackIcon();
+          if (persistedIcon) {
+            iconCache.set(item.path, persistedIcon);
+          }
           if (!iconCache.has(item.path)) {
             window.favoritesAPI.getIcon(item.path).then((url) => {
               if (typeof url === 'string' && url.length > 0) {

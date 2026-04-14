@@ -247,7 +247,10 @@ function sanitizeFavoriteItem(item) {
   const fullPath = String(item?.path || '').trim();
   if (!fullPath) return null;
   const name = String(item?.name || path.basename(fullPath) || fullPath).trim();
-  return { path: fullPath, name };
+  const launchPath = String(item?.launchPath || '').trim();
+  const iconHint = String(item?.iconHint || '').trim();
+  const iconDataUrl = String(item?.iconDataUrl || '').trim();
+  return { path: fullPath, name, launchPath, iconHint, iconDataUrl };
 }
 
 function isWindowsAppShortcut(filePath) {
@@ -297,7 +300,24 @@ function addFavoritesByPaths(paths = []) {
     }
     const key = p.toLowerCase();
     if (exists.has(key)) continue;
-    merged.push({ path: p, name: path.basename(p) || p });
+    let launchPath = p;
+    let iconHint = '';
+    if (process.platform === 'win32' && path.extname(p).toLowerCase() === '.lnk') {
+      try {
+        const info = shell.readShortcutLink(p);
+        if (info?.target) launchPath = String(info.target || '').trim() || launchPath;
+        if (info?.icon) iconHint = String(info.icon || '').trim();
+      } catch {
+        // keep fallback defaults
+      }
+    }
+    merged.push({
+      path: p,
+      name: path.basename(p) || p,
+      launchPath,
+      iconHint,
+      iconDataUrl: '',
+    });
     exists.add(key);
     added += 1;
   }
@@ -331,10 +351,24 @@ function removeFavoriteByPath(targetPath) {
   return getFavoritesList();
 }
 
+function cacheFavoriteIconData(pathKey, dataUrl) {
+  const target = String(pathKey || '').trim().toLowerCase();
+  const icon = String(dataUrl || '').trim();
+  if (!target || !icon) return;
+  const updated = getFavoritesList().map((entry) => {
+    if (entry.path.toLowerCase() !== target) return entry;
+    return { ...entry, iconDataUrl: icon };
+  });
+  petState.favorites = updated;
+  persistPetState();
+}
+
 function openFavoritePath(targetPath) {
   const p = String(targetPath || '').trim();
   if (!p) return false;
-  shell.openPath(p);
+  const item = getFavoritesList().find((entry) => entry.path.toLowerCase() === p.toLowerCase());
+  const launchPath = String(item?.launchPath || p).trim();
+  shell.openPath(launchPath);
   return true;
 }
 
@@ -342,18 +376,64 @@ async function getFavoriteIconDataUrl(targetPath) {
   const p = String(targetPath || '').trim();
   if (!p) return '';
   try {
-    let iconTarget = p;
+    const item = getFavoritesList().find((entry) => entry.path.toLowerCase() === p.toLowerCase());
+    if (item?.iconDataUrl) return item.iconDataUrl;
+
+    const candidates = [];
+    const pushCandidate = (candidate) => {
+      const c = String(candidate || '').trim();
+      if (!c) return;
+      if (!candidates.some((v) => v.toLowerCase() === c.toLowerCase())) {
+        candidates.push(c);
+      }
+    };
+    const normalizeIconLocation = (iconLocation) => {
+      const raw = String(iconLocation || '').trim();
+      if (!raw) return '';
+      const idx = raw.lastIndexOf(',');
+      if (idx > 1) return raw.slice(0, idx).trim();
+      return raw;
+    };
+
+    pushCandidate(item?.launchPath);
+    pushCandidate(normalizeIconLocation(item?.iconHint));
+    pushCandidate(p);
+
     if (process.platform === 'win32' && path.extname(p).toLowerCase() === '.lnk') {
       try {
         const info = shell.readShortcutLink(p);
-        if (info?.target && fs.existsSync(info.target)) iconTarget = info.target;
+        pushCandidate(info?.target);
+        pushCandidate(normalizeIconLocation(info?.icon));
       } catch {
-        // keep .lnk path fallback
+        // keep existing candidates
       }
     }
-    const icon = await app.getFileIcon(iconTarget, { size: 'normal' });
-    if (!icon || icon.isEmpty()) return '';
-    return icon.toDataURL();
+
+    for (const candidate of candidates) {
+      try {
+        const normal = await app.getFileIcon(candidate, { size: 'normal' });
+        if (normal && !normal.isEmpty()) {
+          const dataUrl = normal.toDataURL();
+          if (item) cacheFavoriteIconData(item.path, dataUrl);
+          return dataUrl;
+        }
+      } catch {
+        // try next candidate
+      }
+    }
+    for (const candidate of candidates) {
+      try {
+        const large = await app.getFileIcon(candidate, { size: 'large' });
+        if (large && !large.isEmpty()) {
+          const dataUrl = large.toDataURL();
+          if (item) cacheFavoriteIconData(item.path, dataUrl);
+          return dataUrl;
+        }
+      } catch {
+        // try next candidate
+      }
+    }
+    return '';
   } catch (error) {
     console.error('[favorites-get-icon-error]', p, error);
     return '';
