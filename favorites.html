@@ -228,6 +228,7 @@
         const paths = extractDropPaths(event);
         if (!paths.length) return;
         const result = await window.favoritesAPI.addPaths(paths, true);
+        console.log('拖动后的结果',result)
         renderList(result?.list || []);
         if ((result?.rejected || []).length > 0) {
           setMessage('仅支持拖入应用快捷方式(.lnk)，文件夹/文件已忽略。');

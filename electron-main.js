@@ -266,13 +266,49 @@ function isWindowsAppShortcut(filePath) {
   }
 }
 
-function isDesktopShortcut(filePath) {
+function getDesktopShortcutCheck(filePath) {
   const p = String(filePath || '').trim();
-  if (!p) return false;
-  if (path.extname(p).toLowerCase() !== '.lnk') return false;
   const desktop = app.getPath('desktop');
-  const rel = path.relative(desktop, p);
-  return rel && !rel.startsWith('..') && !path.isAbsolute(rel);
+  const publicDesktop = path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop');
+  const desktopRoots = [desktop, publicDesktop];
+  const ext = path.extname(p).toLowerCase();
+  const matchRoot = p
+    ? desktopRoots.find((root) => {
+        const rel = path.relative(root, p);
+        return Boolean(rel && !rel.startsWith('..') && !path.isAbsolute(rel));
+      })
+    : '';
+  const rel = p && matchRoot ? path.relative(matchRoot, p) : '';
+  const inDesktop = Boolean(matchRoot);
+  const isLnk = ext === '.lnk';
+  const exists = p ? fs.existsSync(p) : false;
+  return { p, desktop, publicDesktop, matchRoot, ext, rel, inDesktop, isLnk, exists };
+}
+
+async function removeShortcutWithFallback(fullPath) {
+  try {
+    fs.unlinkSync(fullPath);
+    return { ok: true, method: 'unlink' };
+  } catch (error) {
+    const code = String(error?.code || '');
+    if (code !== 'EPERM' && code !== 'EACCES') {
+      return { ok: false, method: 'unlink', error };
+    }
+  }
+
+  try {
+    await shell.trashItem(fullPath);
+    if (!fs.existsSync(fullPath)) {
+      return { ok: true, method: 'trashItem' };
+    }
+    return {
+      ok: false,
+      method: 'trashItem',
+      error: new Error(`trashItem completed but file still exists: ${fullPath}`),
+    };
+  } catch (error) {
+    return { ok: false, method: 'trashItem', error };
+  }
 }
 
 function getFavoritesList() {
@@ -327,16 +363,55 @@ function addFavoritesByPaths(paths = []) {
   return { list: getFavoritesList(), rejected, added };
 }
 
-function addFavoritesAndOptionallyMoveShortcuts(paths = [], moveDesktopShortcuts = false) {
+async function addFavoritesAndOptionallyMoveShortcuts(paths = [], moveDesktopShortcuts = false) {
   const result = addFavoritesByPaths(paths);
   if (!moveDesktopShortcuts) return result;
+  console.log('[favorites-remove-shortcut-start]', { total: paths.length });
   for (const p of paths) {
     const fullPath = String(p || '').trim();
-    if (!isDesktopShortcut(fullPath)) continue;
-    try {
-      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-    } catch (error) {
-      console.error('[favorites-remove-shortcut-error]', fullPath, error);
+    const check = getDesktopShortcutCheck(fullPath);
+    if (!check.p) {
+      console.log('[favorites-remove-shortcut-skip-empty]');
+      continue;
+    }
+    if (!check.isLnk) {
+      console.log('[favorites-remove-shortcut-skip]', {
+        path: check.p,
+        reason: 'not-lnk',
+        ext: check.ext,
+      });
+      continue;
+    }
+    if (!check.inDesktop) {
+      console.log('[favorites-remove-shortcut-skip]', {
+        path: check.p,
+        reason: 'not-under-desktop',
+        desktop: check.desktop,
+        publicDesktop: check.publicDesktop,
+        relative: check.rel,
+      });
+      continue;
+    }
+    if (!check.exists) {
+      console.log('[favorites-remove-shortcut-skip]', {
+        path: check.p,
+        reason: 'not-exists',
+      });
+      continue;
+    }
+    const removeResult = await removeShortcutWithFallback(fullPath);
+    if (removeResult.ok) {
+      console.log('[favorites-remove-shortcut-ok]', { path: fullPath, method: removeResult.method });
+    } else {
+      const error = removeResult.error;
+      console.error('[favorites-remove-shortcut-error]', {
+        path: fullPath,
+        method: removeResult.method,
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        hint: '若为 Public Desktop，可能需要以管理员权限启动应用',
+      });
     }
   }
   return result;
