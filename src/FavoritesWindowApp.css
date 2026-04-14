@@ -1,0 +1,118 @@
+.favorites-page {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: transparent;
+  color: #1f2a44;
+}
+
+.favorites-wrap {
+  padding: 14px;
+}
+
+.favorites-drop-zone {
+  border: 2px dashed #5f87ff;
+  border-radius: 12px;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #4062d6;
+  background: rgba(95, 135, 255, 0.08);
+  margin-bottom: 12px;
+  transition: 120ms ease;
+}
+
+.favorites-drop-zone--dragover {
+  background: rgba(95, 135, 255, 0.18);
+  transform: scale(1.01);
+}
+
+.favorites-hint {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.favorites-tips {
+  margin: 8px 0 10px;
+  font-size: 12px;
+  color: #6a7aa8;
+}
+
+.favorites-msg {
+  min-height: 18px;
+  font-size: 12px;
+  color: #c14b2f;
+  margin-bottom: 8px;
+}
+
+.favorites-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.favorites-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 10px 8px;
+  min-height: 94px;
+  cursor: default;
+}
+
+.favorites-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #eef3ff;
+}
+
+.favorites-name {
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.favorites-empty {
+  padding: 18px 10px;
+  text-align: center;
+  color: #6a7aa8;
+  font-size: 13px;
+}
+
+.favorites-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 110px;
+  background: #fff;
+  border: 1px solid #d8e2ff;
+  border-radius: 8px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+}
+
+.favorites-context-btn {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #243457;
+}
+
+.favorites-context-btn:hover {
+  background: #edf2ff;
+}

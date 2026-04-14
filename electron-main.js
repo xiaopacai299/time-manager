@@ -529,8 +529,9 @@ function openFavoritesWindow() {
     title: '收藏夹',
     resizable: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload-favorites.cjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
+      webSecurity: false,
     },
   });
 
@@ -544,7 +545,7 @@ function openFavoritesWindow() {
     favoritesWindow = null;
   });
 
-  favoritesWindow.loadFile(path.join(__dirname, 'favorites.html'));
+  loadPetRenderer(favoritesWindow, 'favorites');
 }
 
 function defaultPetCornerBounds(width, height) {
