@@ -4,8 +4,12 @@ import { powerMonitor } from 'electron';
 import { getForegroundContext } from './foreground.js';
 import { ActivityEngine } from './activity-engine.js';
 import { APP_FILTER_CONFIG, normalizeProcessName } from './app-filter-config.js';
-import { debugLog } from './debug-log.js';
+// import { debugLog } from './debug-log.js';
 
+
+// 每隔一段时间（例如 1 秒）问一次：现在前台是谁？
+// 如果这一秒里前台还是同一个应用，就给这个应用累加时间。
+// 如果下一秒前台换了，就认为切换了应用，给新应用重新计时。
 export class TimeMonitorService extends EventEmitter {
   constructor({ sampleIntervalMs = 1000, breakThresholdSeconds = 600 } = {}) {
     super();
@@ -63,6 +67,7 @@ export class TimeMonitorService extends EventEmitter {
     return whitelist.includes(app);
   }
 
+  // 采集当前前台应用信息（进程名、窗口标题、idle 秒数等）
   async collectSample() {
     const now = Date.now();
     const idleSeconds = powerMonitor.getSystemIdleTime();
@@ -70,19 +75,6 @@ export class TimeMonitorService extends EventEmitter {
     const effectiveProcessName = this.resolveProcessName(fg.processName, fg.windowTitle);
     const memLoad = 1 - os.freemem() / os.totalmem();
     const cpuLoad = os.platform() === 'win32' ? null : os.loadavg()[0] / os.cpus().length;
-    debugLog('收集到的快照数据', {
-      timestamp: now,
-      processName: effectiveProcessName,
-      windowTitle: fg.windowTitle,
-      appId: this.buildAppId(effectiveProcessName, fg.windowTitle, fg.processId),
-      isTrackerApp: this.isTrackerWindow(effectiveProcessName, fg.windowTitle),
-      isFilteredOut: !this.shouldTrackApp(effectiveProcessName),
-      processId: fg.processId || 0,
-      idleSeconds,
-      cpuLoad,
-      memoryLoad: Number.isFinite(memLoad) ? Number(memLoad.toFixed(3)) : null,
-      isFullscreen: null,
-    });
     return {
       timestamp: now,
       processName: effectiveProcessName,
@@ -100,15 +92,7 @@ export class TimeMonitorService extends EventEmitter {
 
   async tick() {
     const sample = await this.collectSample();
-    debugLog('[sample]', {
-      processName: sample.processName,
-      processId: sample.processId,
-      windowTitle: sample.windowTitle,
-      appId: sample.appId,
-      isTrackerApp: sample.isTrackerApp,
-      isFilteredOut: sample.isFilteredOut,
-      idleSeconds: sample.idleSeconds,
-    });
+    // 交给engine算时长，切换应用，然后更新快照
     this.latestSnapshot = this.engine.ingest(sample);
     this.emit('update', this.latestSnapshot);
   }

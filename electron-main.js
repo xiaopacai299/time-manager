@@ -18,10 +18,20 @@ import { createHash } from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import { TimeMonitorService } from './main/time-monitor-service.js';
+import { createWorklistModule } from './main/electron/worklist-module.js';
+import { createFavoritesModule } from './main/electron/favorites-module.js';
+import { createMenuModule } from './main/electron/menu-module.js';
+import { createPetMotionModule } from './main/electron/pet-motion-module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
+
+/**
+ * Main 进程入口文件（编排层）：
+ * - 负责应用生命周期、窗口创建、IPC 入口与模块装配
+ * - 业务细节尽量下沉到 main/electron/* 模块
+ */
 
 /** 惰性加载：未安装 Python/VS 构建链或二进制与 Electron 不匹配时仍可启动（仅失去「追鼠标」全局左键触发）。 */
 let uIOhookCached;
@@ -38,30 +48,7 @@ function getUIOhook() {
 
 let mainWindow;
 let statsWindow = null;
-let favoritesWindow = null;
-let worklistWindow = null;
-let tray;
 let worklistReminderTimer = null;
-let dragTimer = null;
-let followTimer = null;
-let chaosCatTimer = null;
-let globalMouseHookReady = false;
-const followTarget = {
-  active: false,
-  x: 0,
-  y: 0,
-};
-/** 捣乱模式：随机游走目标（屏幕坐标，指向宠物窗口中心） */
-const rambleTarget = { x: 0, y: 0 };
-/** 宠物右键菜单弹出期间，以及关闭后极短时间内，忽略全局左键触发的追鼠标 */
-let petContextMenuOpen = false;
-let suppressFollowMouseUntil = 0;
-const dragState = {
-  active: false,
-  offsetX: 0,
-  offsetY: 0,
-  started: false,
-};
 const PET_WINDOW_WIDTH = 260;
 const PET_WINDOW_HEIGHT = 280;
 const PET_COMPACT_WIDTH = 190;
@@ -72,6 +59,7 @@ const STATS_DETAIL_WINDOW_HEIGHT = 800;
 
 const petIndexHtmlPath = path.join(__dirname, 'dist', 'index.html');
 
+/** 启动诊断日志：用于排查打包后白屏/加载失败等问题。 */
 function appendLaunchLog(line) {
   try {
     let dir;
@@ -104,6 +92,7 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
+  // 第二实例只负责激活已有窗口，避免重复启动主流程。
   app.on('second-instance', () => {
     if (statsWindow && !statsWindow.isDestroyed()) {
       statsWindow.show();
@@ -138,30 +127,10 @@ function loadPetRenderer(win, hash) {
 }
 
 function refreshTrayMenu() {
-  if (tray) tray.setContextMenu(buildTrayMenu());
+  menuModule.refreshTrayMenu();
 }
 
-/** 通知渲染进程：追鼠标时用奔跑 Lottie；mirrorX 表示水平翻转（朝左），不用旋转避免颠倒 */
-function sendPetMotion(payload) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  const wc = mainWindow.webContents;
-  if (!wc || wc.isDestroyed()) return;
-  wc.send('pet:motion', payload);
-}
-
-function resetPetDragState() {
-  dragState.active = false;
-  dragState.started = false;
-  if (dragTimer) {
-    clearInterval(dragTimer);
-    dragTimer = null;
-  }
-  const chasingFollow = petState.followMouse && followTarget.active;
-  if (!chasingFollow && !petState.chaosCat) {
-    sendPetMotion({ running: false, mirrorX: false });
-  }
-}
-
+/** 统计详情窗口：打开时隐藏宠物窗口，关闭后恢复显示。 */
 function openStatsDetailWindow() {
   if (statsWindow && !statsWindow.isDestroyed()) {
     statsWindow.show();
@@ -169,13 +138,15 @@ function openStatsDetailWindow() {
     return;
   }
 
-  resetPetDragState();
-
+  petMotionModule.resetDragState();
+  // 当创建了这个时，会启动预加载脚本（比普通js权限高，能使用electronAPI）
+  // 作为页面和系统的桥接层
   statsWindow = new BrowserWindow({
     width: STATS_DETAIL_WINDOW_WIDTH,
     height: STATS_DETAIL_WINDOW_HEIGHT,
     show: false,
     title: '使用统计',
+    // window.timeManager挂载，在页面中被消费
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -203,7 +174,9 @@ function openStatsDetailWindow() {
   }
   refreshTrayMenu();
 }
+// 监控前台
 const monitor = new TimeMonitorService({ sampleIntervalMs: 1000, breakThresholdSeconds: 600 });
+/** 主状态对象：持久化与跨模块共享的单一事实来源。 */
 const petState = {
   clickThrough: false,
   showStatsPanel: true,
@@ -222,6 +195,8 @@ function getStateFilePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
 }
 
+/** 启动时加载持久化状态；失败时回退到默认值。 */
+// 从用户目录里读 pet-window-state.json：上次宠物窗口在哪、收藏夹、工作清单等。
 function loadPetState() {
   try {
     const raw = fs.readFileSync(getStateFilePath(), 'utf8');
@@ -250,476 +225,61 @@ function persistPetState() {
   }
 }
 
-function sanitizeFavoriteItem(item) {
-  const fullPath = String(item?.path || '').trim();
-  if (!fullPath) return null;
-  const name = String(item?.name || path.basename(fullPath) || fullPath).trim();
-  const launchPath = String(item?.launchPath || '').trim();
-  const iconHint = String(item?.iconHint || '').trim();
-  const iconDataUrl = String(item?.iconDataUrl || '').trim();
-  return { path: fullPath, name, launchPath, iconHint, iconDataUrl };
-}
+// 工作清单模块：负责窗口、数据校验、提醒通知及 IPC。
+const worklistModule = createWorklistModule({
+  petState,
+  persistPetState,
+  BrowserWindow,
+  Notification,
+  path,
+  __dirname,
+  loadPetRenderer,
+});
 
-function isWindowsAppShortcut(filePath) {
-  const p = String(filePath || '').trim();
-  if (!p || path.extname(p).toLowerCase() !== '.lnk') return false;
-  if (process.platform !== 'win32') return true;
-  try {
-    const info = shell.readShortcutLink(p);
-    const target = String(info?.target || '').trim();
-    return target.toLowerCase().endsWith('.exe');
-  } catch {
-    return false;
-  }
-}
+// 收藏夹模块：负责收藏数据、图标、拖拽与窗口。
+const favoritesModule = createFavoritesModule({
+  petState,
+  persistPetState,
+  app,
+  BrowserWindow,
+  shell,
+  nativeImage,
+  path,
+  fs,
+  createHash,
+  __dirname,
+  loadPetRenderer,
+});
 
-function getDesktopShortcutCheck(filePath) {
-  const p = String(filePath || '').trim();
-  const desktop = app.getPath('desktop');
-  const publicDesktop = path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop');
-  const desktopRoots = [desktop, publicDesktop];
-  const ext = path.extname(p).toLowerCase();
-  const matchRoot = p
-    ? desktopRoots.find((root) => {
-        const rel = path.relative(root, p);
-        return Boolean(rel && !rel.startsWith('..') && !path.isAbsolute(rel));
-      })
-    : '';
-  const rel = p && matchRoot ? path.relative(matchRoot, p) : '';
-  const inDesktop = Boolean(matchRoot);
-  const isLnk = ext === '.lnk';
-  const exists = p ? fs.existsSync(p) : false;
-  return { p, desktop, publicDesktop, matchRoot, ext, rel, inDesktop, isLnk, exists };
-}
+// 菜单模块：托盘菜单与宠物右键菜单统一从这里创建。
+const menuModule = createMenuModule({
+  Menu,
+  Tray,
+  nativeImage,
+  path,
+  fs,
+  __dirname,
+  app,
+  getMainWindow: () => mainWindow,
+  getStatsWindow: () => statsWindow,
+  getPetState: () => petState,
+  onToggleFollowMouse: () => toggleFollowMouse(),
+  onToggleChaosCat: () => toggleChaosCat(),
+  onOpenFavorites: () => favoritesModule.openWindow(),
+  onOpenWorklist: () => worklistModule.openWindow(),
+  onEmitPetAction: (action) => emitPetAction(action),
+});
 
-async function removeShortcutWithFallback(fullPath) {
-  try {
-    fs.unlinkSync(fullPath);
-    return { ok: true, method: 'unlink' };
-  } catch (error) {
-    const code = String(error?.code || '');
-    if (code !== 'EPERM' && code !== 'EACCES') {
-      return { ok: false, method: 'unlink', error };
-    }
-  }
+// 宠物运动模块：管理拖拽、追鼠标、捣乱模式、全局鼠标 Hook 及相关 IPC。
+const petMotionModule = createPetMotionModule({
+  petState,
+  screen,
+  getUIOhook,
+  getMainWindow: () => mainWindow,
+  getTargetSize,
+});
 
-  try {
-    await shell.trashItem(fullPath);
-    if (!fs.existsSync(fullPath)) {
-      return { ok: true, method: 'trashItem' };
-    }
-    return {
-      ok: false,
-      method: 'trashItem',
-      error: new Error(`trashItem completed but file still exists: ${fullPath}`),
-    };
-  } catch (error) {
-    return { ok: false, method: 'trashItem', error };
-  }
-}
 
-function getFavoritesList() {
-  return (petState.favorites || [])
-    .map((item) => sanitizeFavoriteItem(item))
-    .filter(Boolean);
-}
-
-function broadcastFavoritesUpdate() {
-  if (!favoritesWindow || favoritesWindow.isDestroyed()) return;
-  favoritesWindow.webContents.send('favorites:updated', getFavoritesList());
-}
-
-function addFavoritesByPaths(paths = []) {
-  const exists = new Set(getFavoritesList().map((item) => item.path.toLowerCase()));
-  const merged = [...getFavoritesList()];
-  const rejected = [];
-  let added = 0;
-  for (const rawPath of paths) {
-    const p = String(rawPath || '').trim();
-    if (!p) continue;
-    if (!isWindowsAppShortcut(p)) {
-      rejected.push(p);
-      continue;
-    }
-    const key = p.toLowerCase();
-    if (exists.has(key)) continue;
-    let launchPath = p;
-    let iconHint = '';
-    if (process.platform === 'win32' && path.extname(p).toLowerCase() === '.lnk') {
-      try {
-        const info = shell.readShortcutLink(p);
-        if (info?.target) launchPath = String(info.target || '').trim() || launchPath;
-        if (info?.icon) iconHint = String(info.icon || '').trim();
-      } catch {
-        // keep fallback defaults
-      }
-    }
-    merged.push({
-      path: p,
-      name: path.basename(p) || p,
-      launchPath,
-      iconHint,
-      iconDataUrl: '',
-    });
-    exists.add(key);
-    added += 1;
-  }
-  petState.favorites = merged;
-  persistPetState();
-  broadcastFavoritesUpdate();
-  return { list: getFavoritesList(), rejected, added };
-}
-
-async function addFavoritesAndOptionallyMoveShortcuts(paths = [], moveDesktopShortcuts = false) {
-  const result = addFavoritesByPaths(paths);
-  if (!moveDesktopShortcuts) return result;
-  console.log('[favorites-remove-shortcut-start]', { total: paths.length });
-  for (const p of paths) {
-    const fullPath = String(p || '').trim();
-    const check = getDesktopShortcutCheck(fullPath);
-    if (!check.p) {
-      console.log('[favorites-remove-shortcut-skip-empty]');
-      continue;
-    }
-    if (!check.isLnk) {
-      console.log('[favorites-remove-shortcut-skip]', {
-        path: check.p,
-        reason: 'not-lnk',
-        ext: check.ext,
-      });
-      continue;
-    }
-    if (!check.inDesktop) {
-      console.log('[favorites-remove-shortcut-skip]', {
-        path: check.p,
-        reason: 'not-under-desktop',
-        desktop: check.desktop,
-        publicDesktop: check.publicDesktop,
-        relative: check.rel,
-      });
-      continue;
-    }
-    if (!check.exists) {
-      console.log('[favorites-remove-shortcut-skip]', {
-        path: check.p,
-        reason: 'not-exists',
-      });
-      continue;
-    }
-    const removeResult = await removeShortcutWithFallback(fullPath);
-    if (removeResult.ok) {
-      console.log('[favorites-remove-shortcut-ok]', { path: fullPath, method: removeResult.method });
-    } else {
-      const error = removeResult.error;
-      console.error('[favorites-remove-shortcut-error]', {
-        path: fullPath,
-        method: removeResult.method,
-        name: error?.name,
-        message: error?.message,
-        code: error?.code,
-        hint: '若为 Public Desktop，可能需要以管理员权限启动应用',
-      });
-    }
-  }
-  return result;
-}
-
-function removeFavoriteByPath(targetPath) {
-  const normalized = String(targetPath || '').trim().toLowerCase();
-  if (!normalized) return getFavoritesList();
-  petState.favorites = getFavoritesList().filter((item) => item.path.toLowerCase() !== normalized);
-  persistPetState();
-  broadcastFavoritesUpdate();
-  return getFavoritesList();
-}
-
-function cacheFavoriteIconData(pathKey, dataUrl) {
-  const target = String(pathKey || '').trim().toLowerCase();
-  const icon = String(dataUrl || '').trim();
-  if (!target || !icon) return;
-  const updated = getFavoritesList().map((entry) => {
-    if (entry.path.toLowerCase() !== target) return entry;
-    return { ...entry, iconDataUrl: icon };
-  });
-  petState.favorites = updated;
-  persistPetState();
-}
-
-function toSafeFileName(text) {
-  return String(text || 'favorite')
-    .replace(/[<>:"/\\|?*]/g, '_')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 48) || 'favorite';
-}
-
-function getFavoriteDragShortcutPath(item) {
-  const cacheDir = path.join(app.getPath('userData'), 'favorites-drag-cache');
-  fs.mkdirSync(cacheDir, { recursive: true });
-  const hash = createHash('sha1').update(String(item.path || '')).digest('hex').slice(0, 10);
-  const baseName = `${toSafeFileName(item.name)}_${hash}.lnk`;
-  return path.join(cacheDir, baseName);
-}
-
-function ensureFavoriteDragFile(item) {
-  const originalPath = String(item?.path || '').trim();
-  if (originalPath && originalPath.toLowerCase().endsWith('.lnk') && fs.existsSync(originalPath)) {
-    return originalPath;
-  }
-  if (process.platform !== 'win32') {
-    const launchPath = String(item?.launchPath || '').trim();
-    return launchPath && fs.existsSync(launchPath) ? launchPath : '';
-  }
-  const launchPath = String(item?.launchPath || '').trim();
-  if (!launchPath || !fs.existsSync(launchPath)) return '';
-  const dragLnkPath = getFavoriteDragShortcutPath(item);
-  const iconHint = String(item?.iconHint || '').trim();
-  const iconPath = iconHint.includes(',') ? iconHint.split(',')[0].trim() : iconHint;
-  const options = {
-    target: launchPath,
-    cwd: path.dirname(launchPath),
-    description: String(item?.name || ''),
-  };
-  if (iconPath && fs.existsSync(iconPath)) {
-    options.icon = iconPath;
-  }
-  try {
-    shell.writeShortcutLink(dragLnkPath, 'create', options);
-    if (fs.existsSync(dragLnkPath)) return dragLnkPath;
-  } catch (error) {
-    console.error('[favorites-create-drag-shortcut-error]', error);
-  }
-  return '';
-}
-
-function openFavoritePath(targetPath) {
-  const p = String(targetPath || '').trim();
-  if (!p) return false;
-  const item = getFavoritesList().find((entry) => entry.path.toLowerCase() === p.toLowerCase());
-  const launchPath = String(item?.launchPath || p).trim();
-  shell.openPath(launchPath);
-  return true;
-}
-
-async function getFavoriteIconDataUrl(targetPath) {
-  const p = String(targetPath || '').trim();
-  if (!p) return '';
-  try {
-    const item = getFavoritesList().find((entry) => entry.path.toLowerCase() === p.toLowerCase());
-    if (item?.iconDataUrl) return item.iconDataUrl;
-
-    const candidates = [];
-    const pushCandidate = (candidate) => {
-      const c = String(candidate || '').trim();
-      if (!c) return;
-      if (!candidates.some((v) => v.toLowerCase() === c.toLowerCase())) {
-        candidates.push(c);
-      }
-    };
-    const normalizeIconLocation = (iconLocation) => {
-      const raw = String(iconLocation || '').trim();
-      if (!raw) return '';
-      const idx = raw.lastIndexOf(',');
-      if (idx > 1) return raw.slice(0, idx).trim();
-      return raw;
-    };
-
-    pushCandidate(item?.launchPath);
-    pushCandidate(normalizeIconLocation(item?.iconHint));
-    pushCandidate(p);
-
-    if (process.platform === 'win32' && path.extname(p).toLowerCase() === '.lnk') {
-      try {
-        const info = shell.readShortcutLink(p);
-        pushCandidate(info?.target);
-        pushCandidate(normalizeIconLocation(info?.icon));
-      } catch {
-        // keep existing candidates
-      }
-    }
-
-    for (const candidate of candidates) {
-      try {
-        const normal = await app.getFileIcon(candidate, { size: 'normal' });
-        if (normal && !normal.isEmpty()) {
-          const dataUrl = normal.toDataURL();
-          if (item) cacheFavoriteIconData(item.path, dataUrl);
-          return dataUrl;
-        }
-      } catch {
-        // try next candidate
-      }
-    }
-    for (const candidate of candidates) {
-      try {
-        const large = await app.getFileIcon(candidate, { size: 'large' });
-        if (large && !large.isEmpty()) {
-          const dataUrl = large.toDataURL();
-          if (item) cacheFavoriteIconData(item.path, dataUrl);
-          return dataUrl;
-        }
-      } catch {
-        // try next candidate
-      }
-    }
-    return '';
-  } catch (error) {
-    console.error('[favorites-get-icon-error]', p, error);
-    return '';
-  }
-}
-
-function openFavoritesWindow() {
-  if (favoritesWindow && !favoritesWindow.isDestroyed()) {
-    favoritesWindow.show();
-    favoritesWindow.focus();
-    return;
-  }
-
-  favoritesWindow = new BrowserWindow({
-    width: 380,
-    height: 520,
-    show: false,
-    title: '收藏夹',
-    resizable: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      contextIsolation: true,
-      webSecurity: false,
-    },
-  });
-
-  favoritesWindow.once('ready-to-show', () => {
-    if (!favoritesWindow || favoritesWindow.isDestroyed()) return;
-    favoritesWindow.show();
-    broadcastFavoritesUpdate();
-  });
-
-  favoritesWindow.on('closed', () => {
-    favoritesWindow = null;
-  });
-
-  loadPetRenderer(favoritesWindow, 'favorites');
-}
-
-const WORKLIST_ICON_MAX_LEN = 420000;
-
-function normalizeWorklistDatetime(value) {
-  const s = String(value || '').trim();
-  if (!s) return '';
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? '' : new Date(t).toISOString();
-}
-
-function sanitizeWorklistIcon(icon) {
-  let v = String(icon || '').trim();
-  if (!v) return '📋';
-  if (v.startsWith('data:image/')) {
-    if (v.length > WORKLIST_ICON_MAX_LEN) return '📋';
-    return v;
-  }
-  return v.slice(0, 32);
-}
-
-function sanitizeWorklistEntry(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-  const id = String(raw.id || '').trim();
-  if (!id) return null;
-  const name = String(raw.name || '').trim().slice(0, 200);
-  if (!name) return null;
-  const icon = sanitizeWorklistIcon(raw.icon);
-  const reminderAt = normalizeWorklistDatetime(raw.reminderAt);
-  const estimateDoneAt = normalizeWorklistDatetime(raw.estimateDoneAt);
-  const note = String(raw.note || '').trim().slice(0, 2000);
-  const reminderNotified = Boolean(raw.reminderNotified);
-  return { id, icon, name, reminderAt, estimateDoneAt, note, reminderNotified };
-}
-
-function getWorklist() {
-  return (petState.worklist || [])
-    .map((item) => sanitizeWorklistEntry(item))
-    .filter(Boolean);
-}
-
-function addWorklistItem(payload) {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-  const entry = sanitizeWorklistEntry({
-    id,
-    icon: payload?.icon,
-    name: payload?.name,
-    reminderAt: payload?.reminderAt,
-    estimateDoneAt: payload?.estimateDoneAt,
-    note: payload?.note,
-    reminderNotified: false,
-  });
-  if (!entry) {
-    return { ok: false, error: '请填写工作清单名称', list: getWorklist() };
-  }
-  petState.worklist = [...getWorklist(), entry];
-  persistPetState();
-  return { ok: true, list: getWorklist() };
-}
-
-function checkWorklistReminders() {
-  if (!Notification.isSupported()) return;
-  const now = Date.now();
-  const raw = Array.isArray(petState.worklist) ? petState.worklist : [];
-  let changed = false;
-  const next = raw.map((item) => {
-    const id = String(item?.id || '').trim();
-    if (!id || item.reminderNotified) return item;
-    const reminderAt = normalizeWorklistDatetime(item.reminderAt);
-    if (!reminderAt) return item;
-    const t = Date.parse(reminderAt);
-    if (Number.isNaN(t) || t > now) return item;
-    const name = String(item.name || '工作清单').trim().slice(0, 120);
-    const body = String(item.note || '').trim().slice(0, 500) || '到提醒时间了';
-    try {
-      const n = new Notification({ title: `工作提醒：${name}`, body });
-      n.show();
-    } catch (error) {
-      console.error('[worklist-reminder-notification-error]', error);
-    }
-    changed = true;
-    return { ...item, reminderNotified: true, reminderAt };
-  });
-  if (changed) {
-    petState.worklist = next;
-    persistPetState();
-  }
-}
-
-function openWorklistWindow() {
-  if (worklistWindow && !worklistWindow.isDestroyed()) {
-    worklistWindow.show();
-    worklistWindow.focus();
-    return;
-  }
-
-  worklistWindow = new BrowserWindow({
-    width: 440,
-    height: 580,
-    show: false,
-    title: '添加工作清单',
-    resizable: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      contextIsolation: true,
-      webSecurity: false,
-    },
-  });
-
-  worklistWindow.once('ready-to-show', () => {
-    if (!worklistWindow || worklistWindow.isDestroyed()) return;
-    worklistWindow.show();
-  });
-
-  worklistWindow.on('closed', () => {
-    worklistWindow = null;
-  });
-
-  loadPetRenderer(worklistWindow, 'worklist');
-}
 
 function defaultPetCornerBounds(width, height) {
   const primary = screen.getPrimaryDisplay();
@@ -758,7 +318,9 @@ function resolveInitialPetWindowBounds() {
   return { ...next, didAdjust };
 }
 
+// 创建宠物
 function createMainWindow() {
+  // 先修复无效坐标（如外接屏拔掉），再创建透明宠物窗口。
   const initial = resolveInitialPetWindowBounds();
   if (initial.didAdjust) {
     petState.windowBounds = {
@@ -875,268 +437,12 @@ function applyWindowMode() {
 
 function applyMouseMode() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  // clickThrough=true 且不是临时交互态时，让窗口穿透鼠标事件。
   const shouldIgnoreMouse = petState.clickThrough && !petState.tempInteractive;
   mainWindow.setIgnoreMouseEvents(shouldIgnoreMouse, { forward: true });
 }
 
-function stopFollowMouse() {
-  if (followTimer) {
-    clearInterval(followTimer);
-    followTimer = null;
-  }
-  followTarget.active = false;
-  const stillRambling = petState.chaosCat;
-  if (!stillRambling) {
-    sendPetMotion({ running: false, mirrorX: false });
-  }
-}
-
-/** 在工作区内取一点作为宠物窗口中心目标，避免跑出屏外 */
-function pickRandomRamblePoint(tw, th) {
-  const displays = screen.getAllDisplays();
-  if (!displays.length) {
-    return { x: 0, y: 0 };
-  }
-  const d = displays[Math.floor(Math.random() * displays.length)];
-  const wa = d.workArea;
-  const halfW = Math.round(tw / 2);
-  const halfH = Math.round(th / 2);
-  const minX = wa.x + halfW;
-  const maxX = wa.x + wa.width - halfW;
-  const minY = wa.y + halfH;
-  const maxY = wa.y + wa.height - halfH;
-  if (minX >= maxX || minY >= maxY) {
-    return {
-      x: wa.x + Math.round(wa.width / 2),
-      y: wa.y + Math.round(wa.height / 2),
-    };
-  }
-  return {
-    x: minX + Math.random() * (maxX - minX),
-    y: minY + Math.random() * (maxY - minY),
-  };
-}
-
-function stopChaosCat() {
-  if (chaosCatTimer) {
-    clearInterval(chaosCatTimer);
-    chaosCatTimer = null;
-  }
-  petState.chaosCat = false;
-  const chasingFollow = petState.followMouse && followTarget.active;
-  if (!chasingFollow) {
-    sendPetMotion({ running: false, mirrorX: false });
-  }
-}
-
-function startChaosCat() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (chaosCatTimer) {
-    clearInterval(chaosCatTimer);
-    chaosCatTimer = null;
-  }
-  petState.chaosCat = true;
-  const speedFactor = 0.2;
-  const maxStep = 22;
-  const armNextTarget = () => {
-    const [tw, th] = getTargetSize();
-    const bounds = mainWindow.getBounds();
-    const cx = bounds.x + Math.round(bounds.width / 2);
-    const cy = bounds.y + Math.round(bounds.height / 2);
-    let p = pickRandomRamblePoint(tw, th);
-    for (let i = 0; i < 14; i++) {
-      if (Math.hypot(p.x - cx, p.y - cy) > 48) break;
-      p = pickRandomRamblePoint(tw, th);
-    }
-    rambleTarget.x = p.x;
-    rambleTarget.y = p.y;
-  };
-  armNextTarget();
-  chaosCatTimer = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed() || !petState.chaosCat) return;
-    if (dragState.active) return;
-    const [tw, th] = getTargetSize();
-    const bounds = mainWindow.getBounds();
-    const centerX = bounds.x + Math.round(bounds.width / 2);
-    const centerY = bounds.y + Math.round(bounds.height / 2);
-    const dx = rambleTarget.x - centerX;
-    const dy = rambleTarget.y - centerY;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 6) {
-      armNextTarget();
-      return;
-    }
-    const mirrorX = dx > 0;
-    sendPetMotion({ running: true, mirrorX });
-    const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
-    const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
-    mainWindow.setBounds({
-      x: Math.round(bounds.x + stepX),
-      y: Math.round(bounds.y + stepY),
-      width: tw,
-      height: th,
-    });
-  }, 16);
-}
-
-function startFollowMouse() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  stopFollowMouse();
-  const speedFactor = 0.2;
-  const maxStep = 22;
-  followTimer = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed() || !petState.followMouse) return;
-    if (!followTarget.active) return;
-    if (dragState.active) return;
-    const [tw, th] = getTargetSize();
-    const bounds = mainWindow.getBounds();
-    const centerX = bounds.x + Math.round(bounds.width / 2);
-    const centerY = bounds.y + Math.round(bounds.height / 2);
-    const dx = followTarget.x - centerX;
-    const dy = followTarget.y - centerY;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 6) {
-      followTarget.active = false;
-      sendPetMotion({ running: false, mirrorX: false });
-      return;
-    }
-    // 原画默认朝右：光标在窗口右侧 (dx>0) 时水平翻转。与上一版相反时改回 dx < 0
-    const mirrorX = dx > 0;
-    sendPetMotion({ running: true, mirrorX });
-    const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
-    const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
-    mainWindow.setBounds({
-      x: Math.round(bounds.x + stepX),
-      y: Math.round(bounds.y + stepY),
-      width: tw,
-      height: th,
-    });
-  }, 16);
-}
-
-function triggerFollowBurst() {
-  if (!petState.followMouse) return false;
-  if (petContextMenuOpen) return false;
-  if (Date.now() < suppressFollowMouseUntil) return false;
-  if (followTarget.active) return false;
-  const cursor = screen.getCursorScreenPoint();
-  followTarget.x = cursor.x;
-  followTarget.y = cursor.y;
-  followTarget.active = true;
-  if (!followTimer) startFollowMouse();
-  return true;
-}
-
-function setupGlobalMouseHook() {
-  if (globalMouseHookReady) return;
-  const hook = getUIOhook();
-  if (!hook) return;
-  try {
-    hook.on('mousedown', (event) => {
-      // uiohook-napi: left button is 1
-      if (event?.button !== 1) return;
-      triggerFollowBurst();
-    });
-    hook.start();
-    globalMouseHookReady = true;
-  } catch (error) {
-    console.error('[global-mouse-hook-error]', error);
-  }
-}
-
-function teardownGlobalMouseHook() {
-  if (!globalMouseHookReady) return;
-  const hook = getUIOhook();
-  try {
-    if (hook) {
-      hook.removeAllListeners('mousedown');
-      hook.stop();
-    }
-  } catch (error) {
-    console.error('[global-mouse-hook-stop-error]', error);
-  } finally {
-    globalMouseHookReady = false;
-  }
-}
-
-// 隐藏栏中的右键菜单
-function buildTrayMenu() {
-  return Menu.buildFromTemplate([
-    {
-      label: petState.followMouse ? '猫捉老鼠' : '关闭猫捉老鼠',
-      click: () => {
-        toggleFollowMouse();
-      },
-    },
-    {
-      label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
-      click: () => {
-        toggleChaosCat();
-      },
-    },
-    {
-      label: '收藏夹',
-      click: () => {
-        openFavoritesWindow();
-      },
-    },
-    {
-      label: '添加工作清单',
-      click: () => {
-        openWorklistWindow();
-      },
-    },
-    {
-      label: '动作测试',
-      submenu: [
-        { label: '休息 rest', click: () => emitPetAction('rest') },
-        { label: '工作 work', click: () => emitPetAction('work') },
-        { label: '提醒 remind', click: () => emitPetAction('remind') },
-        { label: '报警 long-work', click: () => emitPetAction('long-work') },
-      ],
-    },
-    { type: 'separator' },
-    {
-      label: '退出',
-      click: () => app.quit(),
-    },
-  ]);
-}
-
-function createTray() {
-  try {
-    const trayPngPath = path.join(__dirname, 'assets', 'tray-icon.png');
-    const traySvgPath = path.join(__dirname, 'assets', 'tray-icon.svg');
-    let image = nativeImage.createFromPath(trayPngPath);
-    if (image.isEmpty()) {
-      const traySvgRaw = fs.readFileSync(traySvgPath, 'utf8');
-      const trayDataUrl = `data:image/svg+xml;base64,${Buffer.from(traySvgRaw).toString('base64')}`;
-      image = nativeImage.createFromDataURL(trayDataUrl);
-    }
-    if (image.isEmpty()) {
-      throw new Error('Tray icon image is empty for both PNG and SVG');
-    }
-    image = image.resize({ width: 16, height: 16 });
-    tray = new Tray(image);
-    // 隐藏栏应用名称
-    tray.setToolTip('时间小精灵');
-    tray.setContextMenu(buildTrayMenu());
-    tray.on('click', () => {
-      if (statsWindow && !statsWindow.isDestroyed()) {
-        statsWindow.show();
-        statsWindow.focus();
-        return;
-      }
-      if (!mainWindow) return;
-      if (mainWindow.isVisible()) mainWindow.focus();
-      else mainWindow.show();
-    });
-  } catch (error) {
-    // Avoid hard crash in main process if tray is unavailable.
-    console.error('[tray-init-error]', error);
-  }
-}
-
+/** 以下四个 toggle 是 UI 动作入口：更新状态 -> 通知渲染层 -> 持久化 -> 刷新菜单 */
 function toggleClickThrough() {
   petState.clickThrough = !petState.clickThrough;
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1149,7 +455,7 @@ function toggleClickThrough() {
     });
   }
   persistPetState();
-  if (tray) tray.setContextMenu(buildTrayMenu());
+  menuModule.refreshTrayMenu();
   return petState.clickThrough;
 }
 
@@ -1165,17 +471,17 @@ function toggleCompactMode() {
     });
   }
   persistPetState();
-  if (tray) tray.setContextMenu(buildTrayMenu());
+  menuModule.refreshTrayMenu();
   return petState.compactMode;
 }
 
 function toggleFollowMouse() {
   petState.followMouse = !petState.followMouse;
   if (petState.followMouse) {
-    stopChaosCat();
-    startFollowMouse();
+    petMotionModule.stopChaosCat();
+    petMotionModule.startFollowMouse();
   } else {
-    stopFollowMouse();
+    petMotionModule.stopFollowMouse();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('pet:state-changed', {
@@ -1186,19 +492,19 @@ function toggleFollowMouse() {
     });
   }
   persistPetState();
-  if (tray) tray.setContextMenu(buildTrayMenu());
+  menuModule.refreshTrayMenu();
   return petState.followMouse;
 }
 
 function toggleChaosCat() {
   if (petState.chaosCat) {
-    stopChaosCat();
+    petMotionModule.stopChaosCat();
   } else {
     if (petState.followMouse) {
       petState.followMouse = false;
-      stopFollowMouse();
+      petMotionModule.stopFollowMouse();
     }
-    startChaosCat();
+    petMotionModule.startChaosCat();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('pet:state-changed', {
@@ -1209,7 +515,7 @@ function toggleChaosCat() {
     });
   }
   persistPetState();
-  if (tray) tray.setContextMenu(buildTrayMenu());
+  menuModule.refreshTrayMenu();
   return petState.chaosCat;
 }
 
@@ -1227,6 +533,8 @@ function emitPetAction(action) {
 }
 
 function setupIpc() {
+  // IPC 注册统一放在这里，按模块分组便于维护与定位。
+  // 1) 宠物基础状态与模式切换
   ipcMain.handle('time-stats:get-snapshot', () => monitor.getSnapshot());
   ipcMain.handle('pet:get-state', () => ({
     clickThrough: petState.clickThrough,
@@ -1252,152 +560,28 @@ function setupIpc() {
     openStatsDetailWindow();
     return true;
   });
-  ipcMain.handle('favorites:get-list', () => getFavoritesList());
-  ipcMain.handle('favorites:add-paths', (_event, payload) => {
-    const paths = Array.isArray(payload?.paths) ? payload.paths : [];
-    const moveDesktopShortcuts = Boolean(payload?.moveDesktopShortcuts);
-    return addFavoritesAndOptionallyMoveShortcuts(paths, moveDesktopShortcuts);
-  });
-  ipcMain.handle('favorites:remove', (_event, payload) => {
-    return removeFavoriteByPath(payload?.path);
-  });
-  ipcMain.handle('favorites:open', (_event, payload) => {
-    return openFavoritePath(payload?.path);
-  });
-  ipcMain.handle('favorites:get-icon', async (_event, payload) => {
-    return getFavoriteIconDataUrl(payload?.path);
-  });
-  ipcMain.handle('worklist:get-list', () => getWorklist());
-  ipcMain.handle('worklist:add', (_event, payload) => addWorklistItem(payload));
-  ipcMain.on('favorites:start-drag', (event, payload) => {
-    try {
-      const itemPath = String(payload?.path || '').trim().toLowerCase();
-      if (!itemPath) return;
-      const senderWindow = BrowserWindow.fromWebContents(event.sender);
-      if (!senderWindow || senderWindow.isDestroyed()) return;
-      const item = getFavoritesList().find((entry) => entry.path.toLowerCase() === itemPath);
-      if (!item) return;
-      const dragFile = ensureFavoriteDragFile(item);
-      if (!dragFile) {
-        console.warn('[favorites-start-drag-skip]', { reason: 'drag-file-missing', itemPath });
-        return;
-      }
-      let icon = null;
-      const iconDataUrl = String(payload?.iconDataUrl || '').trim();
-      if (iconDataUrl.startsWith('data:image/')) {
-        icon = nativeImage.createFromDataURL(iconDataUrl);
-      }
-      if (!icon || icon.isEmpty()) {
-        icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray-icon.png'));
-      }
-      senderWindow.webContents.startDrag({
-        file: dragFile,
-        icon: icon && !icon.isEmpty() ? icon : nativeImage.createEmpty(),
-      });
-    } catch (error) {
-      console.error('[favorites-start-drag-error]', error);
-    }
-  });
+
+  // 2) 收藏夹模块
+  favoritesModule.registerIpc(ipcMain);
+
+  // 3) 工作清单模块（已拆分至独立文件）
+  worklistModule.registerIpc(ipcMain);
+  // 4) 宠物运动模块（拖拽/跟随/捣乱/Hook）
+  petMotionModule.registerIpc(ipcMain);
   // 宠物上的右键菜单
   ipcMain.handle('pet:open-context-menu', (_event, payload) => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const menu = Menu.buildFromTemplate([
-      {
-        label: petState.followMouse ? '关闭猫捉老鼠' : '猫捉老鼠',
-        click: () => toggleFollowMouse(),
-      },
-      {
-        label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
-        click: () => toggleChaosCat(),
-      },
-      {
-        label: '收藏夹',
-        click: () => openFavoritesWindow(),
-      },
-      {
-        label: '添加工作清单',
-        click: () => openWorklistWindow(),
-      },
-      {
-        label: '动作测试',
-        submenu: [
-          { label: '休息 rest', click: () => emitPetAction('rest') },
-          { label: '工作 work', click: () => emitPetAction('work') },
-          { label: '提醒 remind', click: () => emitPetAction('remind') },
-          { label: '报警 long-work', click: () => emitPetAction('long-work') },
-        ],
-      },
-      { type: 'separator' },
-      { label: '退出', click: () => app.quit() },
-    ]);
-    petContextMenuOpen = true;
-    menu.popup({
-      window: mainWindow,
-      x: Number(payload?.x) || undefined,
-      y: Number(payload?.y) || undefined,
-      callback: () => {
-        petContextMenuOpen = false;
-        suppressFollowMouseUntil = Date.now() + 280;
-      },
+    petMotionModule.setContextMenuActive(true);
+    menuModule.openContextMenu(payload, () => {
+      petMotionModule.setContextMenuActive(false);
     });
   });
   ipcMain.on('pet:set-temp-interactive', (_event, active) => {
     petState.tempInteractive = Boolean(active);
     applyMouseMode();
   });
-  ipcMain.on('pet:start-drag', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (dragTimer) { clearInterval(dragTimer); dragTimer = null; }
-
-    const startCursor = screen.getCursorScreenPoint();
-    const winBounds = mainWindow.getBounds();
-    dragState.active = true;
-    dragState.offsetX = startCursor.x - winBounds.x;
-    dragState.offsetY = startCursor.y - winBounds.y;
-    dragState.started = false;
-
-    const [tw, th] = getTargetSize();
-    dragTimer = setInterval(() => {
-      if (!dragState.active || !mainWindow || mainWindow.isDestroyed()) return;
-      const cursor = screen.getCursorScreenPoint();
-      if (!dragState.started) {
-        const dx = Math.abs(cursor.x - startCursor.x);
-        const dy = Math.abs(cursor.y - startCursor.y);
-        if (dx < 3 && dy < 3) return;
-        dragState.started = true;
-      }
-      mainWindow.setBounds({
-        x: Math.round(cursor.x - dragState.offsetX),
-        y: Math.round(cursor.y - dragState.offsetY),
-        width: tw,
-        height: th,
-      });
-    }, 16);
-  });
-  ipcMain.on('pet:end-drag', () => {
-    dragState.active = false;
-    if (dragTimer) {
-      clearInterval(dragTimer);
-      dragTimer = null;
-    }
-    const chasing = petState.followMouse && followTarget.active;
-    if (!chasing && !petState.chaosCat) {
-      sendPetMotion({ running: false, mirrorX: false });
-    }
-  });
-  ipcMain.on('pet:drag-by', (_event, delta) => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const bounds = mainWindow.getBounds();
-    const [tw, th] = getTargetSize();
-    mainWindow.setBounds({
-      x: bounds.x + Number(delta?.dx || 0),
-      y: bounds.y + Number(delta?.dy || 0),
-      width: tw,
-      height: th,
-    });
-  });
 }
 
+// 一、程序从这里开始运行
 app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return;
 
@@ -1406,27 +590,42 @@ app.whenReady().then(() => {
       app.setAppUserModelId('com.timemanager.pet');
     }
     appendLaunchLog('app ready, starting main flow');
+    // 二、从用户目录中读取之前的状态
     loadPetState();
     // Keep startup behavior predictable: always start with click-through disabled.
     petState.clickThrough = false;
     petState.tempInteractive = false;
+    // 三、将渲染进程调用的接口注册，
+    // 统计快照，宠物状态，收藏夹，拖拽，工作清单
+    // 这些接口在 preload.cjs 里挂到 window.timeManagerAPI 上，前端才能用
     setupIpc();
+    // 四、创建桌面宠物的透明窗口
+    // 加载 Vite 页面（开发态是 localhost:4567，打包后是 dist/index.html）
     createMainWindow();
     applyWindowMode();
-    createTray();
-    setupGlobalMouseHook();
-    if (petState.followMouse) startFollowMouse();
+    // 五、托盘图标、托盘右键菜单
+    menuModule.setup();
+    // 六、全局鼠标hook
+    // 宠物拖拽相关逻辑
+    petMotionModule.setup();
+    if (petState.followMouse) petMotionModule.startFollowMouse();
+    // 七、启用时间统计
+    // 每隔1秒中查看前台应用是什么
     monitor.start();
-    worklistReminderTimer = setInterval(checkWorklistReminders, 45000);
-    checkWorklistReminders();
+    // 八、统一由工作清单模块处理提醒检查，主进程仅负责任务调度。
+    worklistReminderTimer = setInterval(worklistModule.tick, 45000);
+    worklistModule.tick();
     globalShortcut.register('CommandOrControl+Shift+P', () => {
       toggleClickThrough();
     });
-
+    // 监听this.emit('update', this.latestSnapshot);，将payload
+    // 推给宠物窗口和统计窗口
     monitor.on('update', (payload) => {
+      // 给宠物窗口发IPC事件
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('time-stats:update', payload);
       }
+      // 给统计窗口发IPC事件
       if (statsWindow && !statsWindow.isDestroyed()) {
         statsWindow.webContents.send('time-stats:update', payload);
       }
@@ -1445,17 +644,15 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // 统一释放：定时器、模块资源、快捷键、监控服务。
   if (worklistReminderTimer) {
     clearInterval(worklistReminderTimer);
     worklistReminderTimer = null;
   }
-  if (dragTimer) {
-    clearInterval(dragTimer);
-    dragTimer = null;
-  }
-  stopChaosCat();
-  stopFollowMouse();
-  teardownGlobalMouseHook();
+  menuModule.teardown();
+  favoritesModule.teardown();
+  worklistModule.teardown();
+  petMotionModule.teardown();
   globalShortcut.unregisterAll();
   persistPetState();
   monitor.stop();
