@@ -459,22 +459,6 @@ function toggleClickThrough() {
   return petState.clickThrough;
 }
 
-function toggleCompactMode() {
-  petState.compactMode = !petState.compactMode;
-  applyWindowMode();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('pet:state-changed', {
-      clickThrough: petState.clickThrough,
-      showStatsPanel: petState.showStatsPanel,
-      compactMode: petState.compactMode,
-      followMouse: petState.followMouse,
-    });
-  }
-  persistPetState();
-  menuModule.refreshTrayMenu();
-  return petState.compactMode;
-}
-
 function toggleFollowMouse() {
   petState.followMouse = !petState.followMouse;
   if (petState.followMouse) {
@@ -542,16 +526,10 @@ function setupIpc() {
     compactMode: petState.compactMode,
     followMouse: petState.followMouse,
   }));
-  ipcMain.handle('pet:toggle-click-through', () => {
-    return toggleClickThrough();
-  });
   ipcMain.handle('pet:toggle-stats-panel', () => {
     petState.showStatsPanel = !petState.showStatsPanel;
     persistPetState();
     return petState.showStatsPanel;
-  });
-  ipcMain.handle('pet:toggle-compact-mode', () => {
-    return toggleCompactMode();
   });
   ipcMain.handle('pet:toggle-follow-mouse', () => {
     return toggleFollowMouse();

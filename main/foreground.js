@@ -2,6 +2,10 @@ import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
+// os：识别平台（win32/darwin）
+// child_process.execFile：调用系统命令
+// util.promisify：把回调式 execFile 变成 await 风格
+
 const execFileAsync = promisify(execFile);
 
 function safeJsonParse(text) {
@@ -92,11 +96,13 @@ end tell
 }
 
 export async function getForegroundContext() {
+  // 识别当前系统
   const platform = os.platform();
   try {
     if (platform === 'win32') {
       return await getWindowsForegroundContext();
     }
+    // 苹果系统
     if (platform === 'darwin') {
       return await getMacForegroundContext();
     }

@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['electron-main.js', 'preload.js', 'main/**/*.js'],
+    files: ['electron-main.js', 'main/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: 'latest',

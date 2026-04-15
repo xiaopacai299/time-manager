@@ -33,12 +33,6 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    */
   getPetState: () => ipcRenderer.invoke('pet:get-state'),
 
-  /**
-   * 切换点击穿透状态。
-   * 主进程通道：`pet:toggle-click-through`（invoke/handle）
-   * @returns {Promise<boolean>}
-   */
-  toggleClickThrough: () => ipcRenderer.invoke('pet:toggle-click-through'),
 
   /**
    * 切换统计面板显示状态。
@@ -47,12 +41,6 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    */
   toggleStatsPanel: () => ipcRenderer.invoke('pet:toggle-stats-panel'),
 
-  /**
-   * 切换宠物紧凑模式。
-   * 主进程通道：`pet:toggle-compact-mode`（invoke/handle）
-   * @returns {Promise<boolean>}
-   */
-  toggleCompactMode: () => ipcRenderer.invoke('pet:toggle-compact-mode'),
 
   /**
    * 打开统计详情窗口。
