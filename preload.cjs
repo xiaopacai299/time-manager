@@ -106,6 +106,22 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
   addWorklistItem: (item) => ipcRenderer.invoke('worklist:add', item),
 
   /**
+   * 更新工作清单项。
+   * 主进程通道：`worklist:update`（invoke/handle）
+   * @param {object} item
+   * @returns {Promise<object>}
+   */
+  updateWorklistItem: (item) => ipcRenderer.invoke('worklist:update', item),
+
+  /**
+   * 删除工作清单项。
+   * 主进程通道：`worklist:remove`（invoke/handle）
+   * @param {{id:string}} payload
+   * @returns {Promise<object>}
+   */
+  removeWorklistItem: (payload) => ipcRenderer.invoke('worklist:remove', payload),
+
+  /**
    * 启动收藏项拖拽（单向通知，无返回值）。
    * 主进程通道：`favorites:start-drag`（send/on）
    * @param {string} path
@@ -233,5 +249,16 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
     const handler = (_event, payload) => callback(payload);
     ipcRenderer.on('favorites:updated', handler);
     return () => ipcRenderer.removeListener('favorites:updated', handler);
+  },
+  /**
+   * 订阅工作清单更新事件。
+   * 主进程通道：`worklist:updated`（webContents.send -> ipcRenderer.on）
+   * @param {(payload: object) => void} callback
+   * @returns {() => void}
+   */
+  onWorklistUpdated: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('worklist:updated', handler);
+    return () => ipcRenderer.removeListener('worklist:updated', handler);
   },
 });

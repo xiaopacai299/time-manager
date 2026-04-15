@@ -1,6 +1,7 @@
 .worklist-page {
   margin: 0;
   flex: 1;
+  position: relative;
   min-height: 0;
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: #f4f7fc;
@@ -8,10 +9,188 @@
   overflow: auto;
 }
 
+.worklist-toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  box-shadow: 0 8px 20px rgba(31, 42, 68, 0.18);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.worklist-toast--ok {
+  background: #ecf9f1;
+  border-color: #96d7b2;
+  color: #1d7a4a;
+}
+
+.worklist-toast--err {
+  background: #fff1ef;
+  border-color: #f1b4ab;
+  color: #b33c2a;
+}
+
 .worklist-wrap {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) minmax(380px, 1fr);
+  gap: 16px;
   padding: 16px 18px 20px;
-  max-width: 440px;
+  max-width: 1180px;
   margin: 0 auto;
+}
+
+.worklist-pane {
+  background: #ffffff;
+  border: 1px solid #d9e2f6;
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 0;
+}
+
+.worklist-pane--list {
+  display: flex;
+  flex-direction: column;
+}
+
+.worklist-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.worklist-empty {
+  border: 1px dashed #c8d4ee;
+  border-radius: 10px;
+  padding: 14px;
+  color: #6a7aa8;
+  font-size: 13px;
+}
+
+.worklist-item {
+  border: 1px solid #dce4f8;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f8fbff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.worklist-item:hover {
+  border-color: #9cb6ff;
+  box-shadow: 0 2px 8px rgba(95, 135, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.worklist-item--active {
+  border-color: #5f87ff;
+  box-shadow: 0 0 0 2px rgba(95, 135, 255, 0.2);
+}
+
+.worklist-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.worklist-item-head-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.worklist-item-head-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.worklist-item-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #c8d4ee;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.worklist-item-status--pending {
+  color: #556998;
+  background: #eef3ff;
+  border-color: #cfdaff;
+}
+
+.worklist-item-status--doing {
+  color: #8a5a00;
+  background: #fff4dc;
+  border-color: #f3d28a;
+}
+
+.worklist-item-status--undone {
+  color: #b33c2a;
+  background: #fff1ef;
+  border-color: #f1b4ab;
+}
+
+.worklist-item-status--done {
+  color: #1d7a4a;
+  background: #ecf9f1;
+  border-color: #96d7b2;
+}
+
+.worklist-item-icon-image {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: cover;
+  border: 1px solid #c8d4ee;
+  background: #fff;
+}
+
+.worklist-item-icon-emoji {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: #fff;
+  border: 1px solid #c8d4ee;
+}
+
+.worklist-item-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #24345c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worklist-item-line {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #425683;
+  line-height: 1.45;
+  word-break: break-all;
 }
 
 .worklist-title {
@@ -156,16 +335,56 @@
   background: rgba(95, 135, 255, 0.08);
 }
 
-.worklist-msg {
-  min-height: 20px;
+.worklist-btn-danger {
+  flex: 0 0 auto;
+  border: 1px solid #efb4aa;
+  border-radius: 10px;
+  padding: 8px 12px;
   font-size: 13px;
-  margin-top: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff4f2;
+  color: #b33c2a;
 }
 
-.worklist-msg--ok {
-  color: #1d7a4a;
+.worklist-btn-danger:hover {
+  border-color: #e07c6d;
+  background: #ffe7e3;
 }
 
-.worklist-msg--err {
-  color: #c14b2f;
+.worklist-item-delete {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #efb4aa;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff4f2;
+  color: #b33c2a;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.worklist-item-delete:hover {
+  border-color: #e07c6d;
+  background: #ffe7e3;
+  transform: translateY(-1px);
+}
+
+.worklist-item-delete:active {
+  transform: translateY(0);
+}
+
+.worklist-item-delete__icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+@media (max-width: 860px) {
+  .worklist-wrap {
+    grid-template-columns: 1fr;
+  }
 }

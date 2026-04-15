@@ -231,6 +231,7 @@ const worklistModule = createWorklistModule({
   persistPetState,
   BrowserWindow,
   Notification,
+  dialog,
   path,
   __dirname,
   loadPetRenderer,
@@ -591,7 +592,9 @@ app.whenReady().then(() => {
     // 每隔1秒中查看前台应用是什么
     monitor.start();
     // 八、统一由工作清单模块处理提醒检查，主进程仅负责任务调度。
-    worklistReminderTimer = setInterval(worklistModule.tick, 45000);
+    // 之前是 45 秒轮询一次，会导致提醒最多延后约 45 秒。
+    // 调整为 5 秒轮询，减少“到点后几十秒才触发”的体感延迟。
+    worklistReminderTimer = setInterval(worklistModule.tick, 5000);
     worklistModule.tick();
     globalShortcut.register('CommandOrControl+Shift+P', () => {
       toggleClickThrough();
