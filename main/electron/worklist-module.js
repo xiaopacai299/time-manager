@@ -3,13 +3,15 @@ export function createWorklistModule({
   persistPetState,
   BrowserWindow,
   Notification,
-  dialog,
   path,
   __dirname,
   loadPetRenderer,
 }) {
   const WORKLIST_ICON_MAX_LEN = 420000;
   let worklistWindow = null;
+  let estimateConfirmWindow = null;
+  let estimatePromptPayload = null;
+  let estimatePromptResolver = null;
   let estimatePrompting = false;
 
   function normalizeWorklistDatetime(value) {
@@ -174,37 +176,16 @@ export function createWorklistModule({
 
     estimatePrompting = true;
     try {
-      if (Notification.isSupported()) {
-        try {
-          const notify = new Notification({
-            title: `预估完成时间已到：${candidate.name}`,
-            body: '请确认这项工作是否已经完成。',
-          });
-          notify.show();
-        } catch (error) {
-          console.error('[worklist-estimate-notification-error]', error);
-        }
-      }
-      const buttons = ['已完成', '未完成', '稍后提醒'];
-      const { response } = await dialog.showMessageBox({
-        type: 'question',
-        buttons,
-        defaultId: 0,
-        cancelId: 2,
-        title: '工作清单确认',
-        message: `【${candidate.name}】已到预估完成时间`,
-        detail: '这项工作是否完成了？',
-        noLink: true,
-      });
+      const action = await promptEstimateChoice(candidate);
 
       const nowIso = new Date(now).toISOString();
       const snoozeIso = new Date(now + 10 * 60 * 1000).toISOString();
       petState.worklist = getWorklist().map((item) => {
         if (item.id !== candidate.id) return item;
-        if (response === 0) {
+        if (action === 'completed') {
           return { ...item, completionResult: 'completed', confirmSnoozeUntil: nowIso };
         }
-        if (response === 1) {
+        if (action === 'incomplete') {
           return { ...item, completionResult: 'incomplete', confirmSnoozeUntil: nowIso };
         }
         return { ...item, confirmSnoozeUntil: snoozeIso };
@@ -214,8 +195,79 @@ export function createWorklistModule({
     } catch (error) {
       console.error('[worklist-estimate-confirm-error]', error);
     } finally {
+      estimatePromptPayload = null;
+      estimatePromptResolver = null;
+      closeEstimateConfirmWindow();
       estimatePrompting = false;
     }
+  }
+
+  function closeEstimateConfirmWindow() {
+    if (!estimateConfirmWindow || estimateConfirmWindow.isDestroyed()) {
+      estimateConfirmWindow = null;
+      return;
+    }
+    estimateConfirmWindow.close();
+    estimateConfirmWindow = null;
+  }
+
+  function createEstimateConfirmWindow() {
+    if (estimateConfirmWindow && !estimateConfirmWindow.isDestroyed()) {
+      estimateConfirmWindow.show();
+      estimateConfirmWindow.focus();
+      return estimateConfirmWindow;
+    }
+
+    estimateConfirmWindow = new BrowserWindow({
+      width: 460,
+      height: 360,
+      show: false,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      alwaysOnTop: true,
+      autoHideMenuBar: true,
+      title: '工作确认',
+      backgroundColor: '#fff7f2',
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.cjs'),
+        contextIsolation: true,
+        webSecurity: false,
+      },
+    });
+
+    estimateConfirmWindow.once('ready-to-show', () => {
+      if (!estimateConfirmWindow || estimateConfirmWindow.isDestroyed()) return;
+      estimateConfirmWindow.show();
+      estimateConfirmWindow.focus();
+    });
+
+    estimateConfirmWindow.on('closed', () => {
+      estimateConfirmWindow = null;
+      if (estimatePromptResolver) {
+        const resolver = estimatePromptResolver;
+        estimatePromptResolver = null;
+        resolver('snooze');
+      }
+      estimatePromptPayload = null;
+    });
+
+    loadPetRenderer(estimateConfirmWindow, 'worklist-estimate-confirm');
+    return estimateConfirmWindow;
+  }
+
+  function promptEstimateChoice(candidate) {
+    estimatePromptPayload = {
+      id: candidate.id,
+      name: candidate.name,
+      note: candidate.note || '',
+      estimateDoneAt: candidate.estimateDoneAt || '',
+    };
+    createEstimateConfirmWindow();
+    return new Promise((resolve) => {
+      estimatePromptResolver = resolve;
+    });
   }
 
   function openWindow() {
@@ -256,12 +308,26 @@ export function createWorklistModule({
     ipcMain.handle('worklist:add', (_event, payload) => addWorklistItem(payload));
     ipcMain.handle('worklist:update', (_event, payload) => updateWorklistItem(payload));
     ipcMain.handle('worklist:remove', (_event, payload) => removeWorklistItem(payload));
+    ipcMain.handle('worklist:estimate-confirm:get-payload', () => estimatePromptPayload);
+    ipcMain.handle('worklist:estimate-confirm:submit', (_event, payload) => {
+      const action = String(payload?.action || '').trim().toLowerCase();
+      if (!estimatePromptResolver) return { ok: false, error: '当前没有待确认任务。' };
+      if (!['completed', 'incomplete', 'snooze'].includes(action)) {
+        return { ok: false, error: '无效的确认动作。' };
+      }
+      const resolver = estimatePromptResolver;
+      estimatePromptResolver = null;
+      resolver(action);
+      return { ok: true };
+    });
   }
 
   function teardown() {
-    if (!worklistWindow || worklistWindow.isDestroyed()) return;
-    worklistWindow.close();
-    worklistWindow = null;
+    if (worklistWindow && !worklistWindow.isDestroyed()) {
+      worklistWindow.close();
+      worklistWindow = null;
+    }
+    closeEstimateConfirmWindow();
   }
 
   return {

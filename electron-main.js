@@ -231,7 +231,6 @@ const worklistModule = createWorklistModule({
   persistPetState,
   BrowserWindow,
   Notification,
-  dialog,
   path,
   __dirname,
   loadPetRenderer,

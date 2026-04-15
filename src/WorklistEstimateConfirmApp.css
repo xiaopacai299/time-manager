@@ -1,0 +1,107 @@
+.estimate-confirm-page {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 15% 20%, #ffe6cf 0%, #ffe6cf 16%, transparent 16%),
+    radial-gradient(circle at 85% 30%, #ffd8be 0%, #ffd8be 14%, transparent 14%),
+    linear-gradient(180deg, #fff7f2 0%, #ffeedf 100%);
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  color: #4f2f20;
+}
+
+.estimate-confirm-card {
+  width: min(420px, calc(100vw - 24px));
+  border-radius: 24px;
+  border: 1px solid #f6d3bf;
+  background: #fffaf6;
+  box-shadow: 0 16px 36px rgba(181, 100, 64, 0.2);
+  padding: 22px 20px 18px;
+  text-align: center;
+}
+
+.estimate-confirm-badge {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 8px;
+  border-radius: 999px;
+  background: #ffe4cf;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+}
+
+.estimate-confirm-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.estimate-confirm-subtitle {
+  margin: 8px 0 6px;
+  font-size: 13px;
+  color: #80513c;
+}
+
+.estimate-confirm-name {
+  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 1.35;
+  color: #5c2d1f;
+}
+
+.estimate-confirm-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7a4b37;
+  min-height: 20px;
+}
+
+.estimate-confirm-actions {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.estimate-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 11px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.estimate-btn:hover:enabled {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.estimate-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.estimate-btn--done {
+  background: #37c286;
+  color: #fff;
+}
+
+.estimate-btn--undone {
+  background: #ff9f5f;
+  color: #fff;
+}
+
+.estimate-btn--later {
+  background: #f3e4d8;
+  color: #6a402f;
+}
+
+.estimate-confirm-error {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #bf2f2f;
+}

@@ -120,6 +120,20 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<object>}
    */
   removeWorklistItem: (payload) => ipcRenderer.invoke('worklist:remove', payload),
+  /**
+   * 获取预估完成确认弹窗的数据。
+   * 主进程通道：`worklist:estimate-confirm:get-payload`（invoke/handle）
+   * @returns {Promise<object|null>}
+   */
+  getEstimateConfirmPayload: () => ipcRenderer.invoke('worklist:estimate-confirm:get-payload'),
+  /**
+   * 提交预估完成确认结果。
+   * 主进程通道：`worklist:estimate-confirm:submit`（invoke/handle）
+   * @param {'completed'|'incomplete'|'snooze'} action
+   * @returns {Promise<{ok:boolean,error?:string}>}
+   */
+  submitEstimateConfirm: (action) =>
+    ipcRenderer.invoke('worklist:estimate-confirm:submit', { action }),
 
   /**
    * 启动收藏项拖拽（单向通知，无返回值）。
