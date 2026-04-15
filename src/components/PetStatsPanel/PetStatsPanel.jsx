@@ -163,6 +163,7 @@ export default function PetStatsPanel({ snapshot, topApps, durationStats }) {
       <p className="pet-stats-panel__footnote">
         提示：按住 Alt 可临时关闭鼠标穿透；右键宠物或托盘可调整穿透、面板与模式。
       </p>
+      <p className="pet-stats-panel__footnote">制作人：王魁<span style={{ color: '#64748b',marginLeft: '10px' }}>邮箱：93977036@qq.com</span></p>
     </section>
   )
 }
