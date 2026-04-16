@@ -12,7 +12,7 @@ import { topAppsFromPerAppToday } from './utils/topAppsFromPerAppToday'
 function App() {
   const { snapshot, petState, isBridgeReady, transientAction, petMotion } = useTimeManagerPetBridge()
   usePetTempInteractive(petState.clickThrough)
-  const mood = usePetMood(snapshot, transientAction)
+  const mood = usePetMood(snapshot, transientAction, petState?.petSettings)
   const topApps = useMemo(() => topAppsFromPerAppToday(snapshot.perAppToday), [snapshot.perAppToday])
   const durationStats = useMemo(() => getSnapshotDurationStats(snapshot), [snapshot])
 

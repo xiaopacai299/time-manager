@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EMPTY_SNAPSHOT } from '../constants/emptySnapshot'
 import { PET_VIEW_VARIANT_SET } from '../constants/petViewVariants'
+import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from '../configKeys'
 
 const DEFAULT_PET_STATE = {
   clickThrough: false,
@@ -15,6 +16,9 @@ const DEFAULT_PET_STATE = {
       remind: '',
       'long-work': '',
     },
+    // 宠物形态切换阈值（毫秒）
+    remindContinuousMs: REMIND_CONTINUOUS_MS,
+    longWorkContinuousMs: LONG_WORK_CONTINUOUS_MS,
   },
 }
 

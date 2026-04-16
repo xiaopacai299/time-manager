@@ -23,11 +23,13 @@ export default function PetBubble({ snapshot, petSettings }) {
     const continuousMs = snapshot.continuousUseMs || 0
     const breakMs = snapshot.breakCompletedMs || 0
     const currentApp = snapshot.current?.processName || 'Unknown'
+    const remindContinuousMs = petSettings?.remindContinuousMs ?? REMIND_CONTINUOUS_MS
+    const longWorkContinuousMs = petSettings?.longWorkContinuousMs ?? LONG_WORK_CONTINUOUS_MS
     let baseText = `当前专注：${currentApp}`
 
     if (breakMs >= BREAK_COMPLETED_CELEBRATION_MS) {
       baseText = '休息完成！做得很好，继续保持。'
-    } else if (continuousMs >= LONG_WORK_CONTINUOUS_MS) {
+    } else if (continuousMs >= longWorkContinuousMs) {
       baseText = `你已连续使用 ${formatDuration(continuousMs)}，建议活动一下。`
     } else if (snapshot.current?.isOnBreak) {
       baseText = '检测到你在休息，我会安静陪着你。'
@@ -35,8 +37,8 @@ export default function PetBubble({ snapshot, petSettings }) {
 
     let v = 'work'
     if (snapshot.current?.isOnBreak) v = 'rest'
-    else if (continuousMs >= LONG_WORK_CONTINUOUS_MS) v = 'long-work'
-    else if (continuousMs >= REMIND_CONTINUOUS_MS) v = 'remind'
+    else if (continuousMs >= longWorkContinuousMs) v = 'long-work'
+    else if (continuousMs >= remindContinuousMs) v = 'remind'
     else if (breakMs >= BREAK_COMPLETED_CELEBRATION_MS) v = 'rest'
 
     const customText = String(petSettings?.bubbleTexts?.[v] || '').trim()

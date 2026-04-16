@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import lottie from 'lottie-web'
 import './SettingsWindowApp.css'
 import { PET_LIST } from './pets/registry'
+import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './configKeys'
 
 const DEFAULT_BUBBLE_TEXTS = {
   work: '',
@@ -31,6 +32,8 @@ function PetLottieIcon({ animationData }) {
 export default function SettingsWindowApp() {
   const [selectedPet, setSelectedPet] = useState('black-coal')
   const [bubbleTexts, setBubbleTexts] = useState(DEFAULT_BUBBLE_TEXTS)
+  const [remindContinuousMins, setRemindContinuousMins] = useState(Math.round(REMIND_CONTINUOUS_MS / 60000))
+  const [longWorkContinuousMins, setLongWorkContinuousMins] = useState(Math.round(LONG_WORK_CONTINUOUS_MS / 60000))
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -46,6 +49,11 @@ export default function SettingsWindowApp() {
         remind: String(next.remind || ''),
         'long-work': String(next['long-work'] || ''),
       })
+
+      const remindMs = Number(data.remindContinuousMs)
+      const longMs = Number(data.longWorkContinuousMs)
+      setRemindContinuousMins(Number.isFinite(remindMs) ? Math.round(remindMs / 60000) : Math.round(REMIND_CONTINUOUS_MS / 60000))
+      setLongWorkContinuousMins(Number.isFinite(longMs) ? Math.round(longMs / 60000) : Math.round(LONG_WORK_CONTINUOUS_MS / 60000))
     })
     return () => {
       mounted = false
@@ -56,9 +64,19 @@ export default function SettingsWindowApp() {
     setBusy(true)
     setMsg('')
     try {
+      const remindMs = Math.max(0, Math.round(Number(remindContinuousMins) * 60 * 1000))
+      const longMs = Math.max(0, Math.round(Number(longWorkContinuousMins) * 60 * 1000))
+
+      if (remindMs >= longMs) {
+        setMsg('提醒阈值必须小于警告阈值（持续使用分钟数）。')
+        return
+      }
+
       const result = await window.timeManagerAPI?.updatePetSettings?.({
         selectedPet,
         bubbleTexts,
+        remindContinuousMs: remindMs,
+        longWorkContinuousMs: longMs,
       })
       if (!result?.ok) {
         setMsg(result?.error || '保存失败')
@@ -138,6 +156,34 @@ export default function SettingsWindowApp() {
               maxLength={120}
               onChange={(e) => setBubbleTexts((p) => ({ ...p, 'long-work': e.target.value }))}
               placeholder="例如：高强度持续过久，请立即休息"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-title">形态切换时间阈值</h2>
+        <p className="settings-sub">持续使用达到这些时间后，会切换宠物形态（单位：分钟）。</p>
+        <div className="settings-form">
+          <label className="settings-field">
+            <span>提醒阈值（分钟，&gt;=进入 remind）</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={remindContinuousMins}
+              onChange={(e) => setRemindContinuousMins(Number(e.target.value))}
+            />
+          </label>
+
+          <label className="settings-field">
+            <span>警告阈值（分钟，&gt;=进入 long-work）</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={longWorkContinuousMins}
+              onChange={(e) => setLongWorkContinuousMins(Number(e.target.value))}
             />
           </label>
         </div>

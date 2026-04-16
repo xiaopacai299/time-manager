@@ -22,6 +22,7 @@ import { createWorklistModule } from './main/electron/worklist-module.js';
 import { createFavoritesModule } from './main/electron/favorites-module.js';
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
+import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './src/configKeys/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -208,6 +209,9 @@ const petState = {
       remind: '',
       'long-work': '',
     },
+    // 宠物形态切换阈值（毫秒）
+    remindContinuousMs: REMIND_CONTINUOUS_MS,
+    longWorkContinuousMs: LONG_WORK_CONTINUOUS_MS,
   },
 };
 
@@ -231,6 +235,12 @@ function loadPetState() {
       petState.worklist = Array.isArray(parsed.worklist) ? parsed.worklist : [];
       if (parsed.petSettings && typeof parsed.petSettings === 'object') {
         const bubbleTextsRaw = parsed.petSettings.bubbleTexts || {};
+        const remindContinuousMs = Number.isFinite(Number(parsed.petSettings.remindContinuousMs))
+          ? Number(parsed.petSettings.remindContinuousMs)
+          : REMIND_CONTINUOUS_MS;
+        const longWorkContinuousMs = Number.isFinite(Number(parsed.petSettings.longWorkContinuousMs))
+          ? Number(parsed.petSettings.longWorkContinuousMs)
+          : LONG_WORK_CONTINUOUS_MS;
         petState.petSettings = {
           selectedPet: String(parsed.petSettings.selectedPet || 'black-coal'),
           bubbleTexts: {
@@ -239,6 +249,8 @@ function loadPetState() {
             remind: String(bubbleTextsRaw.remind || ''),
             'long-work': String(bubbleTextsRaw['long-work'] || ''),
           },
+          remindContinuousMs,
+          longWorkContinuousMs,
         };
       }
     }
@@ -562,7 +574,7 @@ function openSettingsWindow() {
   }
   settingsWindow = new BrowserWindow({
     width: 760,
-    height: 620,
+    height: 800,
     show: false,
     title: '设置',
     icon: APP_ICON_PATH,
@@ -609,6 +621,12 @@ function setupIpc() {
     const input = payload && typeof payload === 'object' ? payload : {};
     const bubbleTextsRaw =
       input.bubbleTexts && typeof input.bubbleTexts === 'object' ? input.bubbleTexts : {};
+    const remindContinuousMs = Number.isFinite(Number(input.remindContinuousMs))
+      ? Math.max(0, Number(input.remindContinuousMs))
+      : petState.petSettings.remindContinuousMs ?? REMIND_CONTINUOUS_MS;
+    const longWorkContinuousMs = Number.isFinite(Number(input.longWorkContinuousMs))
+      ? Math.max(0, Number(input.longWorkContinuousMs))
+      : petState.petSettings.longWorkContinuousMs ?? LONG_WORK_CONTINUOUS_MS;
     petState.petSettings = {
       selectedPet: String(input.selectedPet || petState.petSettings.selectedPet || 'black-coal'),
       bubbleTexts: {
@@ -619,6 +637,8 @@ function setupIpc() {
           bubbleTextsRaw['long-work'] ?? petState.petSettings?.bubbleTexts?.['long-work'] ?? '',
         ).slice(0, 120),
       },
+      remindContinuousMs,
+      longWorkContinuousMs,
     };
     persistPetState();
     broadcastPetStateChanged();
