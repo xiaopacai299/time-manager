@@ -1,33 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import lottie from 'lottie-web'
-import badCatAnimation from '../assets/bad-cat.json'
-import runCatAnimation from '../assets/run-cat.json'
-import turtleAnimation from '../assets/Turtle.json'
-import runTurtleAnimation from '../assets/run-turtle.json'
-import { getBadCatRestAnimationData } from '../utils/badCatRestVariant.js'
-import PetMoodOverlay from './PetMoodOverlay.jsx'
 import RunCatTailSparks from './RunCatTailSparks.jsx'
+import { getPetDefinition } from '../pets/registry'
 
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
-
-/** 非休息：含爪子短循环 */
-const IDLE_SEGMENTS_DEFAULT = [0, 24]
-/** 休息：整段循环（爪/杯层已从 JSON 剔除），配合 setSpeed(0.5) 整体慢一倍 */
-const IDLE_SEGMENTS_REST = [0, 65]
-
-const badCatRestAnimation = getBadCatRestAnimationData()
-const PET_ANIMATION_MAP = {
-  'black-coal': {
-    idle: badCatAnimation,
-    rest: badCatRestAnimation,
-    chase: runCatAnimation,
-  },
-  'little-turtle': {
-    idle: turtleAnimation,
-    rest: turtleAnimation,
-    chase: runTurtleAnimation,
-  },
-}
 
 /**
  * 底层 bad-cat / 休息变体；追逐 run-cat。
@@ -41,6 +17,8 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
 
   const moodClass = useMemo(() => `pet-visual--${mood}`, [mood])
   const chasing = petMotion.running
+  const petDef = useMemo(() => getPetDefinition(selectedPet), [selectedPet])
+  const EffectsComponent = petDef.effectsComponent
 
   useEffect(() => {
     const chaseEl = chaseRef.current
@@ -51,7 +29,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
       renderer: 'svg',
       loop: true,
       autoplay: false,
-      animationData: PET_ANIMATION_MAP[selectedPet]?.chase || runCatAnimation,
+      animationData: petDef.chaseAnimation,
       rendererSettings: {
         preserveAspectRatio: 'xMidYMid meet',
       },
@@ -67,7 +45,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
       chaseAnim.destroy()
       chaseAnimRef.current = null
     }
-  }, [selectedPet])
+  }, [petDef])
 
   useEffect(() => {
     const idleEl = idleRef.current
@@ -87,9 +65,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
 
     chaseAnim.pause()
 
-    const isRest = mood === 'rest'
-    const pack = PET_ANIMATION_MAP[selectedPet] || PET_ANIMATION_MAP['black-coal']
-    const data = isRest ? pack.rest : pack.idle
+    const data = petDef.idleByMood[mood] || petDef.idleByMood.work
     const idleAnim = lottie.loadAnimation({
       container: idleEl,
       renderer: 'svg',
@@ -102,14 +78,13 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
     })
     idleAnimRef.current = idleAnim
 
-    const applyIdleSpeed = () => {
-      idleAnim.setSpeed(isRest ? 0.5 : 1)
-    }
+    const applyIdleSpeed = () => idleAnim.setSpeed(petDef.idleSpeedByMood[mood] || 1)
     applyIdleSpeed()
     idleAnim.addEventListener('DOMLoaded', applyIdleSpeed)
 
-    if (selectedPet === 'black-coal') {
-      idleAnim.playSegments(isRest ? IDLE_SEGMENTS_REST : IDLE_SEGMENTS_DEFAULT, true)
+    const segments = petDef.idleSegmentsByMood[mood]
+    if (Array.isArray(segments) && segments.length === 2) {
+      idleAnim.playSegments(segments, true)
     } else {
       idleAnim.play()
     }
@@ -127,7 +102,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
       idleAnim.destroy()
       idleAnimRef.current = null
     }
-  }, [mood, chasing, selectedPet])
+  }, [mood, chasing, petDef])
 
   const faceStyle = useMemo(() => {
     if (!chasing) return undefined
@@ -142,9 +117,9 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
         <div className="pet-visual__facing-wrap" style={faceStyle}>
           <div className="pet-visual__stack">
             <div ref={idleRef} className="pet-visual__lottie pet-visual__lottie--idle-layer" />
-            {chasing && <RunCatTailSparks />}
+            {chasing && petDef.showTailSparks && <RunCatTailSparks />}
             <div ref={chaseRef} className="pet-visual__lottie pet-visual__lottie--chase-layer" />
-            {!chasing && <PetMoodOverlay mood={mood} />}
+            {!chasing && EffectsComponent ? <EffectsComponent mood={mood} /> : null}
           </div>
         </div>
       </div>

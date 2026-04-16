@@ -1,9 +1,9 @@
-import './PetMoodOverlay.css'
+import './BlackCoalEffects.css'
 
 /**
  * 叠在 bad-cat Lottie 上的道具层（viewBox 400×400，内层 scale(2) 对应 200 设计稿单位）。
  */
-export default function PetMoodOverlay({ mood }) {
+export default function BlackCoalEffects({ mood }) {
   const showRestHandCup = mood === 'rest'
   const showDesk = mood === 'work' || mood === 'remind' || mood === 'long-work'
   const showPainBack = mood === 'remind' || mood === 'long-work'
@@ -85,16 +85,8 @@ export default function PetMoodOverlay({ mood }) {
           </g>
         )}
 
-        {/*
-          休息态叠加层说明（杯子不在这里画）：
-          - 杯子：由底层 Lottie `bad-cat` 休息变体里的 `cup` 层渲染，水平翻转等在 `src/utils/badCatRestVariant.js`。
-          - 下面第一个 <g>：杯口上方的三道白线 = 热气（不是杯子）。
-          - 下面 <ellipse>：左手前爪的简化占位（与 `pet-mood-overlay__rest-hand-sway` 一起做轻微上下动）。
-          坐标：合成 400×400，内层先有 scale(2)，故此处数值约为合成坐标的一半。
-        */}
         {showRestHandCup && (
           <g className="pet-mood-overlay__rest-hand-sway">
-            {/* 热气（白烟），非杯身 */}
             <g
               className="pet-mood-overlay__steam-rest"
               transform="translate(15, 90)"
@@ -107,7 +99,6 @@ export default function PetMoodOverlay({ mood }) {
               <path d="M 20 4 Q 18 -6 22 -16" />
               <path d="M 30 6 Q 28 -3 32 -13" />
             </g>
-            {/* 左手（前爪） */}
             <ellipse
               cx="60"
               cy="132"

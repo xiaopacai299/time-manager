@@ -9,7 +9,6 @@
   pointer-events: none;
 }
 
-/* 休息：左爪 + 镜像杯 + 热气整组轻缓上下（勿对 SVG <g> 用 fill-box 原点，易把内容甩出视区） */
 .pet-mood-overlay--rest .pet-mood-overlay__rest-hand-sway {
   animation: petMoodRestHandSway 4.8s ease-in-out infinite alternate;
 }

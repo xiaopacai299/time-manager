@@ -1,14 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import lottie from 'lottie-web'
-import badCatAnimation from './assets/bad-cat.json'
-import turtleAnimation from './assets/Turtle.json'
 import './SettingsWindowApp.css'
-
-const PET_OPTIONS = [
-  { id: 'black-coal', name: '黑煤球', icon: 'bad-cat', enabled: true },
-  { id: 'little-turtle', name: '小乌龟', icon: 'turtle', enabled: true },
-  { id: 'coming-soon-2', name: '敬请期待', icon: '🐾', enabled: false },
-]
+import { PET_LIST } from './pets/registry'
 
 const DEFAULT_BUBBLE_TEXTS = {
   work: '',
@@ -17,39 +10,21 @@ const DEFAULT_BUBBLE_TEXTS = {
   'long-work': '',
 }
 
-function BlackCoalLottieIcon() {
+function PetLottieIcon({ animationData }) {
   const ref = useRef(null)
   useEffect(() => {
-    if (!ref.current) return undefined
+    if (!ref.current || !animationData) return undefined
     const anim = lottie.loadAnimation({
       container: ref.current,
       renderer: 'svg',
       loop: true,
       autoplay: true,
-      animationData: badCatAnimation,
-      rendererSettings: { preserveAspectRatio: 'xMidYMid meet' },
-    })
-    anim.setSpeed(0.6)
-    return () => anim.destroy()
-  }, [])
-  return <span className="settings-pet-icon settings-pet-icon--lottie" ref={ref} aria-hidden="true" />
-}
-
-function TurtleLottieIcon() {
-  const ref = useRef(null)
-  useEffect(() => {
-    if (!ref.current) return undefined
-    const anim = lottie.loadAnimation({
-      container: ref.current,
-      renderer: 'svg',
-      loop: true,
-      autoplay: true,
-      animationData: turtleAnimation,
+      animationData,
       rendererSettings: { preserveAspectRatio: 'xMidYMid meet' },
     })
     anim.setSpeed(0.7)
     return () => anim.destroy()
-  }, [])
+  }, [animationData])
   return <span className="settings-pet-icon settings-pet-icon--lottie" ref={ref} aria-hidden="true" />
 }
 
@@ -101,9 +76,9 @@ export default function SettingsWindowApp() {
     <main className="settings-page">
       <section className="settings-card">
         <h2 className="settings-title">设置宠物类型</h2>
-        <p className="settings-sub">上方为休息时图标，下方为宠物名称。当前仅开放黑煤球。</p>
+        <p className="settings-sub">上方为休息时图标，下方为宠物名称。每个宠物独立管理自身形态和特效。</p>
         <div className="settings-pet-grid">
-          {PET_OPTIONS.map((pet) => (
+          {PET_LIST.map((pet) => (
             <button
               key={pet.id}
               type="button"
@@ -114,12 +89,10 @@ export default function SettingsWindowApp() {
                 setSelectedPet(pet.id)
               }}
             >
-              {pet.icon === 'bad-cat' ? (
-                <BlackCoalLottieIcon />
-              ) : pet.icon === 'turtle' ? (
-                <TurtleLottieIcon />
+              {pet.previewAnimation ? (
+                <PetLottieIcon animationData={pet.previewAnimation} />
               ) : (
-                <span className="settings-pet-icon" aria-hidden="true">{pet.icon}</span>
+                <span className="settings-pet-icon" aria-hidden="true">🐾</span>
               )}
               <span className="settings-pet-name">{pet.name}</span>
             </button>
