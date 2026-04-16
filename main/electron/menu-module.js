@@ -114,7 +114,7 @@ export function createMenuModule({
       }
       image = image.resize({ width: 16, height: 16 });
       tray = new Tray(image);
-      tray.setToolTip('时间小精灵');
+      tray.setToolTip('work master');
       tray.setContextMenu(buildTrayMenu());
       tray.on('click', () => {
         const statsWindow = getStatsWindow();

@@ -41,7 +41,7 @@ function prepareWindowsReleaseDir() {
   } catch (err) {
     console.error(
       `[electron-build] 无法删除 ${unpacked}：${err?.message || err}\n` +
-        '请先退出正在运行的「时间小精灵」（或任务管理器结束进程），并关闭资源管理器中打开该文件夹的窗口，然后重试。',
+        '请先退出正在运行的「work master」（或任务管理器结束进程），并关闭资源管理器中打开该文件夹的窗口，然后重试。',
     )
     process.exit(1)
   }

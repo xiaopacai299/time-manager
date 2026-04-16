@@ -22,7 +22,10 @@ import { createWorklistModule } from './main/electron/worklist-module.js';
 import { createFavoritesModule } from './main/electron/favorites-module.js';
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
-import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './src/configKeys/index.js';
+
+// 主进程默认阈值（毫秒）。不要依赖 src 目录，避免打包后模块缺失。
+const REMIND_CONTINUOUS_MS = 25 * 60 * 1000;
+const LONG_WORK_CONTINUOUS_MS = 50 * 60 * 1000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
