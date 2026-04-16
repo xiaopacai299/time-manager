@@ -45,12 +45,266 @@
   margin: 0 auto;
 }
 
+.worklist-content {
+  animation: worklistTabContentIn 220ms ease;
+}
+
+@keyframes worklistTabContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.worklist-tabs {
+  display: flex;
+  gap: 10px;
+  padding: 6px;
+  max-width: 1180px;
+  margin: 14px auto 0;
+  position: relative;
+  width: fit-content;
+  border-radius: 14px;
+  border: 1px solid #d6e2ff;
+  background: linear-gradient(180deg, #f7faff 0%, #edf3ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 4px 14px rgba(64, 98, 214, 0.1);
+}
+
+.worklist-tab-indicator {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: calc(50% - 11px);
+  height: calc(100% - 12px);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5f87ff, #4062d6);
+  box-shadow: 0 8px 16px rgba(64, 98, 214, 0.32);
+  transition: transform 0.24s ease;
+  pointer-events: none;
+}
+
+.worklist-tab-indicator--today {
+  transform: translateX(0);
+}
+
+.worklist-tab-indicator--year {
+  transform: translateX(calc(100% + 10px));
+}
+
+.worklist-tab-btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #496092;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.worklist-tab-btn:not(.worklist-tab-btn--active):hover {
+  color: #35508e;
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.worklist-tab-btn--active {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.worklist-tab-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(95, 135, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
 .worklist-pane {
   background: #ffffff;
   border: 1px solid #d9e2f6;
   border-radius: 14px;
   padding: 14px;
   min-height: 0;
+}
+
+.worklist-pane--year {
+  margin: 0;
+  max-width: none;
+  min-height: 220px;
+}
+
+.worklist-wrap--year {
+  grid-template-columns: 1fr;
+}
+
+.year-overview {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 16px;
+  align-items: start;
+}
+
+.year-heatmap {
+  margin-top: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.year-heatmap-row {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: max-content;
+}
+
+.year-heatmap-core {
+  width: max-content;
+}
+
+.year-heatmap-months {
+  display: grid;
+  grid-auto-rows: 16px;
+  gap: 3px;
+  margin-left: 26px;
+  margin-bottom: 6px;
+  width: max-content;
+}
+
+.year-heatmap-month {
+  font-size: 11px;
+  color: #6a7aa8;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.year-heatmap-main {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  width: max-content;
+}
+
+.year-heatmap-weekdays {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  gap: 3px;
+}
+
+.year-heatmap-weekday {
+  font-size: 11px;
+  color: #7a8ab8;
+  line-height: 12px;
+  text-align: right;
+}
+
+.year-heatmap-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  grid-auto-flow: column;
+  grid-auto-columns: 12px;
+  gap: 3px;
+  width: max-content;
+}
+
+.year-heatmap-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(64, 98, 214, 0.08);
+  background: #edf2ff;
+}
+
+.year-heatmap-cell--lv-1 {
+  background: transparent;
+  border-color: transparent;
+}
+
+.year-heatmap-cell--lv0 {
+  background: #ebf7ee;
+}
+
+.year-heatmap-cell--lv1 {
+  background: #cdebd3;
+}
+
+.year-heatmap-cell--lv2 {
+  background: #93d7a0;
+}
+
+.year-heatmap-cell--lv3 {
+  background: #54b86a;
+}
+
+.year-heatmap-cell--lv4 {
+  background: #2f8d4a;
+}
+
+.year-heatmap-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #6a7aa8;
+  align-self: flex-end;
+}
+
+.year-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.year-selector-item {
+  border: 1px solid #cfe0ff;
+  border-radius: 10px;
+  background: #f6f9ff;
+  color: #4d6296;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.year-selector-item:not(.year-selector-item--active):hover {
+  border-color: #9ebeff;
+  background: #edf4ff;
+}
+
+.year-selector-item--active {
+  border-color: #58a66a;
+  background: #e7f6ea;
+  color: #2f8d4a;
+  box-shadow: 0 0 0 2px rgba(84, 184, 106, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worklist-content,
+  .worklist-tab-indicator,
+  .worklist-tab-btn {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .year-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .year-selector {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
 }
 
 .worklist-pane--list {
