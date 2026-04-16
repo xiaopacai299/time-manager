@@ -8,6 +8,7 @@ export function createFavoritesModule({
   path,
   fs,
   createHash,
+  iconPath,
   __dirname,
   loadPetRenderer,
 }) {
@@ -346,6 +347,8 @@ export function createFavoritesModule({
       height: 520,
       show: false,
       title: '收藏夹',
+      icon: iconPath,
+      autoHideMenuBar: true,
       resizable: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
@@ -356,6 +359,7 @@ export function createFavoritesModule({
 
     favoritesWindow.once('ready-to-show', () => {
       if (!favoritesWindow || favoritesWindow.isDestroyed()) return;
+      favoritesWindow.setMenuBarVisibility(false);
       favoritesWindow.show();
       broadcastFavoritesUpdate();
     });

@@ -14,6 +14,20 @@ const isWorklistWindow = typeof window !== 'undefined' && window.location.hash =
 const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
 
+if (typeof document !== 'undefined') {
+  if (isStatsWindow) {
+    document.title = '使用统计'
+  } else if (isFavoritesWindow) {
+    document.title = '收藏夹'
+  } else if (isWorklistWindow) {
+    document.title = '工作清单'
+  } else if (isEstimateConfirmWindow) {
+    document.title = '工作确认'
+  } else {
+    document.title = '桌面宠物'
+  }
+}
+
 createRoot(root).render(
   <StrictMode>
     {isStatsWindow ? (

@@ -56,6 +56,12 @@ const PET_COMPACT_HEIGHT = 210;
 const PET_RENDERER_ORIGIN = 'http://localhost:4567';
 const STATS_DETAIL_WINDOW_WIDTH = 650;
 const STATS_DETAIL_WINDOW_HEIGHT = 800;
+const APP_ICON_CANDIDATES = [
+  path.join(__dirname, 'build', 'icon.ico'),
+  path.join(__dirname, 'build', 'icon.png'),
+  path.join(__dirname, 'assets', 'tray-icon.png'),
+];
+const APP_ICON_PATH = APP_ICON_CANDIDATES.find((p) => fs.existsSync(p)) || APP_ICON_CANDIDATES[2];
 
 const petIndexHtmlPath = path.join(__dirname, 'dist', 'index.html');
 
@@ -146,6 +152,8 @@ function openStatsDetailWindow() {
     height: STATS_DETAIL_WINDOW_HEIGHT,
     show: false,
     title: '使用统计',
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
     // window.timeManager挂载，在页面中被消费
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -156,7 +164,9 @@ function openStatsDetailWindow() {
   });
 
   statsWindow.once('ready-to-show', () => {
-    if (statsWindow && !statsWindow.isDestroyed()) statsWindow.show();
+    if (!statsWindow || statsWindow.isDestroyed()) return;
+    statsWindow.setMenuBarVisibility(false);
+    statsWindow.show();
   });
 
   loadPetRenderer(statsWindow, 'stats');
@@ -231,6 +241,7 @@ const worklistModule = createWorklistModule({
   persistPetState,
   BrowserWindow,
   Notification,
+  iconPath: APP_ICON_PATH,
   path,
   __dirname,
   loadPetRenderer,
@@ -247,6 +258,7 @@ const favoritesModule = createFavoritesModule({
   path,
   fs,
   createHash,
+  iconPath: APP_ICON_PATH,
   __dirname,
   loadPetRenderer,
 });
@@ -349,6 +361,8 @@ function createMainWindow() {
     skipTaskbar: true,
     hasShadow: false,
     show: false,
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -389,6 +403,7 @@ function createMainWindow() {
   mainWindow.once('ready-to-show', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     // show() 在 Windows 上比 showInactive 更可靠，避免窗口在屏外或层级异常时「存在但看不见」
+    mainWindow.setMenuBarVisibility(false);
     mainWindow.show();
   });
 

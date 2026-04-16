@@ -3,6 +3,7 @@ export function createWorklistModule({
   persistPetState,
   BrowserWindow,
   Notification,
+  iconPath,
   path,
   __dirname,
   loadPetRenderer,
@@ -229,6 +230,7 @@ export function createWorklistModule({
       alwaysOnTop: true,
       autoHideMenuBar: true,
       title: '工作确认',
+      icon: iconPath,
       backgroundColor: '#fff7f2',
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
@@ -239,6 +241,7 @@ export function createWorklistModule({
 
     estimateConfirmWindow.once('ready-to-show', () => {
       if (!estimateConfirmWindow || estimateConfirmWindow.isDestroyed()) return;
+      estimateConfirmWindow.setMenuBarVisibility(false);
       estimateConfirmWindow.show();
       estimateConfirmWindow.focus();
     });
@@ -281,7 +284,9 @@ export function createWorklistModule({
       width: 1180,
       height: 700,
       show: false,
-      title: '添加工作清单',
+      title: '工作清单',
+      icon: iconPath,
+      autoHideMenuBar: true,
       resizable: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
@@ -292,6 +297,7 @@ export function createWorklistModule({
 
     worklistWindow.once('ready-to-show', () => {
       if (!worklistWindow || worklistWindow.isDestroyed()) return;
+      worklistWindow.setMenuBarVisibility(false);
       worklistWindow.show();
       broadcastWorklistUpdate();
     });
