@@ -105,14 +105,22 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
     }
   }, [mood, chasing, petDef])
 
-  const faceStyle = useMemo(() => {
-    if (!chasing) return undefined
-    const dirScale = petMotion.mirrorX ? -1 : 1
-    const facing = petDef.invertChaseFacing ? dirScale * -1 : dirScale
-    return {
-      transform: `scaleX(${facing})`,
+  const wrapStyle = useMemo(() => {
+    const transforms = []
+
+    if (chasing) {
+      const dirScale = petMotion.mirrorX ? -1 : 1
+      const facing = petDef.invertChaseFacing ? dirScale * -1 : dirScale
+      transforms.push(`scaleX(${facing})`)
     }
-  }, [chasing, petMotion.mirrorX, petDef])
+
+    if (!chasing && selectedPet === 'little-turtle' && mood === 'long-work') {
+      transforms.push('rotate(30deg)')
+    }
+
+    if (transforms.length === 0) return undefined
+    return { transform: transforms.join(' ') }
+  }, [chasing, petMotion.mirrorX, petDef, selectedPet, mood])
 
   const chaseFacing = useMemo(() => {
     const dirScale = petMotion.mirrorX ? -1 : 1
@@ -122,7 +130,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
   return (
     <div className={`pet-visual ${moodClass} ${chasing ? 'pet-visual--chasing' : ''}`} role="img" aria-label="桌面宠物动画">
       <div className="pet-visual__bob">
-        <div className="pet-visual__facing-wrap" style={faceStyle}>
+        <div className="pet-visual__facing-wrap" style={wrapStyle}>
           <div className="pet-visual__stack">
             <div ref={idleRef} className="pet-visual__lottie pet-visual__lottie--idle-layer" />
             {chasing && ChaseEffectsComponent ? <ChaseEffectsComponent facing={chaseFacing} /> : null}

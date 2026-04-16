@@ -9,12 +9,162 @@
 }
 
 .little-turtle-overlay__rock {
-  /* 可手动调石头位置和大小：x 右移为正，y 下移为正 */
-  --turtle-rock-x: -45px;
-  --turtle-rock-y: -35px;
-  --turtle-rock-scale: 0.72;
-
-  transform: translate(var(--turtle-rock-x), var(--turtle-rock-y)) scale(var(--turtle-rock-scale));
+  transform: scale(0.72);
   transform-origin: 99px 98px;
   transform-box: fill-box;
+}
+
+.little-turtle-overlay__rock--left {
+  transform: translate(-62px, -33px) scale(0.69);
+}
+
+.little-turtle-overlay__rock--middle {
+  transform: translate(-42px, -42px) scale(0.75);
+}
+
+.little-turtle-overlay__rock--right {
+  transform: translate(-24px, -30px) scale(0.7);
+}
+
+.little-turtle-overlay__rock--back {
+  /* Place a single rock on turtle's back for `work` mood. */
+  transform: translate(-40px, -52px) scale(0.66) rotate(-10deg);
+  transform-origin: 99px 98px;
+  transform-box: fill-box;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.18));
+}
+
+.little-turtle-overlay__rock--alarm-1 {
+  transform: translate(-72px, -28px) scale(0.66);
+}
+
+.little-turtle-overlay__rock--alarm-2 {
+  transform: translate(-55px, -42px) scale(0.69);
+}
+
+.little-turtle-overlay__rock--alarm-3 {
+  transform: translate(-40px, -54px) scale(0.73);
+}
+
+.little-turtle-overlay__rock--alarm-4 {
+  transform: translate(-26px, -42px) scale(0.7);
+}
+
+.little-turtle-overlay__rock--alarm-5 {
+  transform: translate(-16px, -26px) scale(0.66);
+}
+
+.little-turtle-overlay__sweat {
+  transform: translate(-12px, -8px);
+}
+
+.little-turtle-overlay__sweat-drop {
+  transform-origin: 126px 83px;
+  transform-box: fill-box;
+}
+
+.little-turtle-overlay__sweat-drop--main {
+  animation: turtle-sweat-main 1.5s ease-in-out infinite;
+}
+
+.little-turtle-overlay__sweat-drop--small {
+  animation: turtle-sweat-small 1.2s ease-in-out 0.15s infinite;
+}
+
+@keyframes turtle-sweat-main {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(-1px) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(1px) scale(1.05);
+  }
+}
+
+@keyframes turtle-sweat-small {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(-2px) scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(1px) scale(1);
+  }
+}
+
+.little-turtle-overlay__foam {
+  transform: translate(-14px, -8px);
+}
+
+.little-turtle-overlay__foam-bubble {
+  transform-origin: center;
+  transform-box: fill-box;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.12));
+}
+
+.little-turtle-overlay__foam-bubble--a {
+  animation: turtle-foam-a 0.95s ease-in-out infinite;
+}
+
+.little-turtle-overlay__foam-bubble--b {
+  animation: turtle-foam-b 0.85s ease-in-out 0.08s infinite;
+}
+
+.little-turtle-overlay__foam-bubble--c {
+  animation: turtle-foam-c 1.05s ease-in-out 0.12s infinite;
+}
+
+.little-turtle-overlay__foam-bubble--d {
+  animation: turtle-foam-d 0.78s ease-in-out 0.18s infinite;
+}
+
+@keyframes turtle-foam-a {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: translate(0px, 0px) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(1px, -2px) scale(1.05);
+  }
+}
+
+@keyframes turtle-foam-b {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: translate(0px, 0px) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(2px, -1px) scale(1.08);
+  }
+}
+
+@keyframes turtle-foam-c {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translate(0px, 0px) scale(0.92);
+  }
+  50% {
+    opacity: 0.98;
+    transform: translate(-1px, -2px) scale(1.06);
+  }
+}
+
+@keyframes turtle-foam-d {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: translate(0px, 0px) scale(0.9);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translate(1px, -1px) scale(1.06);
+  }
 }
