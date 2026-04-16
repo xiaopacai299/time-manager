@@ -34,10 +34,10 @@ export default function PetMoodOverlay({ mood }) {
         {showPainBack && (
           <ellipse
             className="pet-mood-overlay__pain-back"
-            cx="100"
-            cy="118"
-            rx="44"
-            ry="36"
+            cx="132"
+            cy="111"
+            rx="22"
+            ry="17"
             fill="url(#petMoodPainGrad)"
           />
         )}
@@ -47,9 +47,20 @@ export default function PetMoodOverlay({ mood }) {
             className="pet-mood-overlay__pain-head"
             cx="100"
             cy="72"
-            rx="34"
-            ry="30"
+            rx="26"
+            ry="22"
             fill="url(#petMoodHeadPainGrad)"
+          />
+        )}
+
+        {showPainHead && (
+          <ellipse
+            className="pet-mood-overlay__pain-hand"
+            cx="70"
+            cy="118"
+            rx="16"
+            ry="12"
+            fill="url(#petMoodPainGrad)"
           />
         )}
 

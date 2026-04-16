@@ -121,6 +121,19 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    */
   removeWorklistItem: (payload) => ipcRenderer.invoke('worklist:remove', payload),
   /**
+   * 获取宠物设置（类型、气泡文案）。
+   * 主进程通道：`pet-settings:get`（invoke/handle）
+   * @returns {Promise<object>}
+   */
+  getPetSettings: () => ipcRenderer.invoke('pet-settings:get'),
+  /**
+   * 更新宠物设置（类型、气泡文案）。
+   * 主进程通道：`pet-settings:update`（invoke/handle）
+   * @param {object} payload
+   * @returns {Promise<{ok:boolean,petSettings?:object,error?:string}>}
+   */
+  updatePetSettings: (payload) => ipcRenderer.invoke('pet-settings:update', payload),
+  /**
    * 获取预估完成确认弹窗的数据。
    * 主进程通道：`worklist:estimate-confirm:get-payload`（invoke/handle）
    * @returns {Promise<object|null>}

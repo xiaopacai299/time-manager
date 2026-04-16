@@ -48,6 +48,7 @@ function getUIOhook() {
 
 let mainWindow;
 let statsWindow = null;
+let settingsWindow = null;
 let worklistReminderTimer = null;
 const PET_WINDOW_WIDTH = 260;
 const PET_WINDOW_HEIGHT = 280;
@@ -199,6 +200,15 @@ const petState = {
   favorites: [],
   /** @type {Array<Record<string, unknown>>} */
   worklist: [],
+  petSettings: {
+    selectedPet: 'black-coal',
+    bubbleTexts: {
+      work: '',
+      rest: '',
+      remind: '',
+      'long-work': '',
+    },
+  },
 };
 
 function getStateFilePath() {
@@ -219,10 +229,37 @@ function loadPetState() {
       petState.followMouse = Boolean(parsed.followMouse);
       petState.favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
       petState.worklist = Array.isArray(parsed.worklist) ? parsed.worklist : [];
+      if (parsed.petSettings && typeof parsed.petSettings === 'object') {
+        const bubbleTextsRaw = parsed.petSettings.bubbleTexts || {};
+        petState.petSettings = {
+          selectedPet: String(parsed.petSettings.selectedPet || 'black-coal'),
+          bubbleTexts: {
+            work: String(bubbleTextsRaw.work || ''),
+            rest: String(bubbleTextsRaw.rest || ''),
+            remind: String(bubbleTextsRaw.remind || ''),
+            'long-work': String(bubbleTextsRaw['long-work'] || ''),
+          },
+        };
+      }
     }
   } catch {
     // Use defaults when state file does not exist.
   }
+}
+
+function buildPetStatePayload() {
+  return {
+    clickThrough: petState.clickThrough,
+    showStatsPanel: petState.showStatsPanel,
+    compactMode: petState.compactMode,
+    followMouse: petState.followMouse,
+    petSettings: petState.petSettings,
+  };
+}
+
+function broadcastPetStateChanged() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('pet:state-changed', buildPetStatePayload());
 }
 
 function persistPetState() {
@@ -279,6 +316,7 @@ const menuModule = createMenuModule({
   onToggleChaosCat: () => toggleChaosCat(),
   onOpenFavorites: () => favoritesModule.openWindow(),
   onOpenWorklist: () => worklistModule.openWindow(),
+  onOpenSettings: () => openSettingsWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
 });
 
@@ -462,12 +500,7 @@ function toggleClickThrough() {
   petState.clickThrough = !petState.clickThrough;
   if (mainWindow && !mainWindow.isDestroyed()) {
     applyMouseMode();
-    mainWindow.webContents.send('pet:state-changed', {
-      clickThrough: petState.clickThrough,
-      showStatsPanel: petState.showStatsPanel,
-      compactMode: petState.compactMode,
-      followMouse: petState.followMouse,
-    });
+    broadcastPetStateChanged();
   }
   persistPetState();
   menuModule.refreshTrayMenu();
@@ -483,12 +516,7 @@ function toggleFollowMouse() {
     petMotionModule.stopFollowMouse();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('pet:state-changed', {
-      clickThrough: petState.clickThrough,
-      showStatsPanel: petState.showStatsPanel,
-      compactMode: petState.compactMode,
-      followMouse: petState.followMouse,
-    });
+    broadcastPetStateChanged();
   }
   persistPetState();
   menuModule.refreshTrayMenu();
@@ -506,12 +534,7 @@ function toggleChaosCat() {
     petMotionModule.startChaosCat();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('pet:state-changed', {
-      clickThrough: petState.clickThrough,
-      showStatsPanel: petState.showStatsPanel,
-      compactMode: petState.compactMode,
-      followMouse: petState.followMouse,
-    });
+    broadcastPetStateChanged();
   }
   persistPetState();
   menuModule.refreshTrayMenu();
@@ -531,15 +554,43 @@ function emitPetAction(action) {
   mainWindow.webContents.send('pet:action', { action: String(action || '') });
 }
 
+function openSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.show();
+    settingsWindow.focus();
+    return;
+  }
+  settingsWindow = new BrowserWindow({
+    width: 760,
+    height: 620,
+    show: false,
+    title: '设置',
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      webSecurity: false,
+    },
+  });
+  settingsWindow.once('ready-to-show', () => {
+    if (!settingsWindow || settingsWindow.isDestroyed()) return;
+    settingsWindow.setMenuBarVisibility(false);
+    settingsWindow.show();
+  });
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
+  });
+  loadPetRenderer(settingsWindow, 'settings');
+}
+
 function setupIpc() {
   // IPC 注册统一放在这里，按模块分组便于维护与定位。
   // 1) 宠物基础状态与模式切换
   ipcMain.handle('time-stats:get-snapshot', () => monitor.getSnapshot());
   ipcMain.handle('pet:get-state', () => ({
-    clickThrough: petState.clickThrough,
-    showStatsPanel: petState.showStatsPanel,
-    compactMode: petState.compactMode,
-    followMouse: petState.followMouse,
+    ...buildPetStatePayload(),
   }));
   ipcMain.handle('pet:toggle-stats-panel', () => {
     petState.showStatsPanel = !petState.showStatsPanel;
@@ -552,6 +603,26 @@ function setupIpc() {
   ipcMain.handle('pet:open-stats-window', () => {
     openStatsDetailWindow();
     return true;
+  });
+  ipcMain.handle('pet-settings:get', () => petState.petSettings);
+  ipcMain.handle('pet-settings:update', (_event, payload) => {
+    const input = payload && typeof payload === 'object' ? payload : {};
+    const bubbleTextsRaw =
+      input.bubbleTexts && typeof input.bubbleTexts === 'object' ? input.bubbleTexts : {};
+    petState.petSettings = {
+      selectedPet: String(input.selectedPet || petState.petSettings.selectedPet || 'black-coal'),
+      bubbleTexts: {
+        work: String(bubbleTextsRaw.work ?? petState.petSettings?.bubbleTexts?.work ?? '').slice(0, 120),
+        rest: String(bubbleTextsRaw.rest ?? petState.petSettings?.bubbleTexts?.rest ?? '').slice(0, 120),
+        remind: String(bubbleTextsRaw.remind ?? petState.petSettings?.bubbleTexts?.remind ?? '').slice(0, 120),
+        'long-work': String(
+          bubbleTextsRaw['long-work'] ?? petState.petSettings?.bubbleTexts?.['long-work'] ?? '',
+        ).slice(0, 120),
+      },
+    };
+    persistPetState();
+    broadcastPetStateChanged();
+    return { ok: true, petSettings: petState.petSettings };
   });
 
   // 2) 收藏夹模块
@@ -647,6 +718,10 @@ app.on('before-quit', () => {
   menuModule.teardown();
   favoritesModule.teardown();
   worklistModule.teardown();
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.close();
+    settingsWindow = null;
+  }
   petMotionModule.teardown();
   globalShortcut.unregisterAll();
   persistPetState();

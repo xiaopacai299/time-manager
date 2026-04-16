@@ -7,6 +7,15 @@ const DEFAULT_PET_STATE = {
   showStatsPanel: true,
   compactMode: false,
   followMouse: false,
+  petSettings: {
+    selectedPet: 'black-coal',
+    bubbleTexts: {
+      work: '',
+      rest: '',
+      remind: '',
+      'long-work': '',
+    },
+  },
 }
 
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }

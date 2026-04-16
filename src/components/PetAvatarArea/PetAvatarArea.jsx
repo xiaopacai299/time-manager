@@ -5,7 +5,7 @@ import { usePetAvatarInteractions } from '../../hooks/usePetAvatarInteractions'
 /**
  * 可拖拽宠物头像（样式沿用 `App.css` 的 `.pet-avatar`）。
  */
-export default function PetAvatarArea({ mood, petMotion }) {
+export default function PetAvatarArea({ mood, petMotion, selectedPet }) {
   const {
     openPetMenu,
     onAvatarPointerDown,
@@ -29,7 +29,7 @@ export default function PetAvatarArea({ mood, petMotion }) {
       onDoubleClick={onAvatarDoubleClick}
     >
       <PetRenderErrorBoundary>
-        <AnimatedPet mood={mood} petMotion={petMotion} />
+        <AnimatedPet mood={mood} petMotion={petMotion} selectedPet={selectedPet} />
       </PetRenderErrorBoundary>
     </section>
   )

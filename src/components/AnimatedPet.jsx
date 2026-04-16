@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import lottie from 'lottie-web'
 import badCatAnimation from '../assets/bad-cat.json'
 import runCatAnimation from '../assets/run-cat.json'
+import turtleAnimation from '../assets/Turtle.json'
+import runTurtleAnimation from '../assets/run-turtle.json'
 import { getBadCatRestAnimationData } from '../utils/badCatRestVariant.js'
 import PetMoodOverlay from './PetMoodOverlay.jsx'
 import RunCatTailSparks from './RunCatTailSparks.jsx'
@@ -14,12 +16,24 @@ const IDLE_SEGMENTS_DEFAULT = [0, 24]
 const IDLE_SEGMENTS_REST = [0, 65]
 
 const badCatRestAnimation = getBadCatRestAnimationData()
+const PET_ANIMATION_MAP = {
+  'black-coal': {
+    idle: badCatAnimation,
+    rest: badCatRestAnimation,
+    chase: runCatAnimation,
+  },
+  'little-turtle': {
+    idle: turtleAnimation,
+    rest: turtleAnimation,
+    chase: runTurtleAnimation,
+  },
+}
 
 /**
  * 底层 bad-cat / 休息变体；追逐 run-cat。
  * 休息：半速 + 休息 JSON 剔除 Lapa、保留 cup 并水平镜像；叠加层仅爪与白烟轻摆。
  */
-export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOTION }) {
+export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOTION, selectedPet = 'black-coal' }) {
   const idleRef = useRef(null)
   const chaseRef = useRef(null)
   const idleAnimRef = useRef(null)
@@ -37,7 +51,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
       renderer: 'svg',
       loop: true,
       autoplay: false,
-      animationData: runCatAnimation,
+      animationData: PET_ANIMATION_MAP[selectedPet]?.chase || runCatAnimation,
       rendererSettings: {
         preserveAspectRatio: 'xMidYMid meet',
       },
@@ -53,7 +67,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
       chaseAnim.destroy()
       chaseAnimRef.current = null
     }
-  }, [])
+  }, [selectedPet])
 
   useEffect(() => {
     const idleEl = idleRef.current
@@ -74,7 +88,8 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
     chaseAnim.pause()
 
     const isRest = mood === 'rest'
-    const data = isRest ? badCatRestAnimation : badCatAnimation
+    const pack = PET_ANIMATION_MAP[selectedPet] || PET_ANIMATION_MAP['black-coal']
+    const data = isRest ? pack.rest : pack.idle
     const idleAnim = lottie.loadAnimation({
       container: idleEl,
       renderer: 'svg',
@@ -93,7 +108,11 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
     applyIdleSpeed()
     idleAnim.addEventListener('DOMLoaded', applyIdleSpeed)
 
-    idleAnim.playSegments(isRest ? IDLE_SEGMENTS_REST : IDLE_SEGMENTS_DEFAULT, true)
+    if (selectedPet === 'black-coal') {
+      idleAnim.playSegments(isRest ? IDLE_SEGMENTS_REST : IDLE_SEGMENTS_DEFAULT, true)
+    } else {
+      idleAnim.play()
+    }
     applyIdleSpeed()
 
     const t1 = window.setTimeout(() => idleAnim.resize(), 0)
@@ -108,7 +127,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
       idleAnim.destroy()
       idleAnimRef.current = null
     }
-  }, [mood, chasing])
+  }, [mood, chasing, selectedPet])
 
   const faceStyle = useMemo(() => {
     if (!chasing) return undefined

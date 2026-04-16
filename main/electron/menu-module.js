@@ -13,6 +13,7 @@ export function createMenuModule({
   onToggleChaosCat,
   onOpenFavorites,
   onOpenWorklist,
+  onOpenSettings,
   onEmitPetAction,
 }) {
   let tray = null;
@@ -35,6 +36,10 @@ export function createMenuModule({
       {
         label: '添加工作清单',
         click: () => onOpenWorklist(),
+      },
+      {
+        label: '设置',
+        click: () => onOpenSettings(),
       },
       {
         label: '动作测试',
@@ -71,6 +76,10 @@ export function createMenuModule({
       {
         label: '添加工作清单',
         click: () => onOpenWorklist(),
+      },
+      {
+        label: '设置',
+        click: () => onOpenSettings(),
       },
       {
         label: '动作测试',

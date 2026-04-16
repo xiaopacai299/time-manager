@@ -18,7 +18,7 @@ import { formatDuration } from '../../utils/formatDuration'
  *   current?: { processName?: string, isOnBreak?: boolean }
  * }} props.snapshot
  */
-export default function PetBubble({ snapshot }) {
+export default function PetBubble({ snapshot, petSettings }) {
   const { text, variant } = useMemo(() => {
     const continuousMs = snapshot.continuousUseMs || 0
     const breakMs = snapshot.breakCompletedMs || 0
@@ -39,8 +39,9 @@ export default function PetBubble({ snapshot }) {
     else if (continuousMs >= REMIND_CONTINUOUS_MS) v = 'remind'
     else if (breakMs >= BREAK_COMPLETED_CELEBRATION_MS) v = 'rest'
 
-    return { text: baseText, variant: v }
-  }, [snapshot])
+    const customText = String(petSettings?.bubbleTexts?.[v] || '').trim()
+    return { text: customText || baseText, variant: v }
+  }, [snapshot, petSettings])
 
   const safeVariant = PET_VIEW_VARIANT_SET.has(variant) ? variant : 'work'
 

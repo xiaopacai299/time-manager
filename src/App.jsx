@@ -21,8 +21,12 @@ function App() {
       {!isBridgeReady && (
         <div className="warning">请通过 electron-start 启动宠物模式。</div>
       )}
-      {!petMotion.running && <PetBubble snapshot={snapshot} />}
-      <PetAvatarArea mood={mood} petMotion={petMotion} />
+      {!petMotion.running && <PetBubble snapshot={snapshot} petSettings={petState.petSettings} />}
+      <PetAvatarArea
+        mood={mood}
+        petMotion={petMotion}
+        selectedPet={petState?.petSettings?.selectedPet || 'black-coal'}
+      />
       {!petState.compactMode && petState.showStatsPanel && (
         <PetStatsPanel snapshot={snapshot} topApps={topApps} durationStats={durationStats} />
       )}

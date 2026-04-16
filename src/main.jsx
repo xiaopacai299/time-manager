@@ -6,6 +6,7 @@ import StatsWindowApp from './StatsWindowApp.jsx'
 import FavoritesWindowApp from './FavoritesWindowApp.jsx'
 import WorkListWindowApp from './WorkListWindowApp.jsx'
 import WorklistEstimateConfirmApp from './WorklistEstimateConfirmApp.jsx'
+import SettingsWindowApp from './SettingsWindowApp.jsx'
 
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
@@ -13,6 +14,7 @@ const isFavoritesWindow = typeof window !== 'undefined' && window.location.hash 
 const isWorklistWindow = typeof window !== 'undefined' && window.location.hash === '#worklist'
 const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
+const isSettingsWindow = typeof window !== 'undefined' && window.location.hash === '#settings'
 
 if (typeof document !== 'undefined') {
   if (isStatsWindow) {
@@ -23,6 +25,8 @@ if (typeof document !== 'undefined') {
     document.title = '工作清单'
   } else if (isEstimateConfirmWindow) {
     document.title = '工作确认'
+  } else if (isSettingsWindow) {
+    document.title = '设置'
   } else {
     document.title = '桌面宠物'
   }
@@ -38,6 +42,8 @@ createRoot(root).render(
       <WorkListWindowApp />
     ) : isEstimateConfirmWindow ? (
       <WorklistEstimateConfirmApp />
+    ) : isSettingsWindow ? (
+      <SettingsWindowApp />
     ) : (
       <App />
     )}
