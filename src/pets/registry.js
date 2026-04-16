@@ -5,6 +5,8 @@ import runTurtleAnimation from '../assets/run-turtle.json'
 import { getBadCatRestAnimationData } from '../utils/badCatRestVariant'
 import BlackCoalEffects from './black-coal/BlackCoalEffects'
 import LittleTurtleEffects from './little-turtle/LittleTurtleEffects'
+import LittleTurtleSplash from './little-turtle/LittleTurtleSplash'
+import RunCatTailSparks from '../components/RunCatTailSparks'
 
 const badCatRestAnimation = getBadCatRestAnimationData()
 
@@ -22,6 +24,9 @@ export const PET_REGISTRY = {
       'long-work': badCatAnimation,
     },
     chaseAnimation: runCatAnimation,
+    chaseEffectsComponent: RunCatTailSparks,
+    chaseSpeed: 1,
+    invertChaseFacing: false,
     idleSegmentsByMood: {
       work: [0, 24],
       rest: [0, 65],
@@ -34,7 +39,6 @@ export const PET_REGISTRY = {
       remind: 1,
       'long-work': 1,
     },
-    showTailSparks: true,
   },
   'little-turtle': {
     id: 'little-turtle',
@@ -49,6 +53,9 @@ export const PET_REGISTRY = {
       'long-work': turtleAnimation,
     },
     chaseAnimation: runTurtleAnimation,
+    chaseEffectsComponent: LittleTurtleSplash,
+    chaseSpeed: 2,
+    invertChaseFacing: true,
     idleSegmentsByMood: {},
     idleSpeedByMood: {
       work: 0.9,
@@ -56,7 +63,6 @@ export const PET_REGISTRY = {
       remind: 0.9,
       'long-work': 0.9,
     },
-    showTailSparks: false,
   },
   'coming-soon-2': {
     id: 'coming-soon-2',
@@ -66,9 +72,11 @@ export const PET_REGISTRY = {
     effectsComponent: null,
     idleByMood: {},
     chaseAnimation: null,
+    chaseEffectsComponent: null,
+    chaseSpeed: 1,
+    invertChaseFacing: false,
     idleSegmentsByMood: {},
     idleSpeedByMood: {},
-    showTailSparks: false,
   },
 }
 

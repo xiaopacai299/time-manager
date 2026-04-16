@@ -1,0 +1,124 @@
+.turtle-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.turtle-splash__rings {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  width: 198px;
+  height: 132px;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+}
+
+.turtle-splash--back-right .turtle-splash__rings {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.turtle-splash--back-left .turtle-splash__rings {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.turtle-splash__ring {
+  fill: none;
+  stroke: rgba(52, 214, 255, 0.96);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 6px rgba(91, 232, 255, 0.9));
+  transform-origin: 110px 76px;
+  opacity: 0;
+}
+
+.turtle-splash__ring-accent {
+  fill: none;
+  stroke: rgba(130, 241, 255, 0.98);
+  stroke-width: 3.8;
+  stroke-linecap: round;
+  opacity: 0;
+  filter: drop-shadow(0 0 7px rgba(130, 241, 255, 0.95));
+  transform-origin: 110px 76px;
+}
+
+.turtle-splash__ring-accent--a1 { stroke-dasharray: 22 190; stroke-dashoffset: 24; }
+.turtle-splash__ring-accent--a2 { stroke-dasharray: 14 198; stroke-dashoffset: 142; }
+.turtle-splash__ring-accent--b1 { stroke-dasharray: 30 258; stroke-dashoffset: 42; }
+.turtle-splash__ring-accent--b2 { stroke-dasharray: 19 269; stroke-dashoffset: 180; }
+.turtle-splash__ring-accent--c1 { stroke-dasharray: 38 336; stroke-dashoffset: 62; }
+.turtle-splash__ring-accent--c2 { stroke-dasharray: 24 350; stroke-dashoffset: 222; }
+
+.turtle-splash__ring-wrap {
+  transform-origin: 110px 76px;
+}
+
+.turtle-splash__ring-wrap--a { animation: turtleRippleWobbleA 0.46s ease-in-out infinite alternate; }
+.turtle-splash__ring-wrap--b { animation: turtleRippleWobbleB 0.52s ease-in-out infinite alternate; }
+.turtle-splash__ring-wrap--c { animation: turtleRippleWobbleC 0.58s ease-in-out infinite alternate; }
+
+.turtle-splash__ring--a { animation: turtleRippleA 0.84s ease-out infinite; }
+.turtle-splash__ring--b { animation: turtleRippleB 0.92s ease-out infinite 0.12s; }
+.turtle-splash__ring--c { animation: turtleRippleC 1s ease-out infinite 0.24s; }
+
+.turtle-splash__ring-accent--a1 { animation: turtleRippleA 0.84s ease-out infinite, turtleAccentShiftA 0.7s ease-in-out infinite alternate; }
+.turtle-splash__ring-accent--a2 { animation: turtleRippleA 0.84s ease-out infinite 0.04s, turtleAccentShiftB 0.76s ease-in-out infinite alternate; }
+.turtle-splash__ring-accent--b1 { animation: turtleRippleB 0.92s ease-out infinite 0.12s, turtleAccentShiftB 0.78s ease-in-out infinite alternate; }
+.turtle-splash__ring-accent--b2 { animation: turtleRippleB 0.92s ease-out infinite 0.16s, turtleAccentShiftC 0.84s ease-in-out infinite alternate; }
+.turtle-splash__ring-accent--c1 { animation: turtleRippleC 1s ease-out infinite 0.24s, turtleAccentShiftC 0.86s ease-in-out infinite alternate; }
+.turtle-splash__ring-accent--c2 { animation: turtleRippleC 1s ease-out infinite 0.28s, turtleAccentShiftA 0.9s ease-in-out infinite alternate; }
+
+@keyframes turtleRippleA {
+  0% { transform: scale(0.72); opacity: 0; }
+  20% { opacity: 0.95; }
+  100% { transform: scale(1.34); opacity: 0; }
+}
+
+@keyframes turtleRippleB {
+  0% { transform: scale(0.66); opacity: 0; }
+  20% { opacity: 0.86; }
+  100% { transform: scale(1.42); opacity: 0; }
+}
+
+@keyframes turtleRippleC {
+  0% { transform: scale(0.62); opacity: 0; }
+  20% { opacity: 0.76; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes turtleRippleWobbleA {
+  0% { transform: translate(-1.4px, -0.8px) rotate(-1.4deg) scaleX(0.98) scaleY(1.02); }
+  50% { transform: translate(1.2px, 0.7px) rotate(1deg) scaleX(1.02) scaleY(0.98); }
+  100% { transform: translate(-0.9px, 1.1px) rotate(-0.6deg) scaleX(0.99) scaleY(1.01); }
+}
+
+@keyframes turtleRippleWobbleB {
+  0% { transform: translate(1.6px, -0.6px) rotate(1.2deg) scaleX(1.03) scaleY(0.97); }
+  50% { transform: translate(-1.1px, 1px) rotate(-1deg) scaleX(0.98) scaleY(1.02); }
+  100% { transform: translate(0.8px, -1.2px) rotate(0.7deg) scaleX(1.01) scaleY(0.99); }
+}
+
+@keyframes turtleRippleWobbleC {
+  0% { transform: translate(-1.8px, 0.9px) rotate(-1.1deg) scaleX(0.97) scaleY(1.03); }
+  50% { transform: translate(1px, -1.1px) rotate(1.3deg) scaleX(1.02) scaleY(0.98); }
+  100% { transform: translate(-0.7px, -0.8px) rotate(-0.8deg) scaleX(1) scaleY(1); }
+}
+
+@keyframes turtleAccentShiftA {
+  0% { stroke-width: 3.4; stroke-dashoffset: 18; }
+  100% { stroke-width: 4.2; stroke-dashoffset: 30; }
+}
+
+@keyframes turtleAccentShiftB {
+  0% { stroke-width: 3.2; stroke-dashoffset: 136; }
+  100% { stroke-width: 4; stroke-dashoffset: 148; }
+}
+
+@keyframes turtleAccentShiftC {
+  0% { stroke-width: 3.3; stroke-dashoffset: 210; }
+  100% { stroke-width: 4.1; stroke-dashoffset: 226; }
+}

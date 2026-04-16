@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
 import lottie from 'lottie-web'
-import RunCatTailSparks from './RunCatTailSparks.jsx'
 import { getPetDefinition } from '../pets/registry'
 
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
@@ -19,6 +18,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
   const chasing = petMotion.running
   const petDef = useMemo(() => getPetDefinition(selectedPet), [selectedPet])
   const EffectsComponent = petDef.effectsComponent
+  const ChaseEffectsComponent = petDef.chaseEffectsComponent
 
   useEffect(() => {
     const chaseEl = chaseRef.current
@@ -59,6 +59,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
     }
 
     if (chasing) {
+      chaseAnim.setSpeed(petDef.chaseSpeed || 1)
       chaseAnim.goToAndPlay(0, true)
       return undefined
     }
@@ -106,10 +107,17 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
 
   const faceStyle = useMemo(() => {
     if (!chasing) return undefined
+    const dirScale = petMotion.mirrorX ? -1 : 1
+    const facing = petDef.invertChaseFacing ? dirScale * -1 : dirScale
     return {
-      transform: petMotion.mirrorX ? 'scaleX(-1)' : 'scaleX(1)',
+      transform: `scaleX(${facing})`,
     }
-  }, [chasing, petMotion.mirrorX])
+  }, [chasing, petMotion.mirrorX, petDef])
+
+  const chaseFacing = useMemo(() => {
+    const dirScale = petMotion.mirrorX ? -1 : 1
+    return petDef.invertChaseFacing ? dirScale * -1 : dirScale
+  }, [petMotion.mirrorX, petDef])
 
   return (
     <div className={`pet-visual ${moodClass} ${chasing ? 'pet-visual--chasing' : ''}`} role="img" aria-label="桌面宠物动画">
@@ -117,7 +125,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
         <div className="pet-visual__facing-wrap" style={faceStyle}>
           <div className="pet-visual__stack">
             <div ref={idleRef} className="pet-visual__lottie pet-visual__lottie--idle-layer" />
-            {chasing && petDef.showTailSparks && <RunCatTailSparks />}
+            {chasing && ChaseEffectsComponent ? <ChaseEffectsComponent facing={chaseFacing} /> : null}
             <div ref={chaseRef} className="pet-visual__lottie pet-visual__lottie--chase-layer" />
             {!chasing && EffectsComponent ? <EffectsComponent mood={mood} /> : null}
           </div>

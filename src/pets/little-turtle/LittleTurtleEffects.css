@@ -1,0 +1,20 @@
+.little-turtle-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.little-turtle-overlay__rock {
+  /* 可手动调石头位置和大小：x 右移为正，y 下移为正 */
+  --turtle-rock-x: -45px;
+  --turtle-rock-y: -35px;
+  --turtle-rock-scale: 0.72;
+
+  transform: translate(var(--turtle-rock-x), var(--turtle-rock-y)) scale(var(--turtle-rock-scale));
+  transform-origin: 99px 98px;
+  transform-box: fill-box;
+}
