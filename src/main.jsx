@@ -7,6 +7,7 @@ import FavoritesWindowApp from './FavoritesWindowApp.jsx'
 import WorkListWindowApp from './WorkListWindowApp.jsx'
 import WorklistEstimateConfirmApp from './WorklistEstimateConfirmApp.jsx'
 import SettingsWindowApp from './SettingsWindowApp.jsx'
+import ReaderWindowApp from './ReaderWindowApp.jsx'
 
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
@@ -15,6 +16,7 @@ const isWorklistWindow = typeof window !== 'undefined' && window.location.hash =
 const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
 const isSettingsWindow = typeof window !== 'undefined' && window.location.hash === '#settings'
+const isReaderWindow = typeof window !== 'undefined' && window.location.hash === '#reader'
 
 if (typeof document !== 'undefined') {
   if (isStatsWindow) {
@@ -27,6 +29,8 @@ if (typeof document !== 'undefined') {
     document.title = '工作确认'
   } else if (isSettingsWindow) {
     document.title = '设置'
+  } else if (isReaderWindow) {
+    document.title = '摸鱼阅读'
   } else {
     document.title = '桌面宠物'
   }
@@ -44,6 +48,8 @@ createRoot(root).render(
       <WorklistEstimateConfirmApp />
     ) : isSettingsWindow ? (
       <SettingsWindowApp />
+    ) : isReaderWindow ? (
+      <ReaderWindowApp />
     ) : (
       <App />
     )}

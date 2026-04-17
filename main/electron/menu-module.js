@@ -13,6 +13,7 @@ export function createMenuModule({
   onToggleChaosCat,
   onOpenFavorites,
   onOpenWorklist,
+  onOpenReader,
   onOpenSettings,
   onEmitPetAction,
 }) {
@@ -36,6 +37,10 @@ export function createMenuModule({
       {
         label: '添加工作清单',
         click: () => onOpenWorklist(),
+      },
+      {
+        label: '摸鱼',
+        click: () => onOpenReader(),
       },
       {
         label: '设置',
@@ -76,6 +81,10 @@ export function createMenuModule({
       {
         label: '添加工作清单',
         click: () => onOpenWorklist(),
+      },
+      {
+        label: '摸鱼',
+        click: () => onOpenReader(),
       },
       {
         label: '设置',

@@ -48,6 +48,34 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<boolean>}
    */
   openStatsWindow: () => ipcRenderer.invoke('pet:open-stats-window'),
+  /**
+   * 打开摸鱼阅读窗口。
+   * 主进程通道：`reader:open-window`（invoke/handle）
+   * @returns {Promise<boolean>}
+   */
+  openReaderWindow: () => ipcRenderer.invoke('reader:open-window'),
+
+  /**
+   * 关闭摸鱼阅读窗口。
+   * 主进程通道：`reader:close-window`（invoke/handle）
+   * @returns {Promise<boolean>}
+   */
+  closeReaderWindow: () => ipcRenderer.invoke('reader:close-window'),
+
+  /**
+   * 获取阅读器设置。
+   * 主进程通道：`reader-settings:get`（invoke/handle）
+   * @returns {Promise<{background:string,autoScrollSpeed:number}>}
+   */
+  getReaderSettings: () => ipcRenderer.invoke('reader-settings:get'),
+
+  /**
+   * 更新阅读器设置。
+   * 主进程通道：`reader-settings:update`（invoke/handle）
+   * @param {{background?:string,autoScrollSpeed?:number}} payload
+   * @returns {Promise<{ok:boolean,readerSettings?:object}>}
+   */
+  updateReaderSettings: (payload) => ipcRenderer.invoke('reader-settings:update', payload),
 
   /**
    * 获取收藏夹列表。

@@ -1,0 +1,143 @@
+.reader-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--reader-bg, #f5f1e8);
+  color: #1f2a44;
+}
+
+.reader-page--dark {
+  color: #e8edf5;
+}
+
+.reader-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(80, 108, 171, 0.2);
+  backdrop-filter: blur(2px);
+}
+
+.reader-upload,
+.reader-btn,
+.reader-bg-btn {
+  border: 1px solid #c8d4ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #234;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reader-btn--danger {
+  border-color: #efb4aa;
+  background: #fff4f2;
+  color: #b33c2a;
+}
+
+.reader-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.reader-speed input {
+  width: 120px;
+}
+
+.reader-bgs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reader-bg-btn--active {
+  border-color: #5f87ff;
+  background: rgba(95, 135, 255, 0.12);
+}
+
+.reader-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 8px 14px;
+  color: #5a6f99;
+}
+
+.reader-page--dark .reader-meta {
+  color: #b8c5de;
+}
+
+.reader-msg {
+  margin: 0 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #efb4aa;
+  background: #fff4f2;
+  color: #b33c2a;
+  font-size: 12px;
+}
+
+.reader-content {
+  margin: 12px 14px 14px;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid rgba(89, 115, 173, 0.24);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.reader-page--dark .reader-content {
+  background: rgba(16, 20, 30, 0.5);
+  border-color: rgba(164, 181, 220, 0.28);
+}
+
+.reader-text {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 26px 32px;
+  font-size: 18px;
+  line-height: 1.9;
+}
+
+.reader-text p {
+  margin: 0 0 14px;
+}
+
+.reader-epub-root {
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.reader-epub-root--hidden {
+  display: none;
+}
+
+.reader-loading {
+  margin: 0 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #c7d7ff;
+  background: #edf3ff;
+  color: #35508e;
+  font-size: 12px;
+}
+
+.reader-placeholder {
+  height: 100%;
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  color: #5b709b;
+  font-size: 15px;
+}

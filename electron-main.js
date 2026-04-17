@@ -53,6 +53,7 @@ function getUIOhook() {
 let mainWindow;
 let statsWindow = null;
 let settingsWindow = null;
+let readerWindow = null;
 let worklistReminderTimer = null;
 const PET_WINDOW_WIDTH = 260;
 const PET_WINDOW_HEIGHT = 280;
@@ -206,6 +207,10 @@ const petState = {
   worklist: [],
   /** 工作清单窗口「备忘录」多条记录（提醒时间 + 正文） */
   memoList: [],
+  readerSettings: {
+    background: 'paper',
+    autoScrollSpeed: 20,
+  },
   petSettings: {
     selectedPet: 'black-coal',
     bubbleTexts: {
@@ -254,6 +259,14 @@ function loadPetState() {
         ];
       } else {
         petState.memoList = [];
+      }
+      if (parsed.readerSettings && typeof parsed.readerSettings === 'object') {
+        petState.readerSettings = {
+          background: String(parsed.readerSettings.background || 'paper'),
+          autoScrollSpeed: Number.isFinite(Number(parsed.readerSettings.autoScrollSpeed))
+            ? Math.max(0, Math.min(120, Number(parsed.readerSettings.autoScrollSpeed)))
+            : 20,
+        };
       }
       if (parsed.petSettings && typeof parsed.petSettings === 'object') {
         const bubbleTextsRaw = parsed.petSettings.bubbleTexts || {};
@@ -350,6 +363,7 @@ const menuModule = createMenuModule({
   onToggleChaosCat: () => toggleChaosCat(),
   onOpenFavorites: () => favoritesModule.openWindow(),
   onOpenWorklist: () => worklistModule.openWindow(),
+  onOpenReader: () => openReaderWindow(),
   onOpenSettings: () => openSettingsWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
 });
@@ -619,6 +633,54 @@ function openSettingsWindow() {
   loadPetRenderer(settingsWindow, 'settings');
 }
 
+function openReaderWindow() {
+  if (readerWindow && !readerWindow.isDestroyed()) {
+    readerWindow.show();
+    readerWindow.focus();
+    return;
+  }
+  readerWindow = new BrowserWindow({
+    width: 980,
+    height: 780,
+    show: false,
+    title: '摸鱼阅读',
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      webSecurity: false,
+    },
+  });
+  readerWindow.once('ready-to-show', () => {
+    if (!readerWindow || readerWindow.isDestroyed()) return;
+    readerWindow.setMenuBarVisibility(false);
+    readerWindow.show();
+  });
+  readerWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'Escape') {
+      event.preventDefault();
+      if (readerWindow && !readerWindow.isDestroyed()) {
+        readerWindow.close();
+      }
+    }
+  });
+  readerWindow.on('closed', () => {
+    readerWindow = null;
+  });
+  loadPetRenderer(readerWindow, 'reader');
+}
+
+function toggleReaderWindow() {
+  if (readerWindow && !readerWindow.isDestroyed()) {
+    readerWindow.close();
+    return false;
+  }
+  openReaderWindow();
+  return true;
+}
+
 function setupIpc() {
   // IPC 注册统一放在这里，按模块分组便于维护与定位。
   // 1) 宠物基础状态与模式切换
@@ -637,6 +699,28 @@ function setupIpc() {
   ipcMain.handle('pet:open-stats-window', () => {
     openStatsDetailWindow();
     return true;
+  });
+  ipcMain.handle('reader:open-window', () => {
+    openReaderWindow();
+    return true;
+  });
+  ipcMain.handle('reader:close-window', () => {
+    if (readerWindow && !readerWindow.isDestroyed()) {
+      readerWindow.close();
+    }
+    return true;
+  });
+  ipcMain.handle('reader-settings:get', () => petState.readerSettings);
+  ipcMain.handle('reader-settings:update', (_event, payload) => {
+    const input = payload && typeof payload === 'object' ? payload : {};
+    petState.readerSettings = {
+      background: String(input.background || petState.readerSettings.background || 'paper'),
+      autoScrollSpeed: Number.isFinite(Number(input.autoScrollSpeed))
+        ? Math.max(0, Math.min(120, Number(input.autoScrollSpeed)))
+        : petState.readerSettings.autoScrollSpeed ?? 20,
+    };
+    persistPetState();
+    return { ok: true, readerSettings: petState.readerSettings };
   });
   ipcMain.handle('pet-settings:get', () => petState.petSettings);
   ipcMain.handle('pet-settings:update', (_event, payload) => {
@@ -726,6 +810,9 @@ app.whenReady().then(() => {
     globalShortcut.register('CommandOrControl+Shift+P', () => {
       toggleClickThrough();
     });
+    globalShortcut.register('CommandOrControl+Shift+R', () => {
+      toggleReaderWindow();
+    });
     // 监听this.emit('update', this.latestSnapshot);，将payload
     // 推给宠物窗口和统计窗口
     monitor.on('update', (payload) => {
@@ -763,6 +850,10 @@ app.on('before-quit', () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.close();
     settingsWindow = null;
+  }
+  if (readerWindow && !readerWindow.isDestroyed()) {
+    readerWindow.close();
+    readerWindow = null;
   }
   petMotionModule.teardown();
   globalShortcut.unregisterAll();
