@@ -48,6 +48,16 @@ export default function WorkListWindowApp() {
   }, [])
 
   const listTitle = useMemo(() => `工作清单 (${items.length})`, [items.length])
+  const sortedItems = useMemo(() => {
+    const parseCreatedTs = (item) => {
+      const createdTs = Date.parse(String(item?.createdAt || ''))
+      if (Number.isFinite(createdTs)) return createdTs
+      const idPrefix = String(item?.id || '').split('-')[0]
+      const idTs = Number(idPrefix)
+      return Number.isFinite(idTs) ? idTs : 0
+    }
+    return [...items].sort((a, b) => parseCreatedTs(b) - parseCreatedTs(a))
+  }, [items])
 
   const isEditing = Boolean(editingId)
   const [nowTick, setNowTick] = useState(Date.now())
@@ -88,6 +98,29 @@ export default function WorkListWindowApp() {
     setIconCustomDataUrl('')
   }, [])
 
+  const onTimeInputClick = useCallback((event) => {
+    const input = event.currentTarget
+    if (typeof input?.showPicker === 'function') {
+      try {
+        input.showPicker()
+      } catch {
+        // 浏览器不允许时保持默认行为，不影响手动输入。
+      }
+    }
+  }, [])
+
+  function composeTodayDatetime(timeText) {
+    const value = String(timeText || '').trim()
+    if (!value) return ''
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value)
+    if (!match) return ''
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}T${match[1]}:${match[2]}`
+  }
+
   async function onSubmit(event) {
     event.preventDefault()
     setMessage({ type: '', text: '' })
@@ -102,8 +135,8 @@ export default function WorkListWindowApp() {
       const payload = {
         icon,
         name: trimmedName,
-        reminderAt: reminderAt.trim(),
-        estimateDoneAt: estimateDoneAt.trim(),
+        reminderAt: composeTodayDatetime(reminderAt),
+        estimateDoneAt: composeTodayDatetime(estimateDoneAt),
         note: note.trim(),
       }
       const result = isEditing
@@ -189,17 +222,14 @@ export default function WorkListWindowApp() {
     return { text: '待完成', cls: 'pending' }
   }
 
-  function toInputDatetime(value) {
+  function toInputTime(value) {
     if (!value) return ''
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return ''
     const pad = (num) => String(num).padStart(2, '0')
-    const y = date.getFullYear()
-    const m = pad(date.getMonth() + 1)
-    const d = pad(date.getDate())
     const h = pad(date.getHours())
     const mm = pad(date.getMinutes())
-    return `${y}-${m}-${d}T${h}:${mm}`
+    return `${h}:${mm}`
   }
 
   function fillFormByItem(item) {
@@ -213,8 +243,8 @@ export default function WorkListWindowApp() {
       setIconCustomDataUrl('')
     }
     setName(String(item.name || ''))
-    setReminderAt(toInputDatetime(item.reminderAt))
-    setEstimateDoneAt(toInputDatetime(item.estimateDoneAt))
+    setReminderAt(toInputTime(item.reminderAt))
+    setEstimateDoneAt(toInputTime(item.estimateDoneAt))
     setNote(String(item.note || ''))
     setEditingId(String(item.id || ''))
     setMessage({ type: '', text: '' })
@@ -336,10 +366,10 @@ export default function WorkListWindowApp() {
             <h1 className="worklist-title">{listTitle}</h1>
             <p className="worklist-sub">左侧展示已保存的清单，右侧可继续新增。</p>
             <div className="worklist-list">
-              {items.length === 0 ? (
+              {sortedItems.length === 0 ? (
                 <div className="worklist-empty">暂无清单，去右侧添加第一项吧。</div>
               ) : (
-                items.map((item) => {
+                sortedItems.map((item) => {
                   const icon = String(item.icon || '').trim() || '📋'
                   const status = getStatusMeta(item)
                   return (
@@ -442,8 +472,10 @@ export default function WorkListWindowApp() {
                 <input
                   id="wl-remind"
                   className="worklist-input"
-                  type="datetime-local"
+                  type="time"
+                  step="60"
                   value={reminderAt}
+                  onClick={onTimeInputClick}
                   onChange={(e) => setReminderAt(e.target.value)}
                 />
               </div>
@@ -453,8 +485,10 @@ export default function WorkListWindowApp() {
                 <input
                   id="wl-est"
                   className="worklist-input"
-                  type="datetime-local"
+                  type="time"
+                  step="60"
                   value={estimateDoneAt}
+                  onClick={onTimeInputClick}
                   onChange={(e) => setEstimateDoneAt(e.target.value)}
                 />
               </div>

@@ -15,6 +15,33 @@ export function createWorklistModule({
   let estimatePromptResolver = null;
   let estimatePrompting = false;
 
+  function getLocalDateKey(ts = Date.now()) {
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function maybeResetWorklistForNewDay(now = Date.now()) {
+    const todayKey = getLocalDateKey(now);
+    const lastResetKey = String(petState.worklistLastResetDate || '').trim();
+    if (!lastResetKey) {
+      petState.worklistLastResetDate = todayKey;
+      persistPetState();
+      return false;
+    }
+    if (lastResetKey === todayKey) return false;
+    const hadItems = Array.isArray(petState.worklist) && petState.worklist.length > 0;
+    petState.worklist = [];
+    petState.worklistLastResetDate = todayKey;
+    persistPetState();
+    if (hadItems) {
+      broadcastWorklistUpdate();
+    }
+    return hadItems;
+  }
+
   function normalizeWorklistDatetime(value) {
     const s = String(value || '').trim();
     if (!s) return '';
@@ -41,6 +68,7 @@ export function createWorklistModule({
     const reminderAt = normalizeWorklistDatetime(raw.reminderAt);
     const estimateDoneAt = normalizeWorklistDatetime(raw.estimateDoneAt);
     const note = String(raw.note || '').trim().slice(0, 2000);
+    const createdAt = normalizeWorklistDatetime(raw.createdAt);
     const reminderNotified = Boolean(raw.reminderNotified);
     const completionResultRaw = String(raw.completionResult || '').trim().toLowerCase();
     const completionResult =
@@ -48,7 +76,7 @@ export function createWorklistModule({
         ? completionResultRaw
         : '';
     const confirmSnoozeUntil = normalizeWorklistDatetime(raw.confirmSnoozeUntil);
-    return { id, icon, name, reminderAt, estimateDoneAt, note, reminderNotified, completionResult, confirmSnoozeUntil };
+    return { id, icon, name, reminderAt, estimateDoneAt, note, createdAt, reminderNotified, completionResult, confirmSnoozeUntil };
   }
 
   function broadcastWorklistUpdate() {
@@ -63,6 +91,7 @@ export function createWorklistModule({
   }
 
   function addWorklistItem(payload) {
+    maybeResetWorklistForNewDay();
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const entry = sanitizeWorklistEntry({
       id,
@@ -71,6 +100,7 @@ export function createWorklistModule({
       reminderAt: payload?.reminderAt,
       estimateDoneAt: payload?.estimateDoneAt,
       note: payload?.note,
+      createdAt: new Date().toISOString(),
       reminderNotified: false,
       completionResult: '',
       confirmSnoozeUntil: '',
@@ -85,12 +115,13 @@ export function createWorklistModule({
   }
 
   function updateWorklistItem(payload) {
+    maybeResetWorklistForNewDay();
     const id = String(payload?.id || '').trim();
     if (!id) {
       return { ok: false, error: '缺少清单 ID', list: getWorklist() };
     }
-    const exists = getWorklist().some((item) => item.id === id);
-    if (!exists) {
+    const existing = getWorklist().find((item) => item.id === id);
+    if (!existing) {
       return { ok: false, error: '未找到要更新的清单', list: getWorklist() };
     }
     const entry = sanitizeWorklistEntry({
@@ -100,9 +131,10 @@ export function createWorklistModule({
       reminderAt: payload?.reminderAt,
       estimateDoneAt: payload?.estimateDoneAt,
       note: payload?.note,
-      reminderNotified: false,
-      completionResult: '',
-      confirmSnoozeUntil: '',
+      createdAt: existing.createdAt,
+      reminderNotified: existing.reminderNotified,
+      completionResult: existing.completionResult,
+      confirmSnoozeUntil: existing.confirmSnoozeUntil,
     });
     if (!entry) {
       return { ok: false, error: '请填写工作清单名称', list: getWorklist() };
@@ -114,6 +146,7 @@ export function createWorklistModule({
   }
 
   function removeWorklistItem(payload) {
+    maybeResetWorklistForNewDay();
     const id = String(payload?.id || '').trim();
     if (!id) {
       return { ok: false, error: '缺少清单 ID', list: getWorklist() };
@@ -131,6 +164,7 @@ export function createWorklistModule({
 
   async function checkReminders() {
     const now = Date.now();
+    maybeResetWorklistForNewDay(now);
     const raw = Array.isArray(petState.worklist) ? petState.worklist : [];
     let changed = false;
     const canNotify = Notification.isSupported();
