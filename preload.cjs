@@ -120,6 +120,49 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<object>}
    */
   removeWorklistItem: (payload) => ipcRenderer.invoke('worklist:remove', payload),
+
+  /**
+   * 获取备忘录列表（提醒时间 + 正文）。
+   * 主进程通道：`memo-list:get`
+   * @returns {Promise<Array<object>>}
+   */
+  getMemoList: () => ipcRenderer.invoke('memo-list:get'),
+
+  /**
+   * 新增备忘录项。
+   * 主进程通道：`memo-list:add`
+   * @param {{ name: string, icon?: string, reminderAt?: string, content: string }} payload
+   * @returns {Promise<object>}
+   */
+  addMemoItem: (payload) => ipcRenderer.invoke('memo-list:add', payload),
+
+  /**
+   * 更新备忘录项。
+   * 主进程通道：`memo-list:update`
+   * @param {{ id: string, name: string, icon?: string, reminderAt?: string, content: string }} payload
+   * @returns {Promise<object>}
+   */
+  updateMemoItem: (payload) => ipcRenderer.invoke('memo-list:update', payload),
+
+  /**
+   * 删除备忘录项。
+   * 主进程通道：`memo-list:remove`
+   * @param {{ id: string }} payload
+   * @returns {Promise<object>}
+   */
+  removeMemoItem: (payload) => ipcRenderer.invoke('memo-list:remove', payload),
+
+  /**
+   * 订阅备忘录列表更新。
+   * 主进程通道：`memo-list:updated`
+   * @param {(list: object[]) => void} callback
+   * @returns {() => void}
+   */
+  onMemoListUpdated: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('memo-list:updated', handler);
+    return () => ipcRenderer.removeListener('memo-list:updated', handler);
+  },
   /**
    * 获取宠物设置（类型、气泡文案）。
    * 主进程通道：`pet-settings:get`（invoke/handle）

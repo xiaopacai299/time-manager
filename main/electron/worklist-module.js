@@ -84,6 +84,114 @@ export function createWorklistModule({
     worklistWindow.webContents.send('worklist:updated', getWorklist());
   }
 
+  function broadcastMemoUpdate() {
+    if (!worklistWindow || worklistWindow.isDestroyed()) return;
+    worklistWindow.webContents.send('memo-list:updated', getMemoList());
+  }
+
+  function memoNameFallbackFromContent(content) {
+    const line = String(content || '')
+      .trim()
+      .split(/\r?\n/)[0]
+      .trim();
+    if (line) return line.slice(0, 200);
+    return '备忘录';
+  }
+
+  function sanitizeMemoEntry(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = String(raw.id || '').trim();
+    if (!id) return null;
+    const content = String(raw.content ?? '').trim().slice(0, 50000);
+    if (!content) return null;
+    const name =
+      String(raw.name || '')
+        .trim()
+        .slice(0, 200) || memoNameFallbackFromContent(content);
+    const icon = sanitizeWorklistIcon(raw.icon);
+    const reminderAt = normalizeWorklistDatetime(raw.reminderAt);
+    const createdAt = normalizeWorklistDatetime(raw.createdAt) || new Date().toISOString();
+    const reminderNotified = Boolean(raw.reminderNotified);
+    return { id, name, icon, content, reminderAt, createdAt, reminderNotified };
+  }
+
+  function getMemoList() {
+    return (petState.memoList || [])
+      .map((item) => sanitizeMemoEntry(item))
+      .filter(Boolean);
+  }
+
+  function addMemoItem(payload) {
+    if (!String(payload?.name || '').trim()) {
+      return { ok: false, error: '请填写备忘录名称', list: getMemoList() };
+    }
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const entry = sanitizeMemoEntry({
+      id,
+      name: payload?.name,
+      icon: payload?.icon,
+      content: payload?.content,
+      reminderAt: payload?.reminderAt,
+      createdAt: new Date().toISOString(),
+      reminderNotified: false,
+    });
+    if (!entry) {
+      return { ok: false, error: '请填写备忘录内容', list: getMemoList() };
+    }
+    petState.memoList = [...getMemoList(), entry];
+    persistPetState();
+    broadcastMemoUpdate();
+    return { ok: true, list: getMemoList() };
+  }
+
+  function updateMemoItem(payload) {
+    const id = String(payload?.id || '').trim();
+    if (!id) {
+      return { ok: false, error: '缺少备忘录 ID', list: getMemoList() };
+    }
+    const existing = getMemoList().find((item) => item.id === id);
+    if (!existing) {
+      return { ok: false, error: '未找到要更新的备忘录', list: getMemoList() };
+    }
+    if (!String(payload?.name || '').trim()) {
+      return { ok: false, error: '请填写备忘录名称', list: getMemoList() };
+    }
+    const nextReminder = normalizeWorklistDatetime(payload?.reminderAt);
+    const reminderChanged = nextReminder !== existing.reminderAt;
+    const entry = sanitizeMemoEntry({
+      id,
+      name: payload?.name,
+      icon: payload?.icon,
+      content: payload?.content,
+      reminderAt: nextReminder,
+      createdAt: existing.createdAt,
+      reminderNotified: reminderChanged ? false : existing.reminderNotified,
+    });
+    if (!entry) {
+      return { ok: false, error: '请填写备忘录内容', list: getMemoList() };
+    }
+    petState.memoList = getMemoList().map((item) => (item.id === id ? entry : item));
+    persistPetState();
+    broadcastMemoUpdate();
+    return { ok: true, list: getMemoList() };
+  }
+
+  function removeMemoItem(payload) {
+    const id = String(payload?.id || '').trim();
+    if (!id) {
+      return { ok: false, error: '缺少备忘录 ID', list: getMemoList() };
+    }
+    const before = getMemoList();
+    const next = before.filter((item) => item.id !== id);
+    if (next.length === before.length) {
+      return { ok: false, error: '未找到要删除的备忘录', list: before };
+    }
+    petState.memoList = next;
+    persistPetState();
+    broadcastMemoUpdate();
+    return { ok: true, list: getMemoList() };
+  }
+
   function getWorklist() {
     return (petState.worklist || [])
       .map((item) => sanitizeWorklistEntry(item))
@@ -193,6 +301,35 @@ export function createWorklistModule({
       persistPetState();
       broadcastWorklistUpdate();
     }
+
+    const rawMemos = Array.isArray(petState.memoList) ? petState.memoList : [];
+    let memoChanged = false;
+    const nextMemos = rawMemos.map((item) => {
+      const id = String(item?.id || '').trim();
+      if (!id || item.reminderNotified) return item;
+      const reminderAt = normalizeWorklistDatetime(item.reminderAt);
+      if (!reminderAt) return item;
+      const t = Date.parse(reminderAt);
+      if (Number.isNaN(t) || t > now) return item;
+      const memoTitle = String(item.name || '备忘录').trim().slice(0, 120);
+      const body = String(item.content || '').trim().slice(0, 500) || '到提醒时间了';
+      if (canNotify) {
+        try {
+          const n = new Notification({ title: `备忘录提醒：${memoTitle}`, body });
+          n.show();
+        } catch (error) {
+          console.error('[memo-reminder-notification-error]', error);
+        }
+      }
+      memoChanged = true;
+      return { ...item, reminderNotified: true, reminderAt };
+    });
+    if (memoChanged) {
+      petState.memoList = nextMemos;
+      persistPetState();
+      broadcastMemoUpdate();
+    }
+
     await maybePromptEstimateCompletion(now);
   }
 
@@ -334,6 +471,7 @@ export function createWorklistModule({
       worklistWindow.setMenuBarVisibility(false);
       worklistWindow.show();
       broadcastWorklistUpdate();
+      broadcastMemoUpdate();
     });
 
     worklistWindow.on('closed', () => {
@@ -345,6 +483,10 @@ export function createWorklistModule({
 
   function registerIpc(ipcMain) {
     ipcMain.handle('worklist:get-list', () => getWorklist());
+    ipcMain.handle('memo-list:get', () => getMemoList());
+    ipcMain.handle('memo-list:add', (_event, payload) => addMemoItem(payload));
+    ipcMain.handle('memo-list:update', (_event, payload) => updateMemoItem(payload));
+    ipcMain.handle('memo-list:remove', (_event, payload) => removeMemoItem(payload));
     ipcMain.handle('worklist:add', (_event, payload) => addWorklistItem(payload));
     ipcMain.handle('worklist:update', (_event, payload) => updateWorklistItem(payload));
     ipcMain.handle('worklist:remove', (_event, payload) => removeWorklistItem(payload));

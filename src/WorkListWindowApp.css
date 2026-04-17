@@ -78,7 +78,7 @@
   position: absolute;
   top: 6px;
   left: 6px;
-  width: calc(50% - 11px);
+  width: calc((100% - 32px) / 3);
   height: calc(100% - 12px);
   border-radius: 10px;
   background: linear-gradient(135deg, #5f87ff, #4062d6);
@@ -91,8 +91,12 @@
   transform: translateX(0);
 }
 
-.worklist-tab-indicator--year {
+.worklist-tab-indicator--memo {
   transform: translateX(calc(100% + 10px));
+}
+
+.worklist-tab-indicator--year {
+  transform: translateX(calc(200% + 20px));
 }
 
 .worklist-tab-btn {
@@ -140,6 +144,18 @@
 
 .worklist-wrap--year {
   grid-template-columns: 1fr;
+}
+
+.worklist-textarea--memo-body {
+  min-height: 280px;
+}
+
+.worklist-item-line--memo-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .year-overview {

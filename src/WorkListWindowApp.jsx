@@ -3,6 +3,7 @@ import './WorkListWindowApp.css'
 
 const PRESET_ICONS = ['📋', '📝', '💼', '⏰', '✅', '🎯', '📌', '☕']
 const TAB_TODAY = 'today'
+const TAB_MEMO = 'memo'
 const TAB_YEAR = 'year'
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -21,6 +22,14 @@ export default function WorkListWindowApp() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [activeTab, setActiveTab] = useState(TAB_TODAY)
+  const [memoItems, setMemoItems] = useState([])
+  const [memoEditingId, setMemoEditingId] = useState('')
+  const [memoIconEmoji, setMemoIconEmoji] = useState('📝')
+  const [memoIconCustomDataUrl, setMemoIconCustomDataUrl] = useState('')
+  const [memoName, setMemoName] = useState('')
+  const [memoReminderAt, setMemoReminderAt] = useState('')
+  const [memoContent, setMemoContent] = useState('')
+  const [memoBusy, setMemoBusy] = useState(false)
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
 
@@ -47,7 +56,23 @@ export default function WorkListWindowApp() {
     }
   }, [])
 
+  useEffect(() => {
+    let mounted = true
+    window.timeManagerAPI?.getMemoList?.().then((list) => {
+      if (!mounted) return
+      setMemoItems(Array.isArray(list) ? list : [])
+    })
+    const off = window.timeManagerAPI?.onMemoListUpdated?.((list) => {
+      setMemoItems(Array.isArray(list) ? list : [])
+    })
+    return () => {
+      mounted = false
+      if (off) off()
+    }
+  }, [])
+
   const listTitle = useMemo(() => `工作清单 (${items.length})`, [items.length])
+  const memoListTitle = useMemo(() => `备忘录 (${memoItems.length})`, [memoItems.length])
   const sortedItems = useMemo(() => {
     const parseCreatedTs = (item) => {
       const createdTs = Date.parse(String(item?.createdAt || ''))
@@ -59,7 +84,19 @@ export default function WorkListWindowApp() {
     return [...items].sort((a, b) => parseCreatedTs(b) - parseCreatedTs(a))
   }, [items])
 
+  const sortedMemos = useMemo(() => {
+    const parseCreatedTs = (item) => {
+      const createdTs = Date.parse(String(item?.createdAt || ''))
+      if (Number.isFinite(createdTs)) return createdTs
+      const idPrefix = String(item?.id || '').split('-')[0]
+      const idTs = Number(idPrefix)
+      return Number.isFinite(idTs) ? idTs : 0
+    }
+    return [...memoItems].sort((a, b) => parseCreatedTs(b) - parseCreatedTs(a))
+  }, [memoItems])
+
   const isEditing = Boolean(editingId)
+  const isMemoEditing = Boolean(memoEditingId)
   const [nowTick, setNowTick] = useState(Date.now())
 
   useEffect(() => {
@@ -98,6 +135,37 @@ export default function WorkListWindowApp() {
     setIconCustomDataUrl('')
   }, [])
 
+  const memoOnPickImage = useCallback((event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !file.type.startsWith('image/')) {
+      setMessage({ type: 'err', text: '请选择图片文件。' })
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setMessage({ type: 'err', text: '图片过大，请选择约 350KB 以内的图片，或使用上方表情图标。' })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      if (!result.startsWith('data:image/')) {
+        setMessage({ type: 'err', text: '无法读取该图片。' })
+        return
+      }
+      setMemoIconCustomDataUrl(result)
+      setMessage({ type: '', text: '' })
+    }
+    reader.onerror = () => {
+      setMessage({ type: 'err', text: '读取图片失败。' })
+    }
+    reader.readAsDataURL(file)
+  }, [])
+
+  const clearMemoCustomIcon = useCallback(() => {
+    setMemoIconCustomDataUrl('')
+  }, [])
+
   const onTimeInputClick = useCallback((event) => {
     const input = event.currentTarget
     if (typeof input?.showPicker === 'function') {
@@ -119,6 +187,19 @@ export default function WorkListWindowApp() {
     const month = String(now.getMonth() + 1).padStart(2, '0')
     const day = String(now.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}T${match[1]}:${match[2]}`
+  }
+
+  function toInputDatetime(value) {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    const pad = (num) => String(num).padStart(2, '0')
+    const y = date.getFullYear()
+    const m = pad(date.getMonth() + 1)
+    const d = pad(date.getDate())
+    const h = pad(date.getHours())
+    const mm = pad(date.getMinutes())
+    return `${y}-${m}-${d}T${h}:${mm}`
   }
 
   async function onSubmit(event) {
@@ -261,6 +342,112 @@ export default function WorkListWindowApp() {
     setMessage({ type: '', text: '' })
   }
 
+  function getMemoReminderMeta(item) {
+    if (!String(item?.reminderAt || '').trim()) {
+      return { text: '未设提醒', cls: 'pending' }
+    }
+    if (item.reminderNotified) {
+      return { text: '已提醒', cls: 'done' }
+    }
+    const t = Date.parse(String(item.reminderAt || ''))
+    if (Number.isFinite(t) && nowTick >= t) {
+      return { text: '待提醒', cls: 'doing' }
+    }
+    return { text: '待提醒', cls: 'pending' }
+  }
+
+  function fillMemoFormByItem(item) {
+    if (!item) return
+    const icon = String(item.icon || '').trim() || '📝'
+    if (icon.startsWith('data:image/')) {
+      setMemoIconCustomDataUrl(icon)
+      setMemoIconEmoji('📝')
+    } else {
+      setMemoIconEmoji(icon)
+      setMemoIconCustomDataUrl('')
+    }
+    setMemoName(String(item.name || ''))
+    setMemoReminderAt(toInputDatetime(item.reminderAt))
+    setMemoContent(String(item.content || ''))
+    setMemoEditingId(String(item.id || ''))
+    setMessage({ type: '', text: '' })
+  }
+
+  function resetMemoForm() {
+    setMemoEditingId('')
+    setMemoIconEmoji('📝')
+    setMemoIconCustomDataUrl('')
+    setMemoName('')
+    setMemoReminderAt('')
+    setMemoContent('')
+    setMessage({ type: '', text: '' })
+  }
+
+  async function onMemoSubmit(event) {
+    event.preventDefault()
+    setMessage({ type: '', text: '' })
+    const trimmedName = memoName.trim()
+    if (!trimmedName) {
+      setMessage({ type: 'err', text: '请填写备忘录名称。' })
+      return
+    }
+    const trimmed = memoContent.trim()
+    if (!trimmed) {
+      setMessage({ type: 'err', text: '请填写备忘录内容。' })
+      return
+    }
+    const icon = (memoIconCustomDataUrl || memoIconEmoji).trim() || '📝'
+    const reminderIso = memoReminderAt.trim()
+    setMemoBusy(true)
+    try {
+      const payload = {
+        icon,
+        name: trimmedName,
+        reminderAt: reminderIso,
+        content: trimmed,
+      }
+      const result = isMemoEditing
+        ? await window.timeManagerAPI?.updateMemoItem?.({ id: memoEditingId, ...payload })
+        : await window.timeManagerAPI?.addMemoItem?.(payload)
+      if (!result?.ok) {
+        setMessage({ type: 'err', text: result?.error || '保存失败。' })
+        return
+      }
+      setMemoItems(Array.isArray(result?.list) ? result.list : [])
+      setMessage({ type: 'ok', text: isMemoEditing ? '备忘录已更新' : '备忘录已保存' })
+      resetMemoForm()
+    } catch {
+      setMessage({ type: 'err', text: '保存失败，请稍后重试。' })
+    } finally {
+      setMemoBusy(false)
+    }
+  }
+
+  async function onRemoveMemoById(id) {
+    const targetId = String(id || '').trim()
+    if (!targetId || memoBusy) return
+    const ok = window.confirm('确认删除这条备忘录吗？此操作不可撤销。')
+    if (!ok) return
+    setMemoBusy(true)
+    setMessage({ type: '', text: '' })
+    try {
+      const result = await window.timeManagerAPI?.removeMemoItem?.({ id: targetId })
+      if (!result?.ok) {
+        setMessage({ type: 'err', text: result?.error || '删除失败。' })
+        return
+      }
+      setMemoItems(Array.isArray(result?.list) ? result.list : [])
+      if (memoEditingId === targetId) {
+        resetMemoForm()
+      }
+      setMessage({ type: 'ok', text: '已删除。' })
+    } catch {
+      setMessage({ type: 'err', text: '删除失败，请稍后重试。' })
+    } finally {
+      setMemoBusy(false)
+    }
+  }
+
   const yearOptions = useMemo(
     () => Array.from({ length: 5 }, (_, i) => currentYear - i),
     [currentYear],
@@ -340,7 +527,11 @@ export default function WorkListWindowApp() {
       <div className="worklist-tabs">
         <span
           className={`worklist-tab-indicator${
-            activeTab === TAB_YEAR ? ' worklist-tab-indicator--year' : ' worklist-tab-indicator--today'
+            activeTab === TAB_YEAR
+              ? ' worklist-tab-indicator--year'
+              : activeTab === TAB_MEMO
+                ? ' worklist-tab-indicator--memo'
+                : ' worklist-tab-indicator--today'
           }`}
           aria-hidden="true"
         />
@@ -350,6 +541,13 @@ export default function WorkListWindowApp() {
           onClick={() => setActiveTab(TAB_TODAY)}
         >
           今日计划
+        </button>
+        <button
+          type="button"
+          className={`worklist-tab-btn${activeTab === TAB_MEMO ? ' worklist-tab-btn--active' : ''}`}
+          onClick={() => setActiveTab(TAB_MEMO)}
+        >
+          备忘录
         </button>
         <button
           type="button"
@@ -515,6 +713,159 @@ export default function WorkListWindowApp() {
                       取消编辑
                     </button>
                   </>
+                ) : null}
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : activeTab === TAB_MEMO ? (
+        <div className="worklist-wrap worklist-content worklist-content--memo">
+          <section className="worklist-pane worklist-pane--list">
+            <h1 className="worklist-title">{memoListTitle}</h1>
+            <p className="worklist-sub">左侧为已保存的备忘录，右侧填写名称、图标、提醒时间与正文；到点会发送系统通知。</p>
+            <div className="worklist-list">
+              {sortedMemos.length === 0 ? (
+                <div className="worklist-empty">暂无备忘录，在右侧添加第一条吧。</div>
+              ) : (
+                sortedMemos.map((item) => {
+                  const reminderMeta = getMemoReminderMeta(item)
+                  const mIcon = String(item.icon || '').trim() || '📝'
+                  return (
+                    <article
+                      key={item.id}
+                      className={`worklist-item${memoEditingId === item.id ? ' worklist-item--active' : ''}`}
+                      onClick={() => fillMemoFormByItem(item)}
+                    >
+                      <div className="worklist-item-head">
+                        <div className="worklist-item-head-main">
+                          {mIcon.startsWith('data:image/') ? (
+                            <img className="worklist-item-icon-image" src={mIcon} alt="" />
+                          ) : (
+                            <span className="worklist-item-icon-emoji" aria-hidden="true">{mIcon}</span>
+                          )}
+                          <h2 className="worklist-item-name">{item.name || '备忘录'}</h2>
+                        </div>
+                        <div className="worklist-item-head-side">
+                          <span className={`worklist-item-status worklist-item-status--${reminderMeta.cls}`}>
+                            {reminderMeta.text}
+                          </span>
+                          <button
+                            type="button"
+                            className="worklist-item-delete"
+                            disabled={memoBusy}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onRemoveMemoById(item.id)
+                            }}
+                          >
+                            <span className="worklist-item-delete__icon" aria-hidden="true">🗑</span>
+                            <span>删除</span>
+                          </button>
+                        </div>
+                      </div>
+                      <p className="worklist-item-line">
+                        <strong>提醒时间：</strong>
+                        {item.reminderAt ? formatDatetime(item.reminderAt) : '未设置（仅保存正文，不会提醒）'}
+                      </p>
+                      <p className="worklist-item-line worklist-item-line--memo-preview">
+                        <strong>内容：</strong>
+                        {String(item.content || '').trim() || '无'}
+                      </p>
+                    </article>
+                  )
+                })
+              )}
+            </div>
+          </section>
+
+          <section className="worklist-pane worklist-pane--form">
+            <h2 className="worklist-title">{isMemoEditing ? '编辑备忘录' : '添加备忘录'}</h2>
+            <p className="worklist-sub">提醒时间固定为今天，仅选择时、分；到点推送系统通知（需系统允许通知权限）。</p>
+
+            <form className="worklist-form" onSubmit={onMemoSubmit}>
+              <div className="worklist-field">
+                <label>图标</label>
+                <div className="worklist-icon-row">
+                  {PRESET_ICONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={`worklist-icon-btn${memoIconEmoji === emoji && !memoIconCustomDataUrl ? ' worklist-icon-btn--active' : ''}`}
+                      title={emoji}
+                      onClick={() => {
+                        setMemoIconEmoji(emoji)
+                        setMemoIconCustomDataUrl('')
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  {memoIconCustomDataUrl ? (
+                    <>
+                      <img className="worklist-icon-preview" src={memoIconCustomDataUrl} alt="" />
+                      <button type="button" className="worklist-btn-secondary" onClick={clearMemoCustomIcon}>
+                        清除自定义图
+                      </button>
+                    </>
+                  ) : null}
+                  <label className="worklist-file">
+                    <input type="file" accept="image/*" onChange={memoOnPickImage} hidden />
+                    <span style={{ cursor: 'pointer', textDecoration: 'underline' }}>上传自定义图标…</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="worklist-field">
+                <label htmlFor="memo-name">
+                  备忘录名称 <span className="req">*</span>
+                </label>
+                <input
+                  id="memo-name"
+                  className="worklist-input"
+                  value={memoName}
+                  onChange={(e) => setMemoName(e.target.value)}
+                  placeholder="例如：下午开会材料"
+                  maxLength={200}
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="worklist-field">
+                <label htmlFor="memo-remind">提醒时间</label>
+                <input
+                  id="memo-remind"
+                  className="worklist-input"
+                  type="datetime-local"
+                  step="60"
+                  value={memoReminderAt}
+                  onClick={onTimeInputClick}
+                  onChange={(e) => setMemoReminderAt(e.target.value)}
+                />
+              </div>
+
+              <div className="worklist-field">
+                <label htmlFor="memo-content">
+                  内容 <span className="req">*</span>
+                </label>
+                <textarea
+                  id="memo-content"
+                  className="worklist-textarea worklist-textarea--memo-body"
+                  value={memoContent}
+                  onChange={(e) => setMemoContent(e.target.value)}
+                  placeholder="写在这里…"
+                  maxLength={50000}
+                  spellCheck="false"
+                />
+              </div>
+
+              <div className="worklist-actions">
+                <button type="submit" className="worklist-submit" disabled={memoBusy}>
+                  {memoBusy ? '保存中…' : isMemoEditing ? '保存修改' : '保存备忘录'}
+                </button>
+                {isMemoEditing ? (
+                  <button type="button" className="worklist-btn-secondary" onClick={resetMemoForm} disabled={memoBusy}>
+                    取消编辑
+                  </button>
                 ) : null}
               </div>
             </form>

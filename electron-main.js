@@ -204,6 +204,8 @@ const petState = {
   favorites: [],
   /** @type {Array<Record<string, unknown>>} */
   worklist: [],
+  /** 工作清单窗口「备忘录」多条记录（提醒时间 + 正文） */
+  memoList: [],
   petSettings: {
     selectedPet: 'black-coal',
     bubbleTexts: {
@@ -236,6 +238,23 @@ function loadPetState() {
       petState.followMouse = Boolean(parsed.followMouse);
       petState.favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
       petState.worklist = Array.isArray(parsed.worklist) ? parsed.worklist : [];
+      if (Array.isArray(parsed.memoList)) {
+        petState.memoList = parsed.memoList;
+      } else if (typeof parsed.worklistMemo === 'string' && parsed.worklistMemo.trim()) {
+        petState.memoList = [
+          {
+            id: `memo-migrated-${Date.now()}`,
+            name: '备忘录（迁移）',
+            icon: '📝',
+            content: parsed.worklistMemo.slice(0, 50000),
+            reminderAt: '',
+            reminderNotified: true,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+      } else {
+        petState.memoList = [];
+      }
       if (parsed.petSettings && typeof parsed.petSettings === 'object') {
         const bubbleTextsRaw = parsed.petSettings.bubbleTexts || {};
         const remindContinuousMs = Number.isFinite(Number(parsed.petSettings.remindContinuousMs))
