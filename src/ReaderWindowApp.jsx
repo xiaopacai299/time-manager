@@ -7,6 +7,7 @@ const BG_OPTIONS = [
   { id: 'dark', label: '夜间', color: '#14171f' },
   { id: 'green', label: '护眼', color: '#e7f2e4' },
   { id: 'blue', label: '浅蓝', color: '#eaf3ff' },
+  { id: 'transparent', label: '透明', color: 'transparent' },
 ]
 
 const DEFAULT_SETTINGS = {
@@ -14,9 +15,50 @@ const DEFAULT_SETTINGS = {
   autoScrollSpeed: 20,
 }
 
+const READER_DB_NAME = 'time-manager-reader-db'
+const READER_DB_VERSION = 1
+const READER_STORE = 'reader-state'
+const READER_SESSION_KEY = 'last-session'
+
 function getBgColor(id) {
   const target = BG_OPTIONS.find((bg) => bg.id === id)
   return target ? target.color : BG_OPTIONS[0].color
+}
+
+function openReaderDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(READER_DB_NAME, READER_DB_VERSION)
+    request.onupgradeneeded = () => {
+      const db = request.result
+      if (!db.objectStoreNames.contains(READER_STORE)) {
+        db.createObjectStore(READER_STORE)
+      }
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error || new Error('无法打开阅读本地数据库'))
+  })
+}
+
+async function getReaderSession() {
+  const db = await openReaderDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(READER_STORE, 'readonly')
+    const store = tx.objectStore(READER_STORE)
+    const request = store.get(READER_SESSION_KEY)
+    request.onsuccess = () => resolve(request.result || null)
+    request.onerror = () => reject(request.error || new Error('读取阅读会话失败'))
+  })
+}
+
+async function setReaderSession(payload) {
+  const db = await openReaderDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(READER_STORE, 'readwrite')
+    const store = tx.objectStore(READER_STORE)
+    const request = store.put(payload, READER_SESSION_KEY)
+    request.onsuccess = () => resolve(true)
+    request.onerror = () => reject(request.error || new Error('保存阅读会话失败'))
+  })
 }
 
 export default function ReaderWindowApp() {
@@ -25,6 +67,13 @@ export default function ReaderWindowApp() {
   const autoTimerRef = useRef(null)
   const epubBookRef = useRef(null)
   const epubRenditionRef = useRef(null)
+  const autoTargetRef = useRef('待机')
+  const epubStuckTicksRef = useRef(0)
+  const lastEpubAdvanceRef = useRef(0)
+  const lockedTargetRef = useRef('')
+  const targetFailTicksRef = useRef(0)
+  const restoringRef = useRef(false)
+  const saveTickRef = useRef(0)
 
   const [fileName, setFileName] = useState('')
   const [fileKind, setFileKind] = useState('')
@@ -33,6 +82,7 @@ export default function ReaderWindowApp() {
   const [readerSettings, setReaderSettings] = useState(DEFAULT_SETTINGS)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [autoScrollTarget, setAutoScrollTarget] = useState('待机')
 
   const background = useMemo(() => getBgColor(readerSettings.background), [readerSettings.background])
 
@@ -86,17 +136,237 @@ export default function ReaderWindowApp() {
 
   useEffect(() => cleanupEpub, [cleanupEpub])
 
+  const persistReadingProgress = useCallback(
+    async (partialProgress) => {
+      try {
+        const prev = (await getReaderSession()) || {}
+        if (!prev || !prev.kind) return
+        const next = {
+          ...prev,
+          progress: {
+            ...(prev.progress || {}),
+            ...(partialProgress || {}),
+            updatedAt: Date.now(),
+          },
+          updatedAt: Date.now(),
+        }
+        await setReaderSession(next)
+      } catch {
+        // 静默失败，避免打断阅读
+      }
+    },
+    [],
+  )
+
+  const openTxtFromContent = useCallback(async (name, text, progress = null) => {
+    cleanupEpub()
+    setFileName(String(name || '未命名.txt'))
+    setMsg('')
+    setLoading(false)
+    const lines = String(text || '')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map((line) => line.trimEnd())
+    setTxtLines(lines)
+    setFileKind('txt')
+    const restoreTop = Number(progress?.txtScrollTop || 0)
+    window.setTimeout(() => {
+      if (!containerRef.current) return
+      containerRef.current.scrollTop = Math.max(0, restoreTop)
+    }, 0)
+  }, [cleanupEpub])
+
+  const openEpubFromBuffer = useCallback(
+    async (name, arrayBuffer, progress = null) => {
+      cleanupEpub()
+      setFileName(String(name || '未命名.epub'))
+      setMsg('')
+      setLoading(true)
+      setFileKind('epub')
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      if (!epubRootRef.current) {
+        throw new Error('阅读容器初始化失败，请重试。')
+      }
+      const book = ePub(arrayBuffer)
+      epubBookRef.current = book
+      const rendition = book.renderTo(epubRootRef.current, {
+        width: '100%',
+        height: '100%',
+        flow: 'scrolled-doc',
+        manager: 'continuous',
+      })
+      epubRenditionRef.current = rendition
+      rendition.on('relocated', (location) => {
+        if (restoringRef.current) return
+        const cfi = location?.start?.cfi
+        if (!cfi) return
+        const now = Date.now()
+        if (now - saveTickRef.current < 800) return
+        saveTickRef.current = now
+        persistReadingProgress({ epubCfi: cfi })
+      })
+      const renderPromise = progress?.epubCfi ? rendition.display(progress.epubCfi) : rendition.display()
+      const timeoutPromise = new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error('EPUB 渲染超时，请更换文件或重试。')), 12000)
+      })
+      await Promise.race([renderPromise, timeoutPromise])
+      setLoading(false)
+    },
+    [cleanupEpub, persistReadingProgress],
+  )
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const cached = await getReaderSession()
+        if (!mounted || !cached?.kind || !cached?.payload) return
+        restoringRef.current = true
+        if (cached.kind === 'txt') {
+          await openTxtFromContent(cached.name, cached.payload.text, cached.progress)
+        } else if (cached.kind === 'epub') {
+          await openEpubFromBuffer(cached.name, cached.payload.arrayBuffer, cached.progress)
+        }
+      } catch {
+        // ignore restore failure
+      } finally {
+        restoringRef.current = false
+      }
+    })()
+    return () => {
+      mounted = false
+      restoringRef.current = false
+    }
+  }, [openEpubFromBuffer, openTxtFromContent])
+
+  useEffect(() => {
+    if (fileKind !== 'txt') return undefined
+    const el = containerRef.current
+    if (!el) return undefined
+    let timer = null
+    const onScroll = () => {
+      if (timer) clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        persistReadingProgress({ txtScrollTop: el.scrollTop })
+      }, 200)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (timer) clearTimeout(timer)
+    }
+  }, [fileKind, persistReadingProgress])
+
   useEffect(() => {
     if (autoTimerRef.current) {
       clearInterval(autoTimerRef.current)
       autoTimerRef.current = null
     }
-    if (!autoScroll) return undefined
+    if (!autoScroll) {
+      autoTargetRef.current = '待机'
+      setAutoScrollTarget('待机')
+      epubStuckTicksRef.current = 0
+      lockedTargetRef.current = ''
+      targetFailTicksRef.current = 0
+      return undefined
+    }
+    autoTargetRef.current = '检测中'
+    setAutoScrollTarget('检测中')
+    epubStuckTicksRef.current = 0
+    lockedTargetRef.current = ''
+    targetFailTicksRef.current = 0
     autoTimerRef.current = setInterval(() => {
+      const speed = Math.max(1, Number(readerSettings.autoScrollSpeed || 20))
+      const step = speed / 5
+      const updateTarget = (next) => {
+        if (autoTargetRef.current === next) return
+        autoTargetRef.current = next
+        setAutoScrollTarget(next)
+      }
+      const tryScrollByLabel = (label) => {
+        if (label === 'EPUB 内页') {
+          const iframe = epubRootRef.current?.querySelector('iframe')
+          const doc = iframe?.contentDocument
+          const scrollingEl = doc?.scrollingElement || doc?.documentElement || null
+          if (!scrollingEl) return false
+          const before = scrollingEl.scrollTop
+          scrollingEl.scrollTop += step
+          return scrollingEl.scrollTop > before
+        }
+        if (label === 'EPUB 内容') {
+          const contents = epubRenditionRef.current?.getContents?.() || []
+          for (const content of contents) {
+            const contentDoc = content?.document || content?.window?.document
+            const contentScrollEl = contentDoc?.scrollingElement || contentDoc?.documentElement || null
+            if (!contentScrollEl) continue
+            const before = contentScrollEl.scrollTop
+            contentScrollEl.scrollTop += step
+            if (contentScrollEl.scrollTop > before) return true
+          }
+          return false
+        }
+        if (label === 'EPUB 容器') {
+          const epubHost =
+            epubRootRef.current?.querySelector('.epub-container') ||
+            epubRootRef.current?.querySelector('.epub-view') ||
+            epubRootRef.current?.firstElementChild
+          if (!epubHost || typeof epubHost.scrollTop !== 'number') return false
+          const before = epubHost.scrollTop
+          epubHost.scrollTop += step
+          return epubHost.scrollTop > before
+        }
+        return false
+      }
+      if (fileKind === 'epub' && epubRootRef.current) {
+        const priorityTargets = ['EPUB 容器', 'EPUB 内页', 'EPUB 内容']
+        let moved = false
+
+        if (lockedTargetRef.current) {
+          moved = tryScrollByLabel(lockedTargetRef.current)
+          if (moved) {
+            targetFailTicksRef.current = 0
+            updateTarget(lockedTargetRef.current)
+            epubStuckTicksRef.current = 0
+            return
+          }
+          targetFailTicksRef.current += 1
+          if (targetFailTicksRef.current < 6) {
+            epubStuckTicksRef.current += 1
+          } else {
+            lockedTargetRef.current = ''
+            targetFailTicksRef.current = 0
+          }
+        } else {
+          for (const label of priorityTargets) {
+            moved = tryScrollByLabel(label)
+            if (!moved) continue
+            lockedTargetRef.current = label
+            targetFailTicksRef.current = 0
+            updateTarget(label)
+            epubStuckTicksRef.current = 0
+            return
+          }
+        }
+
+        epubStuckTicksRef.current += 1
+        const now = Date.now()
+        if (epubStuckTicksRef.current >= 8 && now - lastEpubAdvanceRef.current > 1200) {
+          const nextFn = epubRenditionRef.current?.next
+          if (typeof nextFn === 'function') {
+            Promise.resolve(nextFn.call(epubRenditionRef.current)).catch(() => {
+              // ignore
+            })
+            lastEpubAdvanceRef.current = now
+            epubStuckTicksRef.current = 0
+            updateTarget('EPUB 翻页')
+            return
+          }
+        }
+      }
       const el = containerRef.current
       if (!el) return
-      const speed = Math.max(1, Number(readerSettings.autoScrollSpeed || 20))
-      el.scrollBy({ top: speed / 5, behavior: 'auto' })
+      updateTarget('外层容器')
+      el.scrollBy({ top: step, behavior: 'auto' })
     }, 40)
     return () => {
       if (autoTimerRef.current) {
@@ -109,9 +379,10 @@ export default function ReaderWindowApp() {
   useEffect(() => {
     if (!epubRenditionRef.current) return
     const color = readerSettings.background === 'dark' ? '#e8edf5' : '#1f2a44'
+    const bgValue = readerSettings.background === 'transparent' ? 'rgba(0,0,0,0)' : background
     epubRenditionRef.current.themes.default({
       body: {
-        background: `${background} !important`,
+        background: `${bgValue} !important`,
         color: `${color} !important`,
       },
       p: {
@@ -136,36 +407,27 @@ export default function ReaderWindowApp() {
       try {
         if (lowerName.endsWith('.txt')) {
           const text = await file.text()
-          const lines = text
-            .replace(/\r/g, '')
-            .split('\n')
-            .map((line) => line.trimEnd())
-          setTxtLines(lines)
-          setFileKind('txt')
+          await openTxtFromContent(file.name, text, { txtScrollTop: 0 })
+          await setReaderSession({
+            kind: 'txt',
+            name: file.name,
+            payload: { text },
+            progress: { txtScrollTop: 0, updatedAt: Date.now() },
+            updatedAt: Date.now(),
+          })
           return
         }
 
         if (lowerName.endsWith('.epub')) {
-          setFileKind('epub')
-          await new Promise((resolve) => setTimeout(resolve, 0))
-          if (!epubRootRef.current) {
-            throw new Error('阅读容器初始化失败，请重试。')
-          }
           const arrayBuffer = await file.arrayBuffer()
-          const book = ePub(arrayBuffer)
-          epubBookRef.current = book
-          const rendition = book.renderTo(epubRootRef.current, {
-            width: '100%',
-            height: '100%',
-            flow: 'scrolled-doc',
-            manager: 'continuous',
+          await openEpubFromBuffer(file.name, arrayBuffer, null)
+          await setReaderSession({
+            kind: 'epub',
+            name: file.name,
+            payload: { arrayBuffer },
+            progress: { epubCfi: null, updatedAt: Date.now() },
+            updatedAt: Date.now(),
           })
-          epubRenditionRef.current = rendition
-          const renderPromise = rendition.display()
-          const timeoutPromise = new Promise((_, reject) => {
-            window.setTimeout(() => reject(new Error('EPUB 渲染超时，请更换文件或重试。')), 12000)
-          })
-          await Promise.race([renderPromise, timeoutPromise])
           return
         }
 
@@ -176,7 +438,7 @@ export default function ReaderWindowApp() {
         setLoading(false)
       }
     },
-    [cleanupEpub],
+    [cleanupEpub, openEpubFromBuffer, openTxtFromContent],
   )
 
   const onBgChange = useCallback(
@@ -241,6 +503,13 @@ export default function ReaderWindowApp() {
       <section className="reader-meta">
         <span>快捷键：`Ctrl/Cmd + Shift + R` 快速开关，`Esc` 关闭当前阅读页</span>
         <span>{fileName ? `当前文件：${fileName}` : '请上传 .txt 或 .epub 小说文件'}</span>
+      </section>
+      <section className="reader-auto-indicator" aria-live="polite">
+        <span className={`reader-auto-badge${autoScroll ? ' reader-auto-badge--on' : ''}`}>
+          {autoScroll ? '自动下滑：开启' : '自动下滑：关闭'}
+        </span>
+        <span>目标：{autoScroll ? autoScrollTarget : '无'}</span>
+        <span>速度：{Math.max(1, Number(readerSettings.autoScrollSpeed || 20))}</span>
       </section>
 
       {msg ? <div className="reader-msg">{msg}</div> : null}

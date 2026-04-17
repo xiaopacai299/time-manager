@@ -6,6 +6,10 @@
   color: #1f2a44;
 }
 
+.reader-page--transparent {
+  background: transparent;
+}
+
 .reader-page--dark {
   color: #e8edf5;
 }
@@ -73,6 +77,40 @@
   color: #b8c5de;
 }
 
+.reader-auto-indicator {
+  margin: 0 14px 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(95, 135, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(120, 148, 218, 0.08);
+  color: #486392;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reader-page--dark .reader-auto-indicator {
+  background: rgba(92, 125, 209, 0.16);
+  color: #d2dcf0;
+  border-color: rgba(151, 173, 228, 0.34);
+}
+
+.reader-auto-badge {
+  border-radius: 999px;
+  border: 1px solid #c8d4ee;
+  background: #ffffff;
+  color: #5a6f99;
+  font-weight: 700;
+  padding: 2px 10px;
+}
+
+.reader-auto-badge--on {
+  border-color: #7dc99f;
+  background: #eaf8f0;
+  color: #2c8f57;
+}
+
 .reader-msg {
   margin: 0 14px;
   padding: 8px 10px;
@@ -97,6 +135,11 @@
 .reader-page--dark .reader-content {
   background: rgba(16, 20, 30, 0.5);
   border-color: rgba(164, 181, 220, 0.28);
+}
+
+.reader-page--transparent .reader-content {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .reader-text {

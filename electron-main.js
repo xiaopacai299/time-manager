@@ -646,6 +646,8 @@ function openReaderWindow() {
     title: '摸鱼阅读',
     icon: APP_ICON_PATH,
     autoHideMenuBar: true,
+    transparent: true,
+    backgroundColor: '#00000000',
     resizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
