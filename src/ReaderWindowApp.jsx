@@ -19,6 +19,10 @@ const READER_DB_NAME = 'time-manager-reader-db'
 const READER_DB_VERSION = 1
 const READER_STORE = 'reader-state'
 const READER_SESSION_KEY = 'last-session'
+const READER_SCROLLBAR_HIDE_STYLE_ID = 'tm-reader-hide-scrollbar'
+const READER_TRANSPARENT_SCROLLBAR_CSS =
+  'html,body,*{scrollbar-width:none!important;-ms-overflow-style:none!important}' +
+  'html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{width:0!important;height:0!important;background:transparent!important}'
 
 function getBgColor(id) {
   const target = BG_OPTIONS.find((bg) => bg.id === id)
@@ -74,6 +78,7 @@ export default function ReaderWindowApp() {
   const targetFailTicksRef = useRef(0)
   const restoringRef = useRef(false)
   const saveTickRef = useRef(0)
+  const prevOpaqueBackgroundRef = useRef(DEFAULT_SETTINGS.background)
 
   const [fileName, setFileName] = useState('')
   const [fileKind, setFileKind] = useState('')
@@ -83,8 +88,14 @@ export default function ReaderWindowApp() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [autoScrollTarget, setAutoScrollTarget] = useState('待机')
+  const [transparentHover, setTransparentHover] = useState(false)
 
+  const isTransparent = readerSettings.background === 'transparent'
   const background = useMemo(() => getBgColor(readerSettings.background), [readerSettings.background])
+
+  useEffect(() => {
+    if (!isTransparent) setTransparentHover(false)
+  }, [isTransparent])
 
   useEffect(() => {
     let mounted = true
@@ -391,6 +402,117 @@ export default function ReaderWindowApp() {
     })
   }, [background, readerSettings.background])
 
+  useEffect(() => {
+    const r = epubRenditionRef.current
+    if (!r || fileKind !== 'epub' || loading) return undefined
+
+    const injectIntoDoc = (doc) => {
+      if (!doc?.head) return
+      if (doc.getElementById(READER_SCROLLBAR_HIDE_STYLE_ID)) return
+      const el = doc.createElement('style')
+      el.id = READER_SCROLLBAR_HIDE_STYLE_ID
+      el.textContent = READER_TRANSPARENT_SCROLLBAR_CSS
+      doc.head.appendChild(el)
+    }
+
+    const stripFromDoc = (doc) => {
+      doc?.getElementById(READER_SCROLLBAR_HIDE_STYLE_ID)?.remove()
+    }
+
+    const onContent = (contents) => {
+      try {
+        injectIntoDoc(contents?.document)
+      } catch {
+        // ignore
+      }
+    }
+
+    if (readerSettings.background === 'transparent') {
+      r.hooks?.content?.register?.(onContent)
+      try {
+        const list = typeof r.getContents === 'function' ? r.getContents() : []
+        for (const c of list || []) {
+          injectIntoDoc(c?.document)
+        }
+      } catch {
+        // ignore
+      }
+      return () => {
+        try {
+          r.hooks?.content?.deregister?.(onContent)
+        } catch {
+          // ignore
+        }
+        try {
+          const list = typeof r.getContents === 'function' ? r.getContents() : []
+          for (const c of list || []) {
+            stripFromDoc(c?.document)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    try {
+      const list = typeof r.getContents === 'function' ? r.getContents() : []
+      for (const c of list || []) {
+        stripFromDoc(c?.document)
+      }
+    } catch {
+      // ignore
+    }
+    return undefined
+  }, [readerSettings.background, fileKind, loading])
+
+  useEffect(() => {
+    if (!isTransparent || fileKind !== 'epub') return undefined
+    const root = epubRootRef.current
+    if (!root) return undefined
+
+    const injectIntoDoc = (doc) => {
+      if (!doc?.head) return
+      if (doc.getElementById(READER_SCROLLBAR_HIDE_STYLE_ID)) return
+      const el = doc.createElement('style')
+      el.id = READER_SCROLLBAR_HIDE_STYLE_ID
+      el.textContent = READER_TRANSPARENT_SCROLLBAR_CSS
+      doc.head.appendChild(el)
+    }
+
+    const injectFrame = (iframe) => {
+      const run = () => {
+        try {
+          injectIntoDoc(iframe.contentDocument)
+        } catch {
+          // ignore
+        }
+      }
+      if (iframe.contentDocument?.readyState === 'complete') run()
+      else iframe.addEventListener('load', run, { once: true })
+    }
+
+    const scan = () => {
+      root.querySelectorAll('iframe').forEach(injectFrame)
+    }
+
+    scan()
+    const mo = new MutationObserver(() => {
+      window.requestAnimationFrame(scan)
+    })
+    mo.observe(root, { childList: true, subtree: true })
+
+    return () => {
+      mo.disconnect()
+      root.querySelectorAll('iframe').forEach((iframe) => {
+        try {
+          iframe.contentDocument?.getElementById(READER_SCROLLBAR_HIDE_STYLE_ID)?.remove()
+        } catch {
+          // ignore
+        }
+      })
+    }
+  }, [isTransparent, fileKind])
+
   const onPickFile = useCallback(
     async (event) => {
       const file = event.target.files?.[0]
@@ -443,6 +565,9 @@ export default function ReaderWindowApp() {
 
   const onBgChange = useCallback(
     (id) => {
+      if (id === 'transparent' && readerSettings.background !== 'transparent') {
+        prevOpaqueBackgroundRef.current = readerSettings.background
+      }
       persistSettings({
         ...readerSettings,
         background: id,
@@ -450,6 +575,15 @@ export default function ReaderWindowApp() {
     },
     [persistSettings, readerSettings],
   )
+
+  const exitTransparentMode = useCallback(() => {
+    const restoreId = prevOpaqueBackgroundRef.current || DEFAULT_SETTINGS.background
+    persistSettings({
+      ...readerSettings,
+      background: restoreId,
+    })
+    setTransparentHover(false)
+  }, [persistSettings, readerSettings])
 
   const onSpeedChange = useCallback(
     (value) => {
@@ -462,56 +596,77 @@ export default function ReaderWindowApp() {
   )
 
   return (
-    <main className={`reader-page reader-page--${readerSettings.background}`} style={{ '--reader-bg': background }}>
-      <header className="reader-toolbar">
-        <label className="reader-upload">
-          <input type="file" accept=".txt,.epub,text/plain,application/epub+zip" onChange={onPickFile} hidden />
-          <span>上传小说</span>
-        </label>
-        <button type="button" className="reader-btn" onClick={() => setAutoScroll((v) => !v)}>
-          {autoScroll ? '停止自动下滑' : '自动下滑'}
+    <main
+      className={`reader-page reader-page--${readerSettings.background}`}
+      style={{ '--reader-bg': background }}
+      onMouseEnter={() => {
+        if (isTransparent) setTransparentHover(true)
+      }}
+      onMouseLeave={() => {
+        if (isTransparent) setTransparentHover(false)
+      }}
+    >
+      {isTransparent && transparentHover ? (
+        <button type="button" className="reader-exit-transparent" onClick={exitTransparentMode}>
+          退出透明
         </button>
-        <label className="reader-speed">
-          速度
-          <input
-            type="range"
-            min="5"
-            max="120"
-            step="5"
-            value={readerSettings.autoScrollSpeed}
-            onChange={(e) => onSpeedChange(e.target.value)}
-          />
-        </label>
-        <div className="reader-bgs">
-          {BG_OPTIONS.map((bg) => (
-            <button
-              key={bg.id}
-              type="button"
-              className={`reader-bg-btn${readerSettings.background === bg.id ? ' reader-bg-btn--active' : ''}`}
-              onClick={() => onBgChange(bg.id)}
-              title={bg.label}
-            >
-              {bg.label}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="reader-btn reader-btn--danger" onClick={() => window.timeManagerAPI?.closeReaderWindow?.()}>
-          关闭阅读页
-        </button>
-      </header>
+      ) : null}
 
-      <section className="reader-meta">
-        <span>快捷键：`Ctrl/Cmd + Shift + R` 快速开关，`Esc` 关闭当前阅读页</span>
-        <span>{fileName ? `当前文件：${fileName}` : '请上传 .txt 或 .epub 小说文件'}</span>
-      </section>
-      <section className="reader-auto-indicator" aria-live="polite">
-        <span className={`reader-auto-badge${autoScroll ? ' reader-auto-badge--on' : ''}`}>
-          {autoScroll ? '自动下滑：开启' : '自动下滑：关闭'}
-        </span>
-        <span>目标：{autoScroll ? autoScrollTarget : '无'}</span>
-        <span>速度：{Math.max(1, Number(readerSettings.autoScrollSpeed || 20))}</span>
-      </section>
+      {!isTransparent ? (
+        <header className="reader-toolbar">
+          <label className="reader-upload">
+            <input type="file" accept=".txt,.epub,text/plain,application/epub+zip" onChange={onPickFile} hidden />
+            <span>上传小说</span>
+          </label>
+          <button type="button" className="reader-btn" onClick={() => setAutoScroll((v) => !v)}>
+            {autoScroll ? '停止自动下滑' : '自动下滑'}
+          </button>
+          <label className="reader-speed">
+            速度
+            <input
+              type="range"
+              min="5"
+              max="120"
+              step="5"
+              value={readerSettings.autoScrollSpeed}
+              onChange={(e) => onSpeedChange(e.target.value)}
+            />
+          </label>
+          <div className="reader-bgs">
+            {BG_OPTIONS.map((bg) => (
+              <button
+                key={bg.id}
+                type="button"
+                className={`reader-bg-btn${readerSettings.background === bg.id ? ' reader-bg-btn--active' : ''}`}
+                onClick={() => onBgChange(bg.id)}
+                title={bg.label}
+              >
+                {bg.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="reader-btn reader-btn--danger" onClick={() => window.timeManagerAPI?.closeReaderWindow?.()}>
+            关闭阅读页
+          </button>
+        </header>
+      ) : null}
 
+      {!isTransparent ? (
+        <section className="reader-meta">
+          <span>快捷键：`Ctrl/Cmd + Shift + R` 快速开关，`Esc` 关闭当前阅读页</span>
+          <span>{fileName ? `当前文件：${fileName}` : '请上传 .txt 或 .epub 小说文件'}</span>
+        </section>
+      ) : null}
+      {/* {!isTransparent ? (
+        <section className="reader-auto-indicator" aria-live="polite">
+          <span className={`reader-auto-badge${autoScroll ? ' reader-auto-badge--on' : ''}`}>
+            {autoScroll ? '自动下滑：开启' : '自动下滑：关闭'}
+          </span>
+          <span>目标：{autoScroll ? autoScrollTarget : '无'}</span>
+          <span>速度：{Math.max(1, Number(readerSettings.autoScrollSpeed || 20))}</span>
+        </section>
+      ) : null} */}
+      
       {msg ? <div className="reader-msg">{msg}</div> : null}
       {loading ? <div className="reader-loading">正在加载文件，请稍候…</div> : null}
 

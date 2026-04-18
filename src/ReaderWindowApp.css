@@ -8,6 +8,31 @@
 
 .reader-page--transparent {
   background: transparent;
+  overflow: hidden;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.reader-exit-transparent {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 1000;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(30, 40, 60, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2a44;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+}
+
+.reader-exit-transparent:hover {
+  border-color: rgba(95, 135, 255, 0.45);
+  background: #fff;
 }
 
 .reader-page--dark {
@@ -140,6 +165,44 @@
 .reader-page--transparent .reader-content {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.28);
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scrollbar-color: transparent transparent;
+}
+
+.reader-page--transparent .reader-content::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+/* epub.js 连续滚动时，主滚动条在 #reader-epub-root 内的 .epub-container，而非 .reader-content */
+.reader-page--transparent .reader-epub-root,
+.reader-page--transparent .epub-container {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scrollbar-color: transparent transparent;
+}
+
+.reader-page--transparent .reader-epub-root::-webkit-scrollbar,
+.reader-page--transparent .epub-container::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.reader-page--transparent .reader-content *,
+.reader-page--transparent #reader-epub-root,
+.reader-page--transparent #reader-epub-root * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.reader-page--transparent .reader-content *::-webkit-scrollbar,
+.reader-page--transparent #reader-epub-root *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 .reader-text {
