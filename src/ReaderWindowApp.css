@@ -1,9 +1,12 @@
 .reader-page {
   min-height: 100vh;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--reader-bg, #f5f1e8);
   color: #1f2a44;
+  overflow-x: hidden;
+  position: relative;
 }
 
 .reader-page--transparent {
@@ -12,6 +15,30 @@
   height: 100%;
   min-height: 100%;
   box-sizing: border-box;
+}
+
+/* --- 无边框窗口：让顶栏可以拖动，按钮/输入不参与拖动 --- */
+.reader-toolbar {
+  -webkit-app-region: drag;
+}
+
+.reader-toolbar button,
+.reader-toolbar input,
+.reader-toolbar .reader-upload,
+.reader-toolbar .reader-speed,
+.reader-toolbar .reader-bgs {
+  -webkit-app-region: no-drag;
+}
+
+/* 透明模式下隐藏了顶栏，这里在最上方放一条不可见的拖拽条，让用户仍然能拖动窗口 */
+.reader-drag-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 900;
+  -webkit-app-region: drag;
 }
 
 .reader-exit-transparent {
@@ -28,6 +55,7 @@
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+  -webkit-app-region: no-drag;
 }
 
 .reader-exit-transparent:hover {
@@ -67,6 +95,12 @@
   color: #b33c2a;
 }
 
+.reader-btn--toggle-on {
+  border-color: #5f87ff;
+  background: rgba(95, 135, 255, 0.14);
+  color: #2a4a9e;
+}
+
 .reader-speed {
   display: inline-flex;
   align-items: center;
@@ -102,40 +136,6 @@
   color: #b8c5de;
 }
 
-.reader-auto-indicator {
-  margin: 0 14px 10px;
-  padding: 8px 10px;
-  border: 1px solid rgba(95, 135, 255, 0.22);
-  border-radius: 10px;
-  background: rgba(120, 148, 218, 0.08);
-  color: #486392;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.reader-page--dark .reader-auto-indicator {
-  background: rgba(92, 125, 209, 0.16);
-  color: #d2dcf0;
-  border-color: rgba(151, 173, 228, 0.34);
-}
-
-.reader-auto-badge {
-  border-radius: 999px;
-  border: 1px solid #c8d4ee;
-  background: #ffffff;
-  color: #5a6f99;
-  font-weight: 700;
-  padding: 2px 10px;
-}
-
-.reader-auto-badge--on {
-  border-color: #7dc99f;
-  background: #eaf8f0;
-  color: #2c8f57;
-}
-
 .reader-msg {
   margin: 0 14px;
   padding: 8px 10px;
@@ -146,15 +146,171 @@
   font-size: 12px;
 }
 
-.reader-content {
-  margin: 12px 14px 14px;
+.reader-main-row {
+  position: relative;
   flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 12px 14px 14px;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.reader-toc-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+}
+
+.reader-page--dark .reader-toc-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.reader-toc {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  width: min(280px, 86vw);
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid rgba(89, 115, 173, 0.28);
+  border-radius: 0 14px 14px 0;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 6px 0 28px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.reader-page--dark .reader-toc {
+  background: rgba(22, 28, 42, 0.94);
+  border-color: rgba(164, 181, 220, 0.32);
+  box-shadow: 6px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.reader-toc-head {
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #35508e;
+  border-bottom: 1px solid rgba(89, 115, 173, 0.2);
+  flex-shrink: 0;
+}
+
+.reader-page--dark .reader-toc-head {
+  color: #d2dcf0;
+  border-bottom-color: rgba(151, 173, 228, 0.28);
+}
+
+.reader-toc-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reader-toc-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #6a7fa8;
+}
+
+.reader-page--dark .reader-toc-empty {
+  color: #9aaed0;
+}
+
+.reader-toc-item {
+  text-align: left;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #2a3a55;
+  font-size: 13px;
+  line-height: 1.35;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.reader-page--dark .reader-toc-item {
+  color: #e4eaf7;
+}
+
+.reader-toc-item:hover {
+  background: rgba(95, 135, 255, 0.1);
+}
+
+.reader-toc-item--active {
+  background: rgba(95, 135, 255, 0.18);
+  font-weight: 600;
+  color: #1f3d8a;
+}
+
+.reader-toc-item--group {
+  cursor: default;
+  color: #6a7fa8;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  opacity: 0.78;
+}
+
+.reader-toc-item--group:hover {
+  background: transparent;
+}
+
+.reader-page--dark .reader-toc-item--group {
+  color: #9fb3d6;
+}
+
+.reader-page--dark .reader-toc-item--active {
+  background: rgba(120, 160, 255, 0.2);
+  color: #fff;
+}
+
+.reader-content {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
   min-height: 0;
   border: 1px solid rgba(89, 115, 173, 0.24);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.55);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+/* EPUB 时外层不滚动，只让 epub.js 的 .epub-container 滚动，避免双滚动条与横向溢出 */
+.reader-content--epub {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.reader-content--epub .reader-epub-root {
+  flex: 1 1 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .reader-page--dark .reader-content {
@@ -176,7 +332,7 @@
   background: transparent !important;
 }
 
-/* epub.js 连续滚动时，主滚动条在 #reader-epub-root 内的 .epub-container，而非 .reader-content */
+/* epub.js 连续滚动时，主滚动条在 .epub-container；透明模式下一并隐藏 */
 .reader-page--transparent .reader-epub-root,
 .reader-page--transparent .epub-container {
   scrollbar-width: none !important;
@@ -219,8 +375,8 @@
 
 .reader-epub-root {
   width: 100%;
-  min-height: 100%;
   height: 100%;
+  min-height: 100%;
   padding: 14px;
   box-sizing: border-box;
 }
@@ -237,6 +393,24 @@
   background: #edf3ff;
   color: #35508e;
   font-size: 12px;
+}
+
+.reader-loading--overlay {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  margin: 0;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+}
+
+.reader-page--dark .reader-loading--overlay {
+  background: rgba(30, 38, 56, 0.92);
+  border-color: rgba(151, 173, 228, 0.35);
+  color: #d2dcf0;
 }
 
 .reader-placeholder {
