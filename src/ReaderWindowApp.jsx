@@ -199,6 +199,8 @@ export default function ReaderWindowApp() {
   const prevOpaqueBackgroundRef = useRef(DEFAULT_SETTINGS.background)
   const epubTocRef = useRef([])
   const lastLayoutSizeRef = useRef({ w: 0, h: 0 })
+  // 背景模式切换时暂时抑制 rendition.resize()，避免触发 clear() 引起的短暂空白和进度漂移
+  const suppressEpubResizeRef = useRef(false)
 
   const [fileName, setFileName] = useState('')
   const [fileKind, setFileKind] = useState('')
@@ -285,6 +287,7 @@ export default function ReaderWindowApp() {
   }, [cleanupEpub])
 
   const syncEpubLayout = useCallback(() => {
+    if (suppressEpubResizeRef.current) return
     const r = epubRenditionRef.current
     const root = epubRootRef.current
     if (!r || !root) return
@@ -304,6 +307,7 @@ export default function ReaderWindowApp() {
   // 主动触发连续视图管理器的 check()，绕过 rendition.resize 的尺寸早退，
   // 确保 iframe 异步 onLoad 后内容长度被重新计算，滚动条能立刻出现。
   const forceEpubRecheck = useCallback(() => {
+    if (suppressEpubResizeRef.current) return
     const mgr = epubRenditionRef.current?.manager
     if (!mgr || typeof mgr.check !== 'function') return
     try {
@@ -742,27 +746,60 @@ export default function ReaderWindowApp() {
     [cleanupEpub, openEpubFromBuffer, openTxtFromContent],
   )
 
+  // 切换背景模式时，暂存滚动位置并在 CSS 完成后恢复；期间抑制 rendition.resize()，
+  // 避免 epub.js clear() 导致的短暂空白和"两套模式各记各的进度"现象。
+  const switchBackgroundPreservingScroll = useCallback(
+    (next) => {
+      const host = fileKind === 'epub' ? getEpubScrollEl(epubRootRef.current) : containerRef.current
+      const savedTop = host && typeof host.scrollTop === 'number' ? host.scrollTop : 0
+      suppressEpubResizeRef.current = true
+      persistSettings(next)
+      // 等两次 rAF + 一个微延迟，让切换引起的所有 ResizeObserver 回调先通过（被抑制），
+      // 再把滚动位置写回去并解除抑制。
+      const restore = () => {
+        const h =
+          next.background === 'transparent' || fileKind === 'epub'
+            ? getEpubScrollEl(epubRootRef.current)
+            : containerRef.current
+        if (h && typeof h.scrollTop === 'number') h.scrollTop = savedTop
+      }
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          restore()
+          // 再多给 ResizeObserver 一点时间走完最后一次回调再解除抑制，
+          // 仅解除抑制，不再重新写 scrollTop，避免与自动下滑的 tick 互相拉锯。
+          window.setTimeout(() => {
+            suppressEpubResizeRef.current = false
+            // 模式切换不改变真实视图大小需求，重置 lastLayoutSize 以避免下一次真实窗口缩放被早退掉
+            lastLayoutSizeRef.current = { w: 0, h: 0 }
+          }, 80)
+        })
+      })
+    },
+    [persistSettings, fileKind],
+  )
+
   const onBgChange = useCallback(
     (id) => {
       if (id === 'transparent' && readerSettings.background !== 'transparent') {
         prevOpaqueBackgroundRef.current = readerSettings.background
       }
-      persistSettings({
+      switchBackgroundPreservingScroll({
         ...readerSettings,
         background: id,
       })
     },
-    [persistSettings, readerSettings],
+    [switchBackgroundPreservingScroll, readerSettings],
   )
 
   const exitTransparentMode = useCallback(() => {
     const restoreId = prevOpaqueBackgroundRef.current || DEFAULT_SETTINGS.background
-    persistSettings({
+    switchBackgroundPreservingScroll({
       ...readerSettings,
       background: restoreId,
     })
     setTransparentHover(false)
-  }, [persistSettings, readerSettings])
+  }, [switchBackgroundPreservingScroll, readerSettings])
 
   const goToTocHref = useCallback(
     (href) => {
