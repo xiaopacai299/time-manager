@@ -104,7 +104,7 @@ export class ActivityEngine {
         leftAt: timestamp,
         enteredAt: timestamp,
       });
-      debugLog('历史记录添加了', this.transitions);
+      // debugLog('历史记录添加了', this.transitions);
       if (this.transitions.length > this.transitionHistoryLimit) {
         this.transitions.shift();
       }

@@ -15,6 +15,7 @@ export function createMenuModule({
   onOpenWorklist,
   onOpenReader,
   onOpenSettings,
+  onOpenStatsWindow,
   onEmitPetAction,
 }) {
   let tray = null;
@@ -85,6 +86,10 @@ export function createMenuModule({
       {
         label: '摸鱼',
         click: () => onOpenReader(),
+      },
+      {
+        label: '使用统计',
+        click: () => onOpenStatsWindow?.(),
       },
       {
         label: '设置',

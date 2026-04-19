@@ -42,12 +42,25 @@
   overflow: hidden;
 }
 
-/* 气泡、头像在窄窗口内保持水平居中且不超过视口宽度 */
+/* 气泡、头像行在窄窗口内保持水平居中且不超过视口宽度 */
 .pet-shell > .pet-bubble,
-.pet-shell > .pet-avatar {
+.pet-shell > .pet-avatar-row {
   flex-shrink: 0;
   width: 100%;
   max-width: 100%;
+}
+
+.pet-avatar-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pet-avatar-row .pet-avatar {
+  flex-shrink: 0;
 }
 
 .pet-shell > .warning {

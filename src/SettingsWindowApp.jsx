@@ -11,6 +11,14 @@ const DEFAULT_BUBBLE_TEXTS = {
   'long-work': '',
 }
 
+function newSkillRow() {
+  const id =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `skill-${Date.now()}`
+  return { id, name: '新技能', body: '', enabled: true }
+}
+
 function PetLottieIcon({ animationData }) {
   const ref = useRef(null)
   useEffect(() => {
@@ -34,6 +42,12 @@ export default function SettingsWindowApp() {
   const [bubbleTexts, setBubbleTexts] = useState(DEFAULT_BUBBLE_TEXTS)
   const [remindContinuousMins, setRemindContinuousMins] = useState(Math.round(REMIND_CONTINUOUS_MS / 60000))
   const [longWorkContinuousMins, setLongWorkContinuousMins] = useState(Math.round(LONG_WORK_CONTINUOUS_MS / 60000))
+  const [openAiKeyDraft, setOpenAiKeyDraft] = useState('')
+  const [hasOpenAiKey, setHasOpenAiKey] = useState(false)
+  const [clearOpenAiKey, setClearOpenAiKey] = useState(false)
+  const [llmChatUrl, setLlmChatUrl] = useState('')
+  const [llmModel, setLlmModel] = useState('gpt-4o-mini')
+  const [llmSkills, setLlmSkills] = useState([])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -54,6 +68,20 @@ export default function SettingsWindowApp() {
       const longMs = Number(data.longWorkContinuousMs)
       setRemindContinuousMins(Number.isFinite(remindMs) ? Math.round(remindMs / 60000) : Math.round(REMIND_CONTINUOUS_MS / 60000))
       setLongWorkContinuousMins(Number.isFinite(longMs) ? Math.round(longMs / 60000) : Math.round(LONG_WORK_CONTINUOUS_MS / 60000))
+      setHasOpenAiKey(Boolean(data.hasOpenAiKey))
+      setOpenAiKeyDraft('')
+      setClearOpenAiKey(false)
+      setLlmChatUrl(String(data.llmChatUrl || ''))
+      setLlmModel(String(data.llmModel || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
+      const rawSkills = Array.isArray(data.llmSkills) ? data.llmSkills : []
+      setLlmSkills(
+        rawSkills.map((s, i) => ({
+          id: typeof s?.id === 'string' && String(s.id).trim() ? String(s.id).trim() : `skill-${i}-${Date.now()}`,
+          name: String(s?.name || '技能').slice(0, 80),
+          body: String(s?.body || '').slice(0, 4000),
+          enabled: Boolean(s?.enabled),
+        })),
+      )
     })
     return () => {
       mounted = false
@@ -72,16 +100,28 @@ export default function SettingsWindowApp() {
         return
       }
 
-      const result = await window.timeManagerAPI?.updatePetSettings?.({
+      const payload = {
         selectedPet,
         bubbleTexts,
         remindContinuousMs: remindMs,
         longWorkContinuousMs: longMs,
-      })
+        llmChatUrl,
+        llmModel,
+        llmSkills,
+      }
+      if (clearOpenAiKey) {
+        payload.clearOpenAiApiKey = true
+      } else if (openAiKeyDraft.trim()) {
+        payload.openAiApiKey = openAiKeyDraft.trim()
+      }
+      const result = await window.timeManagerAPI?.updatePetSettings?.(payload)
       if (!result?.ok) {
         setMsg(result?.error || '保存失败')
         return
       }
+      setHasOpenAiKey(Boolean(result.petSettings?.hasOpenAiKey))
+      setOpenAiKeyDraft('')
+      setClearOpenAiKey(false)
       setMsg('设置已保存')
     } catch {
       setMsg('保存失败，请稍后重试')
@@ -115,6 +155,128 @@ export default function SettingsWindowApp() {
               <span className="settings-pet-name">{pet.name}</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-title">AI 对话（API）</h2>
+        <p className="settings-sub">
+          用于左键双击宠物后的对话面板。须为与 OpenAI 兼容的 Chat Completions（默认请求流式 SSE；若接口不支持，可设环境变量
+          TIME_MANAGER_LLM_STREAM=false 强制整包 JSON）。密钥仅保存在本机配置中；API 地址与模型名可下发到界面，不含密钥。
+        </p>
+        <div className="settings-form">
+          <label className="settings-field">
+            <span>对话接口 URL（可选，空则官方 OpenAI）</span>
+            <input
+              value={llmChatUrl}
+              onChange={(e) => setLlmChatUrl(e.target.value)}
+              placeholder="https://api.openai.com/v1/chat/completions"
+            />
+          </label>
+          <label className="settings-field">
+            <span>模型名 model</span>
+            <input
+              value={llmModel}
+              onChange={(e) => setLlmModel(e.target.value)}
+              placeholder="gpt-4o-mini"
+            />
+          </label>
+          <label className="settings-field">
+            <span>API 密钥（Bearer）{hasOpenAiKey ? '（已保存，留空不改）' : ''}</span>
+            <input
+              type="password"
+              autoComplete="off"
+              value={openAiKeyDraft}
+              onChange={(e) => {
+                setOpenAiKeyDraft(e.target.value)
+                setClearOpenAiKey(false)
+              }}
+              placeholder={hasOpenAiKey ? '输入新密钥以替换' : 'sk-…'}
+            />
+          </label>
+          {hasOpenAiKey ? (
+            <button
+              type="button"
+              className="settings-secondary"
+              onClick={() => {
+                setClearOpenAiKey(true)
+                setOpenAiKeyDraft('')
+              }}
+            >
+              {clearOpenAiKey ? '已标记清除，请点下方「保存设置」' : '清除已保存的密钥（保存后生效）'}
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-title">AI 技能（SKILL）</h2>
+        <p className="settings-sub">
+          每条技能 = 名称 + 正文（可粘贴 SKILL.md 要点）。最多 8 条；在宠物对话面板可勾选「启用」。
+          启用项会拼进系统提示，模型需按正文约束回答。
+        </p>
+        <div className="settings-skill-list">
+          {llmSkills.map((s, index) => (
+            <div key={s.id} className="settings-skill-card">
+              <div className="settings-skill-card__head">
+                <label className="settings-field settings-field--inline">
+                  <span>名称</span>
+                  <input
+                    value={s.name}
+                    maxLength={80}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setLlmSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, name: v } : x)))
+                    }}
+                  />
+                </label>
+                <label className="settings-skill-enable">
+                  <input
+                    type="checkbox"
+                    checked={s.enabled}
+                    onChange={(e) => {
+                      const v = e.target.checked
+                      setLlmSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, enabled: v } : x)))
+                    }}
+                  />
+                  默认启用
+                </label>
+                <button
+                  type="button"
+                  className="settings-skill-remove"
+                  onClick={() => setLlmSkills((prev) => prev.filter((x) => x.id !== s.id))}
+                >
+                  删除
+                </button>
+              </div>
+              <label className="settings-field">
+                <span>正文（最多约 4000 字）</span>
+                <textarea
+                  className="settings-skill-body"
+                  value={s.body}
+                  maxLength={4000}
+                  rows={5}
+                  placeholder="例如：回答时请始终用简体中文；涉及代码用 markdown 代码块；…"
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setLlmSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, body: v } : x)))
+                  }}
+                />
+              </label>
+              {index < llmSkills.length - 1 ? <hr className="settings-skill-sep" /> : null}
+            </div>
+          ))}
+        </div>
+        <div className="settings-skill-actions">
+          <button
+            type="button"
+            className="settings-secondary"
+            disabled={llmSkills.length >= 8}
+            onClick={() => setLlmSkills((prev) => [...prev, newSkillRow()].slice(0, 8))}
+          >
+            添加技能
+          </button>
+          {llmSkills.length >= 8 ? <span className="settings-skill-cap">已达 8 条上限</span> : null}
         </div>
       </section>
 

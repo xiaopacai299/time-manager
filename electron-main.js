@@ -22,6 +22,7 @@ import { createWorklistModule } from './main/electron/worklist-module.js';
 import { createFavoritesModule } from './main/electron/favorites-module.js';
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
+import { debugLog } from './main/debug-log.js';
 
 // 主进程默认阈值（毫秒）。不要依赖 src 目录，避免打包后模块缺失。
 const REMIND_CONTINUOUS_MS = 25 * 60 * 1000;
@@ -54,9 +55,34 @@ let mainWindow;
 let statsWindow = null;
 let settingsWindow = null;
 let readerWindow = null;
+let petAiChatWindow = null;
 let worklistReminderTimer = null;
-const PET_WINDOW_WIDTH = 260;
-const PET_WINDOW_HEIGHT = 280;
+/** 展开模式：宠物、气泡与统计区 */
+const PET_WINDOW_WIDTH = 620;
+const PET_WINDOW_HEIGHT = 640;
+const PET_AI_CHAT_MARGIN = 20;
+const PET_AI_CHAT_MIN_WIDTH = 360;
+const PET_AI_CHAT_MIN_HEIGHT = 280;
+/** 打开时的默认宽度上限（宽屏不再拉满整行）；小屏仍保证左右至少各留 `PET_AI_CHAT_MARGIN`。 */
+const PET_AI_CHAT_MAX_WIDTH = 640;
+
+/**
+ * AI 对话子窗口：宽度不超过 `PET_AI_CHAT_MAX_WIDTH`，在工作区内水平居中；高度随工作区比例变化并垂直居中。
+ */
+function getPetAiChatWindowBounds() {
+  const primary = screen.getPrimaryDisplay();
+  const wa = primary.workArea;
+  const m = PET_AI_CHAT_MARGIN;
+  const maxUsable = Math.max(PET_AI_CHAT_MIN_WIDTH, Math.round(wa.width - 2 * m));
+  const width = Math.min(PET_AI_CHAT_MAX_WIDTH, maxUsable);
+  const x = Math.round(wa.x + (wa.width - width) / 2);
+  const height = Math.min(
+    720,
+    Math.max(PET_AI_CHAT_MIN_HEIGHT, Math.round(wa.height * 0.62)),
+  );
+  const y = Math.round(wa.y + (wa.height - height) / 2);
+  return { x, y, width, height };
+}
 const PET_COMPACT_WIDTH = 190;
 const PET_COMPACT_HEIGHT = 210;
 const PET_RENDERER_ORIGIN = 'http://localhost:4567';
@@ -109,6 +135,12 @@ if (!gotSingleInstanceLock) {
     if (statsWindow && !statsWindow.isDestroyed()) {
       statsWindow.show();
       statsWindow.focus();
+      return;
+    }
+    if (petAiChatWindow && !petAiChatWindow.isDestroyed()) {
+      if (petAiChatWindow.isMinimized()) petAiChatWindow.restore();
+      petAiChatWindow.show();
+      petAiChatWindow.focus();
       return;
     }
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -222,8 +254,204 @@ const petState = {
     // 宠物形态切换阈值（毫秒）
     remindContinuousMs: REMIND_CONTINUOUS_MS,
     longWorkContinuousMs: LONG_WORK_CONTINUOUS_MS,
+    /** OpenAI API 密钥，仅主进程使用，不向渲染进程广播明文 */
+    openAiApiKey: '',
+    /** 兼容 OpenAI Chat Completions 的完整 POST 地址；空则使用官方默认 */
+    llmChatUrl: '',
+    /** 请求体中的 model 字段 */
+    llmModel: 'gpt-4o-mini',
+    /**
+     * 对话技能（类似 Cursor SKILL）：{ id, name, body, enabled }[]
+     * 已启用的 body 会拼进系统提示；仅主进程持久化。
+     */
+    llmSkills: [],
   },
 };
+
+const LLM_SKILL_MAX = 8;
+const LLM_SKILL_BODY_MAX = 4000;
+const LLM_SKILL_APPENDIX_MAX = 6000;
+
+const DEFAULT_LLM_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
+
+function normalizeLlmSkills(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw.slice(0, LLM_SKILL_MAX)) {
+    if (!item || typeof item !== 'object') continue;
+    const id =
+      String(item.id || '')
+        .trim()
+        .slice(0, 80) || `skill-${Date.now()}-${out.length}`;
+    const name = String(item.name || '未命名技能').trim().slice(0, 80) || '未命名技能';
+    const body = String(item.body || '').slice(0, LLM_SKILL_BODY_MAX);
+    out.push({ id, name, body, enabled: Boolean(item.enabled) });
+  }
+  return out;
+}
+
+/** 将已启用技能正文拼成系统提示附录（总长度封顶） */
+function buildLlmSkillSystemAppendix(skills) {
+  const list = normalizeLlmSkills(skills);
+  const enabled = list.filter((s) => s.enabled && String(s.body || '').trim());
+  if (!enabled.length) return '';
+  const parts = [];
+  let budget = LLM_SKILL_APPENDIX_MAX;
+  for (const s of enabled) {
+    const header = `### ${s.name}\n`;
+    const body = String(s.body || '').trim();
+    const chunk = `${header}${body}`;
+    if (chunk.length <= budget) {
+      parts.push(chunk);
+      budget -= chunk.length + 2;
+      continue;
+    }
+    if (budget > header.length + 24) {
+      parts.push(`${header}${body.slice(0, Math.max(0, budget - header.length))}`);
+    }
+    break;
+  }
+  return parts.join('\n\n');
+}
+
+/** 仅允许 https，或本机 http（便于本地转发服务调试） */
+function isAllowedLlmChatUrl(u) {
+  if (u.protocol === 'https:') return true;
+  if (u.protocol === 'http:') {
+    const h = (u.hostname || '').toLowerCase();
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+  }
+  return false;
+}
+
+function resolveLlmChatPostUrl() {
+  const fromEnv = String(process.env.TIME_MANAGER_LLM_CHAT_URL || '').trim();
+  const fromSettings = String(petState.petSettings?.llmChatUrl || '').trim();
+  const raw = fromEnv || fromSettings;
+  if (!raw) return { ok: true, url: DEFAULT_LLM_CHAT_URL };
+  try {
+    const u = new URL(raw);
+    if (!isAllowedLlmChatUrl(u)) {
+      return { ok: false, message: 'API 地址仅支持 https，或 http://127.0.0.1 / localhost' };
+    }
+    return { ok: true, url: u.toString() };
+  } catch {
+    return { ok: false, message: 'API 地址格式无效' };
+  }
+}
+
+/** 从 delta 中取出多段文本（兼容 content 为 string 或 parts 数组）。 */
+function deltaTextFromField(field) {
+  if (typeof field === 'string') return field;
+  if (!Array.isArray(field)) return '';
+  return field
+    .map((item) => (item && typeof item === 'object' && typeof item.text === 'string' ? item.text : ''))
+    .join('');
+}
+
+/**
+ * 解析 SSE 中 `data: {...}` 的 JSON，取出 Chat Completions 流式增量：
+ * - 正文：`choices[0].delta.content`（及常见数组形态）
+ * - 思考：方舟 / DeepSeek 等常用 `reasoning_content`，部分实现为 `reasoning` / `thinking`
+ */
+function extractChatDeltasFromSseDataJson(dataStr) {
+  if (!dataStr || dataStr === '[DONE]') return { content: '', reasoning: '' };
+  try {
+    const j = JSON.parse(dataStr);
+    const d = j?.choices?.[0]?.delta;
+    if (!d || typeof d !== 'object') return { content: '', reasoning: '' };
+    const content = deltaTextFromField(d.content);
+    const reasoningRaw = d.reasoning_content ?? d.reasoning ?? d.thinking;
+    const reasoning = deltaTextFromField(reasoningRaw);
+    return { content, reasoning };
+  } catch {
+    return { content: '', reasoning: '' };
+  }
+}
+
+/**
+ * 读取 Chat Completions 流式响应（text/event-stream），并向对应窗口推送 `ai-chat:stream-chunk`。
+ * 负载可为 `{ delta }` 正文增量、`{ reasoningDelta }` 思考增量，或二者同时出现。
+ * @returns {Promise<{ content: string, reasoning: string }>}
+ */
+async function readChatCompletionSseStream(webContents, res) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  let fullReasoning = '';
+  const t0 = Date.now();
+  let rawReadCount = 0;
+  let deltaEventCount = 0;
+  let reasoningEventCount = 0;
+  let loggedFirstRaw = false;
+
+  const emitDeltas = (payload) => {
+    const { content, reasoning } = extractChatDeltasFromSseDataJson(payload);
+    if (reasoning) {
+      reasoningEventCount += 1;
+      fullReasoning += reasoning;
+      webContents.send('ai-chat:stream-chunk', { reasoningDelta: reasoning });
+      debugLog('ai-chat:sse-reasoning', {
+        msFromStreamStart: Date.now() - t0,
+        n: reasoningEventCount,
+        deltaChars: reasoning.length,
+        totalChars: fullReasoning.length,
+        preview: reasoning.slice(0, 80).replace(/\r?\n/g, '\\n'),
+      });
+    }
+    if (content) {
+      deltaEventCount += 1;
+      full += content;
+      webContents.send('ai-chat:stream-chunk', { delta: content });
+      debugLog('ai-chat:sse-delta', {
+        msFromStreamStart: Date.now() - t0,
+        n: deltaEventCount,
+        deltaChars: content.length,
+        totalChars: full.length,
+        preview: content.slice(0, 80).replace(/\r?\n/g, '\\n'),
+      });
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    rawReadCount += 1;
+    if (!loggedFirstRaw && value?.length) {
+      loggedFirstRaw = true;
+      debugLog('ai-chat:sse-first-raw', {
+        msFromStreamStart: Date.now() - t0,
+        bytes: value.length,
+      });
+    }
+    buffer += decoder.decode(value, { stream: true });
+    let lineEnd;
+    while ((lineEnd = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, lineEnd).replace(/\r$/, '');
+      buffer = buffer.slice(lineEnd + 1);
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith(':')) continue;
+      if (!trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trimStart();
+      emitDeltas(payload);
+    }
+  }
+  const tail = buffer.trim();
+  if (tail.startsWith('data:')) {
+    const payload = tail.slice(5).trimStart();
+    emitDeltas(payload);
+  }
+  debugLog('ai-chat:sse-summary', {
+    msTotal: Date.now() - t0,
+    rawReadCount,
+    deltaEventCount,
+    reasoningEventCount,
+    totalChars: full.length,
+    reasoningChars: fullReasoning.length,
+  });
+  return { content: full, reasoning: fullReasoning };
+}
 
 function getStateFilePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
@@ -286,6 +514,10 @@ function loadPetState() {
           },
           remindContinuousMs,
           longWorkContinuousMs,
+          openAiApiKey: String(parsed.petSettings.openAiApiKey || '').trim().slice(0, 256),
+          llmChatUrl: String(parsed.petSettings.llmChatUrl || '').trim().slice(0, 512),
+          llmModel: String(parsed.petSettings.llmModel || 'gpt-4o-mini').trim().slice(0, 128) || 'gpt-4o-mini',
+          llmSkills: normalizeLlmSkills(parsed.petSettings.llmSkills),
         };
       }
     }
@@ -294,13 +526,23 @@ function loadPetState() {
   }
 }
 
+/** 不把 OpenAI 密钥下发到宠物窗口渲染进程 */
+function sanitizePetSettingsForClient(raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  const { openAiApiKey: _secret, ...rest } = raw;
+  return {
+    ...rest,
+    hasOpenAiKey: Boolean(String(_secret || '').trim()),
+  };
+}
+
 function buildPetStatePayload() {
   return {
     clickThrough: petState.clickThrough,
     showStatsPanel: petState.showStatsPanel,
     compactMode: petState.compactMode,
     followMouse: petState.followMouse,
-    petSettings: petState.petSettings,
+    petSettings: sanitizePetSettingsForClient(petState.petSettings),
   };
 }
 
@@ -365,6 +607,7 @@ const menuModule = createMenuModule({
   onOpenWorklist: () => worklistModule.openWindow(),
   onOpenReader: () => openReaderWindow(),
   onOpenSettings: () => openSettingsWindow(),
+  onOpenStatsWindow: () => openStatsDetailWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
 });
 
@@ -437,8 +680,8 @@ function createMainWindow() {
     y: initial.y,
     minWidth: PET_COMPACT_WIDTH,
     minHeight: PET_COMPACT_HEIGHT,
-    maxWidth: 420,
-    maxHeight: 540,
+    maxWidth: 900,
+    maxHeight: 960,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -689,6 +932,60 @@ function toggleReaderWindow() {
   return true;
 }
 
+/** 左键双击宠物：独立「AI 对话」窗口（普通边框窗，隐藏菜单栏）。 */
+function togglePetAiChatWindow() {
+  petMotionModule.resetDragState();
+  if (petAiChatWindow && !petAiChatWindow.isDestroyed()) {
+    if (petAiChatWindow.isMinimized()) {
+      petAiChatWindow.restore();
+      petAiChatWindow.focus();
+      return;
+    }
+    if (petAiChatWindow.isVisible()) {
+      petAiChatWindow.close();
+      return;
+    }
+    petAiChatWindow.show();
+    petAiChatWindow.focus();
+    return;
+  }
+
+  const aiBounds = getPetAiChatWindowBounds();
+  petAiChatWindow = new BrowserWindow({
+    ...aiBounds,
+    show: false,
+    title: 'AI 对话',
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
+    resizable: true,
+    minWidth: PET_AI_CHAT_MIN_WIDTH,
+    minHeight: PET_AI_CHAT_MIN_HEIGHT,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      webSecurity: false,
+    },
+  });
+
+  petAiChatWindow.once('ready-to-show', () => {
+    if (!petAiChatWindow || petAiChatWindow.isDestroyed()) return;
+    petAiChatWindow.setMenuBarVisibility(false);
+    petAiChatWindow.show();
+  });
+
+  petAiChatWindow.on('closed', () => {
+    petAiChatWindow = null;
+  });
+
+  loadPetRenderer(petAiChatWindow, 'pet-ai-chat');
+}
+
+function closePetAiChatWindow() {
+  if (petAiChatWindow && !petAiChatWindow.isDestroyed()) {
+    petAiChatWindow.close();
+  }
+}
+
 function setupIpc() {
   // IPC 注册统一放在这里，按模块分组便于维护与定位。
   // 1) 宠物基础状态与模式切换
@@ -706,6 +1003,14 @@ function setupIpc() {
   });
   ipcMain.handle('pet:open-stats-window', () => {
     openStatsDetailWindow();
+    return true;
+  });
+  ipcMain.handle('pet:toggle-ai-chat-window', () => {
+    togglePetAiChatWindow();
+    return true;
+  });
+  ipcMain.handle('pet:close-ai-chat-window', () => {
+    closePetAiChatWindow();
     return true;
   });
   ipcMain.handle('reader:open-window', () => {
@@ -730,7 +1035,7 @@ function setupIpc() {
     persistPetState();
     return { ok: true, readerSettings: petState.readerSettings };
   });
-  ipcMain.handle('pet-settings:get', () => petState.petSettings);
+  ipcMain.handle('pet-settings:get', () => sanitizePetSettingsForClient(petState.petSettings));
   ipcMain.handle('pet-settings:update', (_event, payload) => {
     const input = payload && typeof payload === 'object' ? payload : {};
     const bubbleTextsRaw =
@@ -741,22 +1046,184 @@ function setupIpc() {
     const longWorkContinuousMs = Number.isFinite(Number(input.longWorkContinuousMs))
       ? Math.max(0, Number(input.longWorkContinuousMs))
       : petState.petSettings.longWorkContinuousMs ?? LONG_WORK_CONTINUOUS_MS;
+    const prevPs = petState.petSettings;
+    let openAiApiKey = String(prevPs.openAiApiKey || '').trim();
+    if (input.clearOpenAiApiKey === true) {
+      openAiApiKey = '';
+    } else if (typeof input.openAiApiKey === 'string' && input.openAiApiKey.trim().length > 0) {
+      openAiApiKey = input.openAiApiKey.trim().slice(0, 256);
+    }
+    const llmChatUrl =
+      typeof input.llmChatUrl === 'string' ? input.llmChatUrl.trim().slice(0, 512) : (prevPs.llmChatUrl ?? '');
+    const llmModelRaw =
+      typeof input.llmModel === 'string' && input.llmModel.trim()
+        ? input.llmModel.trim().slice(0, 128)
+        : (prevPs.llmModel || 'gpt-4o-mini');
+    const llmModel = llmModelRaw || 'gpt-4o-mini';
+    const llmSkills = Array.isArray(input.llmSkills)
+      ? normalizeLlmSkills(input.llmSkills)
+      : normalizeLlmSkills(prevPs.llmSkills);
     petState.petSettings = {
-      selectedPet: String(input.selectedPet || petState.petSettings.selectedPet || 'black-coal'),
+      selectedPet: String(input.selectedPet || prevPs.selectedPet || 'black-coal'),
       bubbleTexts: {
-        work: String(bubbleTextsRaw.work ?? petState.petSettings?.bubbleTexts?.work ?? '').slice(0, 120),
-        rest: String(bubbleTextsRaw.rest ?? petState.petSettings?.bubbleTexts?.rest ?? '').slice(0, 120),
-        remind: String(bubbleTextsRaw.remind ?? petState.petSettings?.bubbleTexts?.remind ?? '').slice(0, 120),
+        work: String(bubbleTextsRaw.work ?? prevPs?.bubbleTexts?.work ?? '').slice(0, 120),
+        rest: String(bubbleTextsRaw.rest ?? prevPs?.bubbleTexts?.rest ?? '').slice(0, 120),
+        remind: String(bubbleTextsRaw.remind ?? prevPs?.bubbleTexts?.remind ?? '').slice(0, 120),
         'long-work': String(
-          bubbleTextsRaw['long-work'] ?? petState.petSettings?.bubbleTexts?.['long-work'] ?? '',
+          bubbleTextsRaw['long-work'] ?? prevPs?.bubbleTexts?.['long-work'] ?? '',
         ).slice(0, 120),
       },
       remindContinuousMs,
       longWorkContinuousMs,
+      openAiApiKey,
+      llmChatUrl,
+      llmModel,
+      llmSkills,
     };
     persistPetState();
     broadcastPetStateChanged();
-    return { ok: true, petSettings: petState.petSettings };
+    return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };
+  });
+
+  ipcMain.handle('ai-chat:send', async (event, payload) => {
+    const rawMessages = payload?.messages;
+    if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+      debugLog('ai-chat:send', 'abort', 'EMPTY_MESSAGES');
+      return { ok: false, error: 'EMPTY_MESSAGES', message: '没有可发送的消息。' };
+    }
+    const key = String(process.env.OPENAI_API_KEY || petState.petSettings?.openAiApiKey || '').trim();
+    if (!key) {
+      debugLog('ai-chat:send', 'abort', 'MISSING_KEY');
+      return {
+        ok: false,
+        error: 'MISSING_KEY',
+        message: '未配置 API 密钥：在「设置」里填写并保存，或设置环境变量 OPENAI_API_KEY。',
+      };
+    }
+    const urlResolved = resolveLlmChatPostUrl();
+    if (!urlResolved.ok) {
+      debugLog('ai-chat:send', 'abort', 'BAD_URL', urlResolved.message);
+      return { ok: false, error: 'BAD_URL', message: urlResolved.message };
+    }
+    const model = String(
+      process.env.TIME_MANAGER_LLM_MODEL || petState.petSettings?.llmModel || 'gpt-4o-mini',
+    )
+      .trim()
+      .slice(0, 128);
+    const systemHint =
+      '你是桌面宠物「时间管理助手」里的对话伙伴，回复简洁、友好，可适当结合专注工作与劳逸结合给出建议。';
+    const skillAppendix = buildLlmSkillSystemAppendix(petState.petSettings?.llmSkills);
+    const systemContent = skillAppendix
+      ? `${systemHint}\n\n以下为当前启用的技能说明（请严格遵守）：\n\n${skillAppendix}`
+      : systemHint;
+    const mapped = [
+      { role: 'system', content: systemContent },
+      ...rawMessages.slice(-24).map((m) => {
+        const role = m.role === 'assistant' ? 'assistant' : 'user';
+        return { role, content: String(m.content || '').slice(0, 8000) };
+      }),
+    ];
+    const wantStream = payload?.stream !== false;
+    const streamDisabledEnv = String(process.env.TIME_MANAGER_LLM_STREAM || '')
+      .trim()
+      .toLowerCase();
+    const useStream = wantStream && streamDisabledEnv !== 'false' && streamDisabledEnv !== '0';
+    debugLog('ai-chat:send', 'request', {
+      url: urlResolved.url,
+      model,
+      messageCount: mapped.length,
+      stream: useStream,
+      lastUserLen: mapped.filter((m) => m.role === 'user').slice(-1)[0]?.content?.length ?? 0,
+    });
+    try {
+      const reqHeaders = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${key}`,
+      };
+      if (useStream) {
+        reqHeaders.Accept = 'text/event-stream';
+      }
+      const res = await fetch(urlResolved.url, {
+        method: 'POST',
+        headers: reqHeaders,
+        body: JSON.stringify({
+          model: model || 'gpt-4o-mini',
+          messages: mapped,
+          max_tokens: 900,
+          temperature: 0.65,
+          stream: useStream,
+        }),
+      });
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      const sseEligible = Boolean(res.ok && useStream && res.body && ct.includes('text/event-stream'));
+      debugLog('ai-chat:send', 'response-head', {
+        status: res.status,
+        ok: res.ok,
+        contentType: ct || '(empty)',
+        useStream,
+        sseBranch: sseEligible,
+      });
+
+      if (sseEligible) {
+        const streamed = await readChatCompletionSseStream(event.sender, res);
+        const reply = String(streamed?.content || '').trim();
+        const reasoning = String(streamed?.reasoning || '').trim();
+        if (!reply) {
+          debugLog('ai-chat:send', 'BAD_RESPONSE', {
+            mode: 'stream',
+            empty: true,
+            hadReasoning: reasoning.length > 0,
+          });
+          return {
+            ok: false,
+            error: 'BAD_RESPONSE',
+            message: reasoning
+              ? '流式接口只返回了思考过程，未返回正文；请换模型或检查接口。'
+              : '流式接口未返回有效内容。',
+          };
+        }
+        debugLog('ai-chat:send', 'ok', {
+          mode: 'stream',
+          replyChars: reply.length,
+          reasoningChars: reasoning.length,
+        });
+        return { ok: true, content: reply, reasoning, streamed: true };
+      }
+
+      const text = await res.text();
+      debugLog('ai-chat:send', 'body-non-sse', {
+        bodyChars: text.length,
+        bodyPrefix: text.slice(0, 120).replace(/\s+/g, ' '),
+      });
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = null;
+      }
+      if (!res.ok) {
+        const errMsg = json?.error?.message || text.slice(0, 240) || res.statusText;
+        debugLog('ai-chat:send', 'API_ERROR', { status: res.status, errMsg });
+        return { ok: false, error: 'API_ERROR', message: `请求失败（${res.status}）：${errMsg}` };
+      }
+      const msg = json?.choices?.[0]?.message;
+      const content = msg?.content;
+      const reasoningRaw = msg?.reasoning_content ?? msg?.reasoning ?? msg?.thinking;
+      const reasoning =
+        typeof reasoningRaw === 'string' ? reasoningRaw.trim() : '';
+      if (typeof content !== 'string' || !content.trim()) {
+        debugLog('ai-chat:send', 'BAD_RESPONSE', {
+          hasChoices: Array.isArray(json?.choices),
+          bodyPreview: text.slice(0, 200),
+        });
+        return { ok: false, error: 'BAD_RESPONSE', message: '接口未返回有效内容。' };
+      }
+      debugLog('对话内容', { mode: 'json', replyChars: content.trim(), reasoningChars: reasoning.length });
+      return { ok: true, content: content.trim(), reasoning, streamed: false };
+    } catch (err) {
+      debugLog('ai-chat:send', 'NETWORK', err?.message || String(err));
+      return { ok: false, error: 'NETWORK', message: err?.message || '网络错误' };
+    }
   });
 
   // 2) 收藏夹模块

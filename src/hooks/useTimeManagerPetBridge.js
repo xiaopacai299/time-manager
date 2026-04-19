@@ -19,6 +19,10 @@ const DEFAULT_PET_STATE = {
     // 宠物形态切换阈值（毫秒）
     remindContinuousMs: REMIND_CONTINUOUS_MS,
     longWorkContinuousMs: LONG_WORK_CONTINUOUS_MS,
+    hasOpenAiKey: false,
+    llmChatUrl: '',
+    llmModel: 'gpt-4o-mini',
+    llmSkills: [],
   },
 }
 

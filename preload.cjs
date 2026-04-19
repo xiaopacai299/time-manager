@@ -48,6 +48,21 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<boolean>}
    */
   openStatsWindow: () => ipcRenderer.invoke('pet:open-stats-window'),
+
+  /**
+   * 切换宠物 AI 对话独立窗口（与左键双击宠物一致）。
+   * 主进程通道：`pet:toggle-ai-chat-window`（invoke/handle）
+   * @returns {Promise<boolean>}
+   */
+  togglePetAiChatWindow: () => ipcRenderer.invoke('pet:toggle-ai-chat-window'),
+
+  /**
+   * 关闭宠物 AI 对话独立窗口。
+   * 主进程通道：`pet:close-ai-chat-window`（invoke/handle）
+   * @returns {Promise<boolean>}
+   */
+  closePetAiChatWindow: () => ipcRenderer.invoke('pet:close-ai-chat-window'),
+
   /**
    * 打开摸鱼阅读窗口。
    * 主进程通道：`reader:open-window`（invoke/handle）
@@ -204,6 +219,29 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<{ok:boolean,petSettings?:object,error?:string}>}
    */
   updatePetSettings: (payload) => ipcRenderer.invoke('pet-settings:update', payload),
+
+  /**
+   * 发送 AI 对话消息（主进程转发 OpenAI Chat Completions；默认请求流式，主进程通过 `onAiChatStreamChunk` 推送增量）。
+   * 主进程通道：`ai-chat:send`（invoke/handle）
+   * @param {{ messages: Array<{ role: string, content: string }>, stream?: boolean }} payload — `stream: false` 可强制整包 JSON。
+   * @returns {Promise<{ ok: boolean, content?: string, reasoning?: string, message?: string, error?: string, streamed?: boolean }>}
+   */
+  aiChatSend: (payload) => ipcRenderer.invoke('ai-chat:send', payload),
+
+  /**
+   * 订阅 AI 流式增量（主进程 `webContents.send('ai-chat:stream-chunk', payload)`）。
+   * `payload` 可为 `{ delta }` 正文、`{ reasoningDelta }` 思考链，或二者同时出现。
+   * @param {(data: { delta?: string, reasoningDelta?: string }) => void} callback
+   * @returns {() => void} 取消订阅
+   */
+  onAiChatStreamChunk: (callback) => {
+    const handler = (_event, data) => {
+      if (typeof callback === 'function') callback(data || {});
+    };
+    ipcRenderer.on('ai-chat:stream-chunk', handler);
+    return () => ipcRenderer.removeListener('ai-chat:stream-chunk', handler);
+  },
+
   /**
    * 获取预估完成确认弹窗的数据。
    * 主进程通道：`worklist:estimate-confirm:get-payload`（invoke/handle）

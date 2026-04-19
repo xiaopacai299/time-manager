@@ -8,6 +8,7 @@ import WorkListWindowApp from './WorkListWindowApp.jsx'
 import WorklistEstimateConfirmApp from './WorklistEstimateConfirmApp.jsx'
 import SettingsWindowApp from './SettingsWindowApp.jsx'
 import ReaderWindowApp from './ReaderWindowApp.jsx'
+import PetAiChatWindowApp from './PetAiChatWindowApp.jsx'
 
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
@@ -17,6 +18,7 @@ const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
 const isSettingsWindow = typeof window !== 'undefined' && window.location.hash === '#settings'
 const isReaderWindow = typeof window !== 'undefined' && window.location.hash === '#reader'
+const isPetAiChatWindow = typeof window !== 'undefined' && window.location.hash === '#pet-ai-chat'
 
 if (typeof document !== 'undefined') {
   if (isStatsWindow) {
@@ -31,6 +33,8 @@ if (typeof document !== 'undefined') {
     document.title = '设置'
   } else if (isReaderWindow) {
     document.title = '摸鱼阅读'
+  } else if (isPetAiChatWindow) {
+    document.title = 'AI 对话'
   } else {
     document.title = '桌面宠物'
   }
@@ -50,6 +54,8 @@ createRoot(root).render(
       <SettingsWindowApp />
     ) : isReaderWindow ? (
       <ReaderWindowApp />
+    ) : isPetAiChatWindow ? (
+      <PetAiChatWindowApp />
     ) : (
       <App />
     )}
