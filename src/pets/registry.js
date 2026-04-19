@@ -1,6 +1,6 @@
 import badCatAnimation from '../assets/bad-cat.json'
 import runCatAnimation from '../assets/run-cat.json'
-import turtleAnimation from '../assets/Turtle.json'
+import turtleAnimation from '../assets/turtle.json'
 import runTurtleAnimation from '../assets/run-turtle.json'
 import { getBadCatRestAnimationData } from '../utils/badCatRestVariant'
 import BlackCoalEffects from './black-coal/BlackCoalEffects'

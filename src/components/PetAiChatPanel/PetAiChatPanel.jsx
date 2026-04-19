@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getPetDefinition } from '../../pets/registry'
+import PetAiChatAssistantAvatarLottie from './PetAiChatAssistantAvatarLottie.jsx'
 import './PetAiChatPanel.css'
 
 function nextId() {
@@ -14,11 +15,6 @@ function buildOpeningGreeting(selectedPet) {
   return `你好呀，我是${name}，你的小搭档，有啥可以帮你的呀？`
 }
 
-function assistantAvatarEmoji(selectedPet) {
-  if (selectedPet === 'little-turtle') return '🐢'
-  return '🐱'
-}
-
 /**
  * 与主进程兼容 Chat Completions 的接口对话；可在面板内开关已保存的「技能」。
  * @param {'default'|'window'} [layout] — `window` 时铺满独立子窗口且不显示内嵌标题栏（用系统标题栏关闭）。
@@ -31,7 +27,13 @@ export default function PetAiChatPanel({
   selectedPet = 'black-coal',
 }) {
   const [messages, setMessages] = useState(() => [
-    { id: nextId(), role: 'assistant', content: buildOpeningGreeting(selectedPet) },
+    {
+      id: nextId(),
+      role: 'assistant',
+      content: buildOpeningGreeting(selectedPet),
+      /** 仍为开场白时可随「当前宠物」从主进程同步更新文案（避免首屏默认黑煤球后再也不改） */
+      opening: true,
+    },
   ])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -43,7 +45,15 @@ export default function PetAiChatPanel({
     () => skills.filter((s) => s.enabled && String(s.body || '').trim()).length,
     [skills],
   )
-  const assistantEmoji = useMemo(() => assistantAvatarEmoji(selectedPet), [selectedPet])
+  useEffect(() => {
+    setMessages((prev) => {
+      const first = prev[0]
+      if (!first || first.role !== 'assistant' || !first.opening) return prev
+      const nextContent = buildOpeningGreeting(selectedPet)
+      if (first.content === nextContent) return prev
+      return [{ ...first, content: nextContent }, ...prev.slice(1)]
+    })
+  }, [selectedPet])
 
   useEffect(() => {
     const el = listRef.current
@@ -91,7 +101,10 @@ export default function PetAiChatPanel({
       reasoning: '',
       streaming: true,
     }
-    setMessages((m) => [...m, userMsg, assistantShell])
+    setMessages((m) => {
+      const withoutOpening = m.map((msg, idx) => (idx === 0 ? { ...msg, opening: false } : msg))
+      return [...withoutOpening, userMsg, assistantShell]
+    })
 
     const unsub =
       typeof window.timeManagerAPI?.onAiChatStreamChunk === 'function'
@@ -167,10 +180,10 @@ export default function PetAiChatPanel({
         {messages.map((m) => (
           <div key={m.id} className={`pet-ai-panel__msg-row pet-ai-panel__msg-row--${m.role}`}>
             <span
-              className={`pet-ai-panel__avatar${m.role === 'user' ? ' pet-ai-panel__avatar--user' : ''}`}
+              className={`pet-ai-panel__avatar${m.role === 'user' ? ' pet-ai-panel__avatar--user' : ' pet-ai-panel__avatar--assistant'}`}
               aria-hidden="true"
             >
-              {m.role === 'user' ? '👤' : assistantEmoji}
+              {m.role === 'user' ? '👤' : <PetAiChatAssistantAvatarLottie selectedPet={selectedPet} />}
             </span>
             <div
               className={`pet-ai-panel__msg pet-ai-panel__msg--${m.role}${
