@@ -12,7 +12,7 @@ import {
   screen,
 } from 'electron';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import { createHash } from 'crypto';
 import fs from 'fs';
@@ -265,12 +265,98 @@ const petState = {
      * 已启用的 body 会拼进系统提示；仅主进程持久化。
      */
     llmSkills: [],
+    /** AI 独立对话窗口背景：`default` | `preset` | `image` */
+    petAiChatBgKind: 'default',
+    /** 预设 id，仅 kind===preset 时生效 */
+    petAiChatBgPreset: 'mist_blue',
+    /** 仅文件名，位于 userData/pet-ai-chat-bg/ */
+    petAiChatBgImageRel: '',
   },
 };
 
 const LLM_SKILL_MAX = 8;
 const LLM_SKILL_BODY_MAX = 4000;
 const LLM_SKILL_APPENDIX_MAX = 6000;
+
+const PET_AI_CHAT_BG_KINDS = new Set(['default', 'preset', 'image']);
+const PET_AI_CHAT_BG_PRESETS = new Set(['mist_blue', 'lavender_mist', 'warm_paper', 'dark_navy', 'mint_soft']);
+const PET_AI_CHAT_BG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+const PET_AI_CHAT_BG_MAX_BYTES = 12 * 1024 * 1024;
+
+function getPetAiChatBgStoreDir() {
+  return path.join(app.getPath('userData'), 'pet-ai-chat-bg');
+}
+
+/** @param {string} rel 仅允许单层文件名 */
+function safeResolvePetAiChatBgImagePath(rel) {
+  const base = path.resolve(getPetAiChatBgStoreDir());
+  const name = path.basename(String(rel || '').trim());
+  if (!name || name !== String(rel || '').trim().replace(/\\/g, '/')) return null;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/i.test(name)) return null;
+  const ext = path.extname(name).toLowerCase();
+  if (!PET_AI_CHAT_BG_EXT.has(ext)) return null;
+  const full = path.resolve(path.join(base, name));
+  const relToStore = path.relative(base, full);
+  if (relToStore.startsWith('..') || path.isAbsolute(relToStore)) return null;
+  return fs.existsSync(full) ? full : null;
+}
+
+function petAiChatBgImageUrlForClient(rel) {
+  const abs = safeResolvePetAiChatBgImagePath(rel);
+  if (!abs) return '';
+  try {
+    return pathToFileURL(abs).href;
+  } catch {
+    return '';
+  }
+}
+
+function tryUnlinkPetAiChatBgImage(rel) {
+  const abs = safeResolvePetAiChatBgImagePath(rel);
+  if (!abs) return;
+  try {
+    fs.unlinkSync(abs);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * @param {object} input
+ * @param {object} prev
+ * @returns {{ petAiChatBgKind: string, petAiChatBgPreset: string, petAiChatBgImageRel: string }}
+ */
+function mergePetAiChatBgSettings(input, prev) {
+  const prevKind = PET_AI_CHAT_BG_KINDS.has(prev?.petAiChatBgKind) ? prev.petAiChatBgKind : 'default';
+  let kind = PET_AI_CHAT_BG_KINDS.has(input?.petAiChatBgKind) ? input.petAiChatBgKind : prevKind;
+  let preset =
+    typeof input?.petAiChatBgPreset === 'string' && PET_AI_CHAT_BG_PRESETS.has(input.petAiChatBgPreset.trim())
+      ? input.petAiChatBgPreset.trim()
+      : PET_AI_CHAT_BG_PRESETS.has(prev?.petAiChatBgPreset)
+        ? prev.petAiChatBgPreset
+        : 'mist_blue';
+  /** 自定义背景文件名仅由主进程「选图」IPC 写入，不接受渲染进程随意指定路径。 */
+  let imageRel = String(prev?.petAiChatBgImageRel || '').trim().slice(0, 240);
+
+  if (input?.clearPetAiChatBgImage === true && imageRel) {
+    tryUnlinkPetAiChatBgImage(imageRel);
+    imageRel = '';
+  }
+
+  if (imageRel && !safeResolvePetAiChatBgImagePath(imageRel)) {
+    imageRel = '';
+  }
+
+  if (kind === 'image' && !imageRel) {
+    kind = 'default';
+  }
+
+  return {
+    petAiChatBgKind: kind,
+    petAiChatBgPreset: preset,
+    petAiChatBgImageRel: imageRel,
+  };
+}
 
 const DEFAULT_LLM_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -519,7 +605,18 @@ function loadPetState() {
           llmChatUrl: String(parsed.petSettings.llmChatUrl || '').trim().slice(0, 512),
           llmModel: String(parsed.petSettings.llmModel || 'gpt-4o-mini').trim().slice(0, 128) || 'gpt-4o-mini',
           llmSkills: normalizeLlmSkills(parsed.petSettings.llmSkills),
+          petAiChatBgKind: PET_AI_CHAT_BG_KINDS.has(String(parsed.petSettings.petAiChatBgKind || '').trim())
+            ? String(parsed.petSettings.petAiChatBgKind).trim()
+            : 'default',
+          petAiChatBgPreset: PET_AI_CHAT_BG_PRESETS.has(String(parsed.petSettings.petAiChatBgPreset || '').trim())
+            ? String(parsed.petSettings.petAiChatBgPreset).trim()
+            : 'mist_blue',
+          petAiChatBgImageRel: String(parsed.petSettings.petAiChatBgImageRel || '')
+            .trim()
+            .slice(0, 240),
         };
+        const bgMerged = mergePetAiChatBgSettings({}, petState.petSettings);
+        petState.petSettings = { ...petState.petSettings, ...bgMerged };
       }
     }
   } catch {
@@ -531,9 +628,11 @@ function loadPetState() {
 function sanitizePetSettingsForClient(raw) {
   if (!raw || typeof raw !== 'object') return raw;
   const { openAiApiKey: _secret, ...rest } = raw;
+  const imageUrl = petAiChatBgImageUrlForClient(rest.petAiChatBgImageRel);
   return {
     ...rest,
     hasOpenAiKey: Boolean(String(_secret || '').trim()),
+    petAiChatBgImageUrl: imageUrl,
   };
 }
 
@@ -1074,6 +1173,7 @@ function setupIpc() {
     const llmSkills = Array.isArray(input.llmSkills)
       ? normalizeLlmSkills(input.llmSkills)
       : normalizeLlmSkills(prevPs.llmSkills);
+    const petAiChatBg = mergePetAiChatBgSettings(input, prevPs);
     petState.petSettings = {
       selectedPet: String(input.selectedPet || prevPs.selectedPet || 'black-coal'),
       bubbleTexts: {
@@ -1090,7 +1190,62 @@ function setupIpc() {
       llmChatUrl,
       llmModel,
       llmSkills,
+      ...petAiChatBg,
     };
+    persistPetState();
+    broadcastPetStateChanged();
+    return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };
+  });
+
+  ipcMain.handle('pet-ai-chat-bg:choose-image', async (event) => {
+    const win =
+      BrowserWindow.fromWebContents(event.sender) ||
+      (settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null) ||
+      (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win || undefined, {
+      title: '选择 AI 对话窗口背景图',
+      properties: ['openFile'],
+      filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+    });
+    if (canceled || !filePaths?.[0]) {
+      return { ok: false, error: 'CANCELLED' };
+    }
+    const src = filePaths[0];
+    const ext = path.extname(src).toLowerCase();
+    if (!PET_AI_CHAT_BG_EXT.has(ext)) {
+      return { ok: false, error: '不支持的图片格式（请使用 png / jpg / webp / gif）' };
+    }
+    let st;
+    try {
+      st = fs.statSync(src);
+    } catch {
+      return { ok: false, error: '无法读取所选文件' };
+    }
+    if (st.size > PET_AI_CHAT_BG_MAX_BYTES) {
+      return { ok: false, error: '图片过大（最大约 12MB）' };
+    }
+    const dir = getPetAiChatBgStoreDir();
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {
+      return { ok: false, error: '无法在应用数据目录创建背景文件夹' };
+    }
+    const base = `bg-${Date.now()}-${Math.random().toString(16).slice(2, 10)}${ext}`;
+    const dest = path.join(dir, base);
+    try {
+      fs.copyFileSync(src, dest);
+    } catch {
+      return { ok: false, error: '保存图片失败' };
+    }
+    const prevRel = String(petState.petSettings?.petAiChatBgImageRel || '').trim();
+    if (prevRel && prevRel !== base) {
+      tryUnlinkPetAiChatBgImage(prevRel);
+    }
+    const petAiChatBg = mergePetAiChatBgSettings(
+      { petAiChatBgKind: 'image', petAiChatBgImageRel: base },
+      { ...petState.petSettings, petAiChatBgImageRel: base },
+    );
+    petState.petSettings = { ...petState.petSettings, ...petAiChatBg };
     persistPetState();
     broadcastPetStateChanged();
     return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };

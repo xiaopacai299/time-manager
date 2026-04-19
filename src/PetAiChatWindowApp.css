@@ -6,8 +6,35 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f4f7fc;
   position: relative;
+}
+
+.pet-ai-chat-window-root--bg-default {
+  background: #f4f7fc;
+}
+
+.pet-ai-chat-window-root--bg-preset-mist_blue {
+  background: linear-gradient(165deg, #eef5ff 0%, #dce8fb 52%, #cfdff8 100%);
+}
+
+.pet-ai-chat-window-root--bg-preset-lavender_mist {
+  background: linear-gradient(160deg, #f3f0ff 0%, #e6e0fb 50%, #dcd4f5 100%);
+}
+
+.pet-ai-chat-window-root--bg-preset-warm_paper {
+  background: linear-gradient(180deg, #fdf9f2 0%, #f5ecdc 55%, #ebe0cf 100%);
+}
+
+.pet-ai-chat-window-root--bg-preset-dark_navy {
+  background: linear-gradient(165deg, #1e2a44 0%, #152238 45%, #0f1729 100%);
+}
+
+.pet-ai-chat-window-root--bg-preset-mint_soft {
+  background: linear-gradient(175deg, #eefaf6 0%, #d8f2ea 50%, #c5e8dd 100%);
+}
+
+.pet-ai-chat-window-root--bg-image {
+  background-color: #1a2233;
 }
 
 .pet-ai-chat-window-chat {

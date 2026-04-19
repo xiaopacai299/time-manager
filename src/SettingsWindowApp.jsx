@@ -4,6 +4,14 @@ import './SettingsWindowApp.css'
 import { PET_LIST } from './pets/registry'
 import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './configKeys'
 
+const PET_AI_CHAT_BG_PRESET_OPTIONS = [
+  { id: 'mist_blue', label: '浅蓝雾' },
+  { id: 'lavender_mist', label: '淡紫雾' },
+  { id: 'warm_paper', label: '暖纸色' },
+  { id: 'dark_navy', label: '夜间深蓝' },
+  { id: 'mint_soft', label: '薄荷浅绿' },
+]
+
 const DEFAULT_BUBBLE_TEXTS = {
   work: '',
   rest: '',
@@ -39,6 +47,10 @@ export default function SettingsWindowApp() {
   const [clearOpenAiKey, setClearOpenAiKey] = useState(false)
   const [llmChatUrl, setLlmChatUrl] = useState('')
   const [llmModel, setLlmModel] = useState('gpt-4o-mini')
+  const [petAiChatBgKind, setPetAiChatBgKind] = useState('default')
+  const [petAiChatBgPreset, setPetAiChatBgPreset] = useState('mist_blue')
+  const [petAiChatBgImageUrl, setPetAiChatBgImageUrl] = useState('')
+  const [petAiChatBgImageRel, setPetAiChatBgImageRel] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -64,6 +76,13 @@ export default function SettingsWindowApp() {
       setClearOpenAiKey(false)
       setLlmChatUrl(String(data.llmChatUrl || ''))
       setLlmModel(String(data.llmModel || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
+      const k = String(data.petAiChatBgKind || '').trim()
+      setPetAiChatBgKind(k === 'preset' || k === 'image' ? k : 'default')
+      const presetIds = new Set(PET_AI_CHAT_BG_PRESET_OPTIONS.map((o) => o.id))
+      const pr = String(data.petAiChatBgPreset || '').trim()
+      setPetAiChatBgPreset(presetIds.has(pr) ? pr : 'mist_blue')
+      setPetAiChatBgImageUrl(String(data.petAiChatBgImageUrl || ''))
+      setPetAiChatBgImageRel(String(data.petAiChatBgImageRel || ''))
     })
     return () => {
       mounted = false
@@ -89,6 +108,8 @@ export default function SettingsWindowApp() {
         longWorkContinuousMs: longMs,
         llmChatUrl,
         llmModel,
+        petAiChatBgKind,
+        petAiChatBgPreset,
       }
       if (clearOpenAiKey) {
         payload.clearOpenAiApiKey = true
@@ -103,11 +124,72 @@ export default function SettingsWindowApp() {
       setHasOpenAiKey(Boolean(result.petSettings?.hasOpenAiKey))
       setOpenAiKeyDraft('')
       setClearOpenAiKey(false)
+      const ps = result.petSettings
+      if (ps) {
+        const nk = String(ps.petAiChatBgKind || '').trim()
+        setPetAiChatBgKind(nk === 'preset' || nk === 'image' ? nk : 'default')
+        const presetIds = new Set(PET_AI_CHAT_BG_PRESET_OPTIONS.map((o) => o.id))
+        const npr = String(ps.petAiChatBgPreset || '').trim()
+        setPetAiChatBgPreset(presetIds.has(npr) ? npr : 'mist_blue')
+        setPetAiChatBgImageUrl(String(ps.petAiChatBgImageUrl || ''))
+        setPetAiChatBgImageRel(String(ps.petAiChatBgImageRel || ''))
+      }
       setMsg('设置已保存')
     } catch {
       setMsg('保存失败，请稍后重试')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function onPickAiChatBgImage() {
+    setMsg('')
+    try {
+      const r = await window.timeManagerAPI?.choosePetAiChatBackgroundImage?.()
+      if (!r?.ok) {
+        if (r?.error && r.error !== 'CANCELLED') setMsg(r.error)
+        return
+      }
+      const ps = r.petSettings
+      if (ps) {
+        setPetAiChatBgKind('image')
+        const presetIds = new Set(PET_AI_CHAT_BG_PRESET_OPTIONS.map((o) => o.id))
+        const npr = String(ps.petAiChatBgPreset || '').trim()
+        setPetAiChatBgPreset(presetIds.has(npr) ? npr : 'mist_blue')
+        setPetAiChatBgImageUrl(String(ps.petAiChatBgImageUrl || ''))
+        setPetAiChatBgImageRel(String(ps.petAiChatBgImageRel || ''))
+        setMsg('已设为自定义背景（已写入本机，打开 AI 对话窗口即可看到）')
+      }
+    } catch (e) {
+      setMsg(e?.message || '选择图片失败')
+    }
+  }
+
+  async function onClearAiChatBgImage() {
+    setMsg('')
+    try {
+      const r = await window.timeManagerAPI?.updatePetSettings?.({
+        petAiChatBgKind: 'default',
+        clearPetAiChatBgImage: true,
+      })
+      if (!r?.ok) {
+        setMsg(r?.error || '清除失败')
+        return
+      }
+      const ps = r.petSettings
+      if (ps) {
+        const nk = String(ps.petAiChatBgKind || '').trim()
+        setPetAiChatBgKind(nk === 'preset' || nk === 'image' ? nk : 'default')
+        setPetAiChatBgImageUrl(String(ps.petAiChatBgImageUrl || ''))
+        setPetAiChatBgImageRel(String(ps.petAiChatBgImageRel || ''))
+      } else {
+        setPetAiChatBgKind('default')
+        setPetAiChatBgImageUrl('')
+        setPetAiChatBgImageRel('')
+      }
+      setMsg('已移除自定义背景图')
+    } catch (e) {
+      setMsg(e?.message || '清除失败')
     }
   }
 
@@ -136,6 +218,91 @@ export default function SettingsWindowApp() {
               <span className="settings-pet-name">{pet.name}</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-title">AI 对话（基础）</h2>
+        <p className="settings-sub">
+          作用于独立「AI 对话」窗口（左键双击宠物打开）的整体背景。自定义图片会复制到本机应用数据目录，不会上传网络。
+        </p>
+        <div className="settings-form">
+          <div className="settings-field">
+            <span>背景类型</span>
+            <div className="settings-ai-bg-kind">
+              <label>
+                <input
+                  type="radio"
+                  name="pet-ai-chat-bg-kind"
+                  checked={petAiChatBgKind === 'default'}
+                  onChange={() => setPetAiChatBgKind('default')}
+                />
+                默认浅灰蓝
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="pet-ai-chat-bg-kind"
+                  checked={petAiChatBgKind === 'preset'}
+                  onChange={() => setPetAiChatBgKind('preset')}
+                />
+                内置渐变
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="pet-ai-chat-bg-kind"
+                  checked={petAiChatBgKind === 'image'}
+                  onChange={() => setPetAiChatBgKind('image')}
+                />
+                自定义图片
+              </label>
+            </div>
+          </div>
+          {petAiChatBgKind === 'preset' ? (
+            <div className="settings-field">
+              <span>预设配色</span>
+              <div className="settings-ai-bg-swatches">
+                {PET_AI_CHAT_BG_PRESET_OPTIONS.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    title={o.label}
+                    aria-label={o.label}
+                    className={`settings-ai-bg-swatch settings-ai-bg-swatch--${o.id}${
+                      petAiChatBgPreset === o.id ? ' settings-ai-bg-swatch--active' : ''
+                    }`}
+                    onClick={() => setPetAiChatBgPreset(o.id)}
+                  />
+                ))}
+              </div>
+              <p className="settings-sub" style={{ marginTop: 8, marginBottom: 0 }}>
+                选中后需点击下方「保存设置」才会写入并同步到 AI 对话窗口。
+              </p>
+            </div>
+          ) : null}
+          {petAiChatBgKind === 'image' ? (
+            <div className="settings-field">
+              <span>本地图片</span>
+              <div className="settings-ai-bg-actions">
+                <button type="button" className="settings-secondary" onClick={() => void onPickAiChatBgImage()}>
+                  选择本地图片…
+                </button>
+                {petAiChatBgImageRel ? (
+                  <button type="button" className="settings-secondary" onClick={() => void onClearAiChatBgImage()}>
+                    移除自定义图片
+                  </button>
+                ) : null}
+              </div>
+              {petAiChatBgImageUrl ? (
+                <img className="settings-ai-bg-preview" src={petAiChatBgImageUrl} alt="当前自定义背景预览" />
+              ) : (
+                <p className="settings-sub" style={{ marginTop: 8, marginBottom: 0 }}>
+                  选择图片后会立即保存并生效；支持 png / jpg / webp / gif，最大约 12MB。
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       </section>
 

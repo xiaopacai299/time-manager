@@ -23,6 +23,10 @@ const DEFAULT_PET_STATE = {
     llmChatUrl: '',
     llmModel: 'gpt-4o-mini',
     llmSkills: [],
+    petAiChatBgKind: 'default',
+    petAiChatBgPreset: 'mist_blue',
+    petAiChatBgImageRel: '',
+    petAiChatBgImageUrl: '',
   },
 }
 

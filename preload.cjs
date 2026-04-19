@@ -221,6 +221,13 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
   updatePetSettings: (payload) => ipcRenderer.invoke('pet-settings:update', payload),
 
   /**
+   * 从本地选择一张图片并复制到应用数据目录，设为 AI 独立对话窗口背景；会持久化并广播 `pet:state-changed`。
+   * 主进程通道：`pet-ai-chat-bg:choose-image`
+   * @returns {Promise<{ ok: boolean, petSettings?: object, error?: string }>}
+   */
+  choosePetAiChatBackgroundImage: () => ipcRenderer.invoke('pet-ai-chat-bg:choose-image'),
+
+  /**
    * 发送 AI 对话消息（主进程转发 OpenAI Chat Completions；默认请求流式，主进程通过 `onAiChatStreamChunk` 推送增量）。
    * 主进程通道：`ai-chat:send`（invoke/handle）
    * @param {{ messages: Array<{ role: string, content: string }>, stream?: boolean }} payload — `stream: false` 可强制整包 JSON。

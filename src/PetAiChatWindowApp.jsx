@@ -35,8 +35,32 @@ export default function PetAiChatWindowApp() {
     document.title = route === 'skills' ? 'AI 技能' : 'AI 对话'
   }, [route])
 
+  const ps = petState?.petSettings || {}
+  const bgKind = ps.petAiChatBgKind === 'preset' || ps.petAiChatBgKind === 'image' ? ps.petAiChatBgKind : 'default'
+  const bgPreset = String(ps.petAiChatBgPreset || 'mist_blue').trim() || 'mist_blue'
+  const bgImageUrl = String(ps.petAiChatBgImageUrl || '').trim()
+
+  const rootClass = [
+    'pet-ai-chat-window-root',
+    bgKind === 'default' ? 'pet-ai-chat-window-root--bg-default' : '',
+    bgKind === 'preset' ? `pet-ai-chat-window-root--bg-preset-${bgPreset}` : '',
+    bgKind === 'image' ? 'pet-ai-chat-window-root--bg-image' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const rootStyle =
+    bgKind === 'image' && bgImageUrl
+      ? {
+          backgroundImage: `url(${JSON.stringify(bgImageUrl)})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }
+      : undefined
+
   return (
-    <div className="pet-ai-chat-window-root">
+    <div className={rootClass} style={rootStyle}>
       {!isBridgeReady ? (
         <div className="pet-ai-chat-window-fallback">请通过 electron-start 启动以使用 AI 对话。</div>
       ) : (
