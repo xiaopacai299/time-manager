@@ -272,7 +272,7 @@
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 6px 10px;
+  padding: 8px 10px;
   font-size: 11px;
   font-weight: 700;
   color: #3d5580;
@@ -286,6 +286,29 @@
 
 .pet-ai-panel__skills-toggle:hover {
   background: rgba(95, 135, 255, 0.06);
+}
+
+.pet-ai-panel__skills-toggle-label {
+  flex-shrink: 0;
+}
+
+.pet-ai-panel__skills-toggle-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pet-ai-panel__skills-chevron {
+  flex-shrink: 0;
+  font-size: 8px;
+  line-height: 1;
+  color: #6a7aa8;
+  transition: transform 0.15s ease;
+}
+
+.pet-ai-panel__skills-toggle--open .pet-ai-panel__skills-chevron {
+  transform: rotate(180deg);
 }
 
 .pet-ai-panel__skills-badge {

@@ -40,7 +40,8 @@ export default function PetAiChatPanel({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [skillsOpen, setSkillsOpen] = useState(true)
+  /** 默认收起：仅显示「技能」入口，点击后再展开列表与管理 */
+  const [skillsOpen, setSkillsOpen] = useState(false)
   const listRef = useRef(null)
   const skills = useMemo(() => (Array.isArray(llmSkills) ? llmSkills : []), [llmSkills])
   const enabledCount = useMemo(
@@ -210,43 +211,52 @@ export default function PetAiChatPanel({
       <div className="pet-ai-panel__skills">
         <button
           type="button"
-          className="pet-ai-panel__skills-toggle"
+          className={`pet-ai-panel__skills-toggle${skillsOpen ? ' pet-ai-panel__skills-toggle--open' : ''}`}
           onClick={() => setSkillsOpen((v) => !v)}
+          aria-expanded={skillsOpen}
+          title={skillsOpen ? '点击收起技能区' : '点击展开：勾选对话中使用的技能'}
         >
-          <span>技能 SKILL（对话时开关）</span>
-          <span className="pet-ai-panel__skills-badge">
-            {skills.length} 项 · 已启用 {enabledCount}
+          <span className="pet-ai-panel__skills-toggle-label">技能 SKILL</span>
+          <span className="pet-ai-panel__skills-toggle-meta">
+            <span className="pet-ai-panel__skills-badge">
+              {skills.length} 项 · 已启用 {enabledCount}
+            </span>
+            <span className="pet-ai-panel__skills-chevron" aria-hidden="true">
+              ▼
+            </span>
           </span>
         </button>
         {skillsOpen ? (
-          skills.length === 0 ? (
-            <p className="pet-ai-panel__skills-hint">
-              暂无技能。点击下方「添加 / 管理技能」添加名称与正文；保存时勾选「对话中默认勾选」的会在这里默认启用，也可随时取消勾选。
-            </p>
-          ) : (
-            <div className="pet-ai-panel__skills-body">
-              {skills.map((s) => (
-                <label key={s.id} className="pet-ai-panel__skill-row">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(s.enabled)}
-                    onChange={(e) => onToggleSkill(s.id, e.target.checked)}
-                  />
-                  <span className="pet-ai-panel__skill-name" title={s.name}>
-                    {s.name || '未命名'}
-                    {!String(s.body || '').trim() ? '（正文为空，不会生效）' : ''}
-                  </span>
-                </label>
-              ))}
-            </div>
-          )
-        ) : null}
-        {onOpenSkillsEditor ? (
-          <div className="pet-ai-panel__skills-footer">
-            <button type="button" className="pet-ai-panel__skills-manage" onClick={onOpenSkillsEditor}>
-              添加 / 管理技能
-            </button>
-          </div>
+          <>
+            {skills.length === 0 ? (
+              <p className="pet-ai-panel__skills-hint">
+                暂无技能。点击下方「添加 / 管理技能」添加名称与正文；保存时勾选「对话中默认勾选」的会在这里默认启用，也可随时取消勾选。
+              </p>
+            ) : (
+              <div className="pet-ai-panel__skills-body">
+                {skills.map((s) => (
+                  <label key={s.id} className="pet-ai-panel__skill-row">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(s.enabled)}
+                      onChange={(e) => onToggleSkill(s.id, e.target.checked)}
+                    />
+                    <span className="pet-ai-panel__skill-name" title={s.name}>
+                      {s.name || '未命名'}
+                      {!String(s.body || '').trim() ? '（正文为空，不会生效）' : ''}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {onOpenSkillsEditor ? (
+              <div className="pet-ai-panel__skills-footer">
+                <button type="button" className="pet-ai-panel__skills-manage" onClick={onOpenSkillsEditor}>
+                  添加 / 管理技能
+                </button>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </div>
 
