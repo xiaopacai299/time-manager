@@ -7,6 +7,28 @@
   display: flex;
   flex-direction: column;
   background: #f4f7fc;
+  position: relative;
+}
+
+.pet-ai-chat-window-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: none;
+  flex-direction: column;
+}
+
+.pet-ai-chat-window-chat--visible {
+  display: flex;
+}
+
+.pet-ai-chat-window-skills {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
 }
 
 .pet-ai-chat-window-fallback {

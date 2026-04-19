@@ -25,6 +25,8 @@ export default function PetAiChatPanel({
   onClose,
   layout,
   selectedPet = 'black-coal',
+  /** 独立窗口内跳转到 `#pet-ai-chat/skills` 编辑技能 */
+  onOpenSkillsEditor,
 }) {
   const [messages, setMessages] = useState(() => [
     {
@@ -219,7 +221,7 @@ export default function PetAiChatPanel({
         {skillsOpen ? (
           skills.length === 0 ? (
             <p className="pet-ai-panel__skills-hint">
-              暂无技能。打开「设置」→「AI 技能」添加：名称 + 正文（类似 Cursor 的 SKILL.md 要点），保存后在此勾选即可生效。
+              暂无技能。点击下方「添加 / 管理技能」添加名称与正文；保存时勾选「对话中默认勾选」的会在这里默认启用，也可随时取消勾选。
             </p>
           ) : (
             <div className="pet-ai-panel__skills-body">
@@ -228,7 +230,6 @@ export default function PetAiChatPanel({
                   <input
                     type="checkbox"
                     checked={Boolean(s.enabled)}
-                    disabled={busy}
                     onChange={(e) => onToggleSkill(s.id, e.target.checked)}
                   />
                   <span className="pet-ai-panel__skill-name" title={s.name}>
@@ -240,6 +241,13 @@ export default function PetAiChatPanel({
             </div>
           )
         ) : null}
+        {onOpenSkillsEditor ? (
+          <div className="pet-ai-panel__skills-footer">
+            <button type="button" className="pet-ai-panel__skills-manage" onClick={onOpenSkillsEditor}>
+              添加 / 管理技能
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {err ? <p className="pet-ai-panel__err">{err}</p> : null}
@@ -248,14 +256,15 @@ export default function PetAiChatPanel({
           className="pet-ai-panel__input"
           rows={3}
           value={input}
-          placeholder={busy ? '正在回复…' : '输入后 Ctrl+Enter 或点发送'}
+          placeholder={busy ? '正在回复…' : 'Enter 发送 · Shift+Enter 换行'}
           disabled={busy}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault()
-              send()
-            }
+            if (e.key !== 'Enter') return
+            if (e.shiftKey) return
+            if (e.nativeEvent.isComposing) return
+            e.preventDefault()
+            send()
           }}
         />
         <button type="button" className="pet-ai-panel__send" disabled={busy || !input.trim()} onClick={send}>

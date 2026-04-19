@@ -330,6 +330,28 @@
   color: #6a7aa8;
 }
 
+.pet-ai-panel__skills-footer {
+  padding: 6px 10px 8px;
+  border-top: 1px solid #e6edf8;
+}
+
+.pet-ai-panel__skills-manage {
+  width: 100%;
+  border: 1px solid #cdd9f5;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2f4a7a;
+  background: #fff;
+  cursor: pointer;
+}
+
+.pet-ai-panel__skills-manage:hover {
+  border-color: #5f87ff;
+  background: rgba(95, 135, 255, 0.06);
+}
+
 /**
  * 独立窗口布局：必须写在 `.pet-ai-panel` 之后，否则默认的 `width: min(440px, …)` 会生效，
  * 导致内容区只有 440px 宽、整体靠左。

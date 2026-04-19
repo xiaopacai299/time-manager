@@ -283,7 +283,7 @@ function normalizeLlmSkills(raw) {
       String(item.id || '')
         .trim()
         .slice(0, 80) || `skill-${Date.now()}-${out.length}`;
-    const name = String(item.name || '未命名技能').trim().slice(0, 80) || '未命名技能';
+    const name = String(item.name ?? '').trim().slice(0, 80);
     const body = String(item.body || '').slice(0, LLM_SKILL_BODY_MAX);
     out.push({ id, name, body, enabled: Boolean(item.enabled) });
   }
@@ -298,7 +298,8 @@ function buildLlmSkillSystemAppendix(skills) {
   const parts = [];
   let budget = LLM_SKILL_APPENDIX_MAX;
   for (const s of enabled) {
-    const header = `### ${s.name}\n`;
+    const title = String(s.name || '').trim() || '未命名';
+    const header = `### ${title}\n`;
     const body = String(s.body || '').trim();
     const chunk = `${header}${body}`;
     if (chunk.length <= budget) {
@@ -547,8 +548,18 @@ function buildPetStatePayload() {
 }
 
 function broadcastPetStateChanged() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send('pet:state-changed', buildPetStatePayload());
+  const payload = buildPetStatePayload();
+  const send = (win) => {
+    if (!win || win.isDestroyed()) return;
+    try {
+      win.webContents.send('pet:state-changed', payload);
+    } catch {
+      // 窗口可能正在销毁
+    }
+  };
+  send(mainWindow);
+  send(petAiChatWindow);
+  send(settingsWindow);
 }
 
 function persistPetState() {

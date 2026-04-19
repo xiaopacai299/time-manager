@@ -11,14 +11,6 @@ const DEFAULT_BUBBLE_TEXTS = {
   'long-work': '',
 }
 
-function newSkillRow() {
-  const id =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `skill-${Date.now()}`
-  return { id, name: '新技能', body: '', enabled: true }
-}
-
 function PetLottieIcon({ animationData }) {
   const ref = useRef(null)
   useEffect(() => {
@@ -47,7 +39,6 @@ export default function SettingsWindowApp() {
   const [clearOpenAiKey, setClearOpenAiKey] = useState(false)
   const [llmChatUrl, setLlmChatUrl] = useState('')
   const [llmModel, setLlmModel] = useState('gpt-4o-mini')
-  const [llmSkills, setLlmSkills] = useState([])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -73,15 +64,6 @@ export default function SettingsWindowApp() {
       setClearOpenAiKey(false)
       setLlmChatUrl(String(data.llmChatUrl || ''))
       setLlmModel(String(data.llmModel || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
-      const rawSkills = Array.isArray(data.llmSkills) ? data.llmSkills : []
-      setLlmSkills(
-        rawSkills.map((s, i) => ({
-          id: typeof s?.id === 'string' && String(s.id).trim() ? String(s.id).trim() : `skill-${i}-${Date.now()}`,
-          name: String(s?.name || '技能').slice(0, 80),
-          body: String(s?.body || '').slice(0, 4000),
-          enabled: Boolean(s?.enabled),
-        })),
-      )
     })
     return () => {
       mounted = false
@@ -107,7 +89,6 @@ export default function SettingsWindowApp() {
         longWorkContinuousMs: longMs,
         llmChatUrl,
         llmModel,
-        llmSkills,
       }
       if (clearOpenAiKey) {
         payload.clearOpenAiApiKey = true
@@ -206,77 +187,6 @@ export default function SettingsWindowApp() {
               {clearOpenAiKey ? '已标记清除，请点下方「保存设置」' : '清除已保存的密钥（保存后生效）'}
             </button>
           ) : null}
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <h2 className="settings-title">AI 技能（SKILL）</h2>
-        <p className="settings-sub">
-          每条技能 = 名称 + 正文（可粘贴 SKILL.md 要点）。最多 8 条；在宠物对话面板可勾选「启用」。
-          启用项会拼进系统提示，模型需按正文约束回答。
-        </p>
-        <div className="settings-skill-list">
-          {llmSkills.map((s, index) => (
-            <div key={s.id} className="settings-skill-card">
-              <div className="settings-skill-card__head">
-                <label className="settings-field settings-field--inline">
-                  <span>名称</span>
-                  <input
-                    value={s.name}
-                    maxLength={80}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setLlmSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, name: v } : x)))
-                    }}
-                  />
-                </label>
-                <label className="settings-skill-enable">
-                  <input
-                    type="checkbox"
-                    checked={s.enabled}
-                    onChange={(e) => {
-                      const v = e.target.checked
-                      setLlmSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, enabled: v } : x)))
-                    }}
-                  />
-                  默认启用
-                </label>
-                <button
-                  type="button"
-                  className="settings-skill-remove"
-                  onClick={() => setLlmSkills((prev) => prev.filter((x) => x.id !== s.id))}
-                >
-                  删除
-                </button>
-              </div>
-              <label className="settings-field">
-                <span>正文（最多约 4000 字）</span>
-                <textarea
-                  className="settings-skill-body"
-                  value={s.body}
-                  maxLength={4000}
-                  rows={5}
-                  placeholder="例如：回答时请始终用简体中文；涉及代码用 markdown 代码块；…"
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setLlmSkills((prev) => prev.map((x) => (x.id === s.id ? { ...x, body: v } : x)))
-                  }}
-                />
-              </label>
-              {index < llmSkills.length - 1 ? <hr className="settings-skill-sep" /> : null}
-            </div>
-          ))}
-        </div>
-        <div className="settings-skill-actions">
-          <button
-            type="button"
-            className="settings-secondary"
-            disabled={llmSkills.length >= 8}
-            onClick={() => setLlmSkills((prev) => [...prev, newSkillRow()].slice(0, 8))}
-          >
-            添加技能
-          </button>
-          {llmSkills.length >= 8 ? <span className="settings-skill-cap">已达 8 条上限</span> : null}
         </div>
       </section>
 

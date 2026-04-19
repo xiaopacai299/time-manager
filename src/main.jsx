@@ -18,7 +18,9 @@ const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
 const isSettingsWindow = typeof window !== 'undefined' && window.location.hash === '#settings'
 const isReaderWindow = typeof window !== 'undefined' && window.location.hash === '#reader'
-const isPetAiChatWindow = typeof window !== 'undefined' && window.location.hash === '#pet-ai-chat'
+const petAiHash = typeof window !== 'undefined' ? window.location.hash : ''
+const isPetAiChatWindow =
+  petAiHash === '#pet-ai-chat' || petAiHash === '#pet-ai-chat/skills'
 
 if (typeof document !== 'undefined') {
   if (isStatsWindow) {
@@ -34,7 +36,7 @@ if (typeof document !== 'undefined') {
   } else if (isReaderWindow) {
     document.title = '摸鱼阅读'
   } else if (isPetAiChatWindow) {
-    document.title = 'AI 对话'
+    document.title = petAiHash === '#pet-ai-chat/skills' ? 'AI 技能' : 'AI 对话'
   } else {
     document.title = '桌面宠物'
   }
