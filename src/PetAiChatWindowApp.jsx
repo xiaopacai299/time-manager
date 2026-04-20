@@ -53,9 +53,9 @@ export default function PetAiChatWindowApp() {
     bgKind === 'image' && bgImageUrl
       ? {
           backgroundImage: `url(${JSON.stringify(bgImageUrl)})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: '0 0',
+          backgroundSize: 'auto',
         }
       : undefined
 

@@ -391,12 +391,27 @@
   border-radius: 0;
   border: none;
   box-shadow: none;
+  /* 独立窗口：根容器透明，让 PetAiChatWindowApp 上的渐变/图片背景透出 */
+  background: transparent;
+}
+
+.pet-ai-panel.pet-ai-panel--window .pet-ai-panel__head {
+  background: linear-gradient(180deg, rgba(238, 243, 255, 0.55) 0%, rgba(228, 236, 251, 0.42) 100%);
+}
+
+.pet-ai-panel.pet-ai-panel--window .pet-ai-panel__messages {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__foot {
   flex-direction: row;
   align-items: flex-end;
   gap: 10px;
+  background: rgba(250, 252, 255, 0.45);
+}
+
+.pet-ai-panel.pet-ai-panel--window .pet-ai-panel__skills {
+  background: rgba(248, 250, 255, 0.48);
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__input {

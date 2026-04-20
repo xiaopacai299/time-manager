@@ -58,6 +58,11 @@
   overflow: auto;
 }
 
+/* 技能页：轻遮罩，尽量透出窗口级背景 */
+.pet-ai-chat-window-skills .pet-ai-skills-page {
+  background: rgba(250, 252, 255, 0.42);
+}
+
 .pet-ai-chat-window-fallback {
   margin: 12px;
   padding: 10px 12px;
