@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react'
 import { getPetDefinition } from '../../pets/registry'
 import PetAiChatAssistantAvatarLottie from './PetAiChatAssistantAvatarLottie.jsx'
 import './PetAiChatPanel.css'
@@ -19,7 +19,7 @@ function buildOpeningGreeting(selectedPet) {
  * 与主进程兼容 Chat Completions 的接口对话；可在面板内开关已保存的「技能」。
  * @param {'default'|'window'} [layout] — `window` 时铺满独立子窗口且不显示内嵌标题栏（用系统标题栏关闭）。
  */
-export default function PetAiChatPanel({
+function PetAiChatPanelInner({
   hasOpenAiKey,
   llmSkills,
   onClose,
@@ -27,7 +27,7 @@ export default function PetAiChatPanel({
   selectedPet = 'black-coal',
   /** 独立窗口内跳转到 `#pet-ai-chat/skills` 编辑技能 */
   onOpenSkillsEditor,
-}) {
+}, ref) {
   const [messages, setMessages] = useState(() => [
     {
       id: nextId(),
@@ -42,12 +42,90 @@ export default function PetAiChatPanel({
   const [err, setErr] = useState('')
   /** 默认收起：仅显示「技能」入口，点击后再展开列表与管理 */
   const [skillsOpen, setSkillsOpen] = useState(false)
+  /** 历史记录区域展开状态 */
+  const [historyOpen, setHistoryOpen] = useState(false)
+  /** 历史记录列表 */
+  const [chatHistories, setChatHistories] = useState([])
+  /** 当前加载的历史会话ID（null表示新对话） */
+  const [currentHistoryId, setCurrentHistoryId] = useState(null)
   const listRef = useRef(null)
   const skills = useMemo(() => (Array.isArray(llmSkills) ? llmSkills : []), [llmSkills])
   const enabledCount = useMemo(
     () => skills.filter((s) => s.enabled && String(s.body || '').trim()).length,
     [skills],
   )
+
+  // 加载历史记录列表
+  const loadHistories = useCallback(async () => {
+    try {
+      const histories = await window.timeManagerAPI?.getChatHistories?.()
+      if (Array.isArray(histories)) {
+        setChatHistories(histories)
+      }
+    } catch (e) {
+      console.error('加载历史记录失败:', e)
+    }
+  }, [])
+
+  // 监听宠物状态变化，更新历史记录
+  useEffect(() => {
+    loadHistories()
+    const unsubscribe = window.timeManagerAPI?.onPetStateChanged?.((payload) => {
+      if (payload?.chatHistories) {
+        setChatHistories(payload.chatHistories)
+      }
+    })
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [loadHistories])
+
+  // 加载指定历史会话
+  const onLoadHistory = useCallback(async (sessionId) => {
+    try {
+      const session = await window.timeManagerAPI?.getChatHistory?.(sessionId)
+      if (session?.messages?.length > 0) {
+        // 转换为组件内部消息格式
+        const loadedMessages = session.messages.map(m => ({
+          id: m.id || nextId(),
+          role: m.role,
+          content: m.content,
+          reasoning: m.reasoning,
+          streaming: false,
+          opening: false,
+        }))
+        setMessages(loadedMessages)
+        setCurrentHistoryId(sessionId) // 标记为已加载的历史会话
+        setErr('')
+        setHistoryOpen(false)
+      }
+    } catch (e) {
+      setErr(e?.message || '加载历史记录失败')
+    }
+  }, [])
+
+  // 删除历史会话
+  const onDeleteHistory = useCallback(async (sessionId) => {
+    try {
+      await window.timeManagerAPI?.deleteChatHistory?.(sessionId)
+      setChatHistories((prev) => prev.filter((h) => h.id !== sessionId))
+    } catch (e) {
+      setErr(e?.message || '删除失败')
+    }
+  }, [])
+
+  // 暴露保存历史记录的方法供父组件调用（窗口关闭时保存）
+  useImperativeHandle(ref, () => ({
+    saveHistory: async (customTitle) => {
+      try {
+        // 如果有当前历史ID，则更新原记录；否则创建新记录
+        await window.timeManagerAPI?.saveChatHistory?.(messages, customTitle, currentHistoryId)
+      } catch (e) {
+        console.error('保存历史记录失败:', e)
+      }
+    },
+    getMessages: () => messages,
+  }), [messages, currentHistoryId])
   useEffect(() => {
     setMessages((prev) => {
       const first = prev[0]
@@ -260,6 +338,63 @@ export default function PetAiChatPanel({
         ) : null}
       </div>
 
+      {/* 历史记录区域 */}
+      <div className="pet-ai-panel__history">
+        <button
+          type="button"
+          className={`pet-ai-panel__history-toggle${historyOpen ? ' pet-ai-panel__history-toggle--open' : ''}`}
+          onClick={() => setHistoryOpen((v) => !v)}
+          aria-expanded={historyOpen}
+          title={historyOpen ? '点击收起历史记录' : '点击展开：查看最近保存的会话'}
+        >
+          <span className="pet-ai-panel__history-toggle-label">历史记录 HISTORY</span>
+          <span className="pet-ai-panel__history-toggle-meta">
+            <span className="pet-ai-panel__history-badge">
+              {chatHistories.length} 条会话
+            </span>
+            <span className="pet-ai-panel__history-chevron" aria-hidden="true">
+              ▼
+            </span>
+          </span>
+        </button>
+        {historyOpen ? (
+          <div className="pet-ai-panel__history-body">
+            {chatHistories.length === 0 ? (
+              <p className="pet-ai-panel__history-empty">暂无历史记录。关闭对话窗口时会自动保存会话。</p>
+            ) : (
+              <>
+                {chatHistories.map((h) => (
+                  <div key={h.id} className="pet-ai-panel__history-row">
+                    <button
+                      type="button"
+                      className="pet-ai-panel__history-item"
+                      onClick={() => onLoadHistory(h.id)}
+                      title={`${h.title}（${h.messageCount} 条消息）`}
+                    >
+                      <span className="pet-ai-panel__history-item-title">{h.title || '未命名会话'}</span>
+                      <span className="pet-ai-panel__history-item-meta">
+                        {new Date(h.createdAt).toLocaleDateString('zh-CN')} · {h.messageCount} 条消息
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="pet-ai-panel__history-delete"
+                      onClick={() => onDeleteHistory(h.id)}
+                      title="删除此会话"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {chatHistories.length >= 10 && (
+                  <p className="pet-ai-panel__history-hint">最多保留最近 10 条会话，每条会话最多 10 条消息</p>
+                )}
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+
       {err ? <p className="pet-ai-panel__err">{err}</p> : null}
       <footer className="pet-ai-panel__foot">
         <textarea
@@ -284,3 +419,6 @@ export default function PetAiChatPanel({
     </aside>
   )
 }
+
+const PetAiChatPanel = forwardRef(PetAiChatPanelInner)
+export default PetAiChatPanel

@@ -422,3 +422,166 @@
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__send {
   flex-shrink: 0;
 }
+
+/* 历史记录区域样式 */
+.pet-ai-panel__history {
+  flex-shrink: 0;
+  border-top: 1px solid #e6edf8;
+  background: #f8faff;
+}
+
+.pet-ai-panel--window .pet-ai-panel__history {
+  background: rgba(248, 250, 255, 0.48);
+}
+
+.pet-ai-panel__history-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3d5580;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pet-ai-panel__history-toggle:hover {
+  background: rgba(95, 135, 255, 0.06);
+}
+
+.pet-ai-panel__history-toggle-label {
+  flex-shrink: 0;
+}
+
+.pet-ai-panel__history-toggle-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pet-ai-panel__history-chevron {
+  flex-shrink: 0;
+  font-size: 8px;
+  line-height: 1;
+  color: #6a7aa8;
+  transition: transform 0.15s ease;
+}
+
+.pet-ai-panel__history-toggle--open .pet-ai-panel__history-chevron {
+  transform: rotate(180deg);
+}
+
+.pet-ai-panel__history-badge {
+  font-weight: 600;
+  color: #5f87ff;
+  font-size: 10px;
+}
+
+.pet-ai-panel__history-body {
+  padding: 8px 10px 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.pet-ai-panel__history-empty {
+  font-size: 12px;
+  color: #8c9ab5;
+  padding: 8px 0;
+  text-align: center;
+  margin: 0;
+}
+
+.pet-ai-panel__history-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.pet-ai-panel__history-row:last-child {
+  margin-bottom: 0;
+}
+
+.pet-ai-panel__history-item {
+  flex: 1;
+  border: 0;
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 1px 2px rgba(62, 92, 157, 0.06);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.pet-ai-panel__history-item:hover {
+  background: #f0f5ff;
+  transform: translateY(-1px);
+}
+
+.pet-ai-panel--window .pet-ai-panel__history-item {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.pet-ai-panel--window .pet-ai-panel__history-item:hover {
+  background: rgba(240, 245, 255, 0.8);
+}
+
+.pet-ai-panel__history-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d3a5c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-ai-panel__history-item-meta {
+  font-size: 10px;
+  color: #7f8cb3;
+}
+
+.pet-ai-panel__history-delete {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: #9ca8c9;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pet-ai-panel__history-delete:hover {
+  background: #ffe8e8;
+  color: #d94c4c;
+}
+
+.pet-ai-panel__history-hint {
+  font-size: 10px;
+  color: #9aa5c5;
+  text-align: center;
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed #e0e6f0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-ai-panel__history-item {
+    transition: none;
+  }
+}

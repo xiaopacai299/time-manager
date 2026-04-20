@@ -404,4 +404,37 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
     ipcRenderer.on('worklist:updated', handler);
     return () => ipcRenderer.removeListener('worklist:updated', handler);
   },
+
+  /**
+   * 保存 AI 对话历史会话。
+   * 主进程通道：`ai-chat:save-history`（invoke/handle）
+   * @param {Array<object>} messages - 当前会话的消息列表
+   * @param {string} [title] - 会话标题（可选）
+   * @param {string} [currentHistoryId] - 当前加载的历史会话ID（可选，有则更新原记录）
+   * @returns {Promise<{ok: boolean}>}
+   */
+  saveChatHistory: (messages, title, currentHistoryId) => ipcRenderer.invoke('ai-chat:save-history', messages, title, currentHistoryId),
+
+  /**
+   * 获取 AI 对话历史列表（不含消息详情）。
+   * 主进程通道：`ai-chat:get-histories`（invoke/handle）
+   * @returns {Promise<Array<{id, title, createdAt, messageCount}>>}
+   */
+  getChatHistories: () => ipcRenderer.invoke('ai-chat:get-histories'),
+
+  /**
+   * 获取指定会话的完整消息。
+   * 主进程通道：`ai-chat:get-history`（invoke/handle）
+   * @param {string} sessionId
+   * @returns {Promise<{id, title, createdAt, messages} | null>}
+   */
+  getChatHistory: (sessionId) => ipcRenderer.invoke('ai-chat:get-history', sessionId),
+
+  /**
+   * 删除指定会话。
+   * 主进程通道：`ai-chat:delete-history`（invoke/handle）
+   * @param {string} sessionId
+   * @returns {Promise<{ok: boolean}>}
+   */
+  deleteChatHistory: (sessionId) => ipcRenderer.invoke('ai-chat:delete-history', sessionId),
 });

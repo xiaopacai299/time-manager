@@ -272,6 +272,8 @@ const petState = {
     /** 仅文件名，位于 userData/pet-ai-chat-bg/ */
     petAiChatBgImageRel: '',
   },
+  /** AI 对话历史：最多保留 10 条会话，每会话最多 10 条消息 */
+  chatHistories: [],
 };
 
 const LLM_SKILL_MAX = 8;
@@ -618,6 +620,15 @@ function loadPetState() {
         const bgMerged = mergePetAiChatBgSettings({}, petState.petSettings);
         petState.petSettings = { ...petState.petSettings, ...bgMerged };
       }
+      // 加载 AI 对话历史（最多保留 10 条会话）
+      if (Array.isArray(parsed.chatHistories)) {
+        petState.chatHistories = parsed.chatHistories.slice(0, 10).map(h => ({
+          id: String(h.id || ''),
+          title: String(h.title || '未命名会话').slice(0, 40),
+          messages: Array.isArray(h.messages) ? h.messages.slice(0, 10) : [],
+          createdAt: String(h.createdAt || new Date().toISOString()),
+        })).filter(h => h.id && h.messages.length > 0);
+      }
     }
   } catch {
     // Use defaults when state file does not exist.
@@ -643,6 +654,13 @@ function buildPetStatePayload() {
     compactMode: petState.compactMode,
     followMouse: petState.followMouse,
     petSettings: sanitizePetSettingsForClient(petState.petSettings),
+    chatHistories: (petState.chatHistories || []).map(h => ({
+      id: h.id,
+      title: h.title,
+      createdAt: h.createdAt,
+      // 不返回完整消息列表给宠物窗口，只给 AI 对话窗口单独获取
+      messageCount: h.messages?.length || 0,
+    })),
   };
 }
 
@@ -659,6 +677,91 @@ function broadcastPetStateChanged() {
   send(mainWindow);
   send(petAiChatWindow);
   send(settingsWindow);
+}
+
+/**
+ * 保存 AI 对话历史会话
+ * @param {Array} messages - 当前会话的消息列表
+ * @param {string} title - 会话标题（可选，默认取第一条用户消息）
+ * @param {string} sessionId - 可选，如果提供则更新现有会话，否则创建新会话
+ */
+function saveChatHistory(messages, title, sessionId) {
+  if (!Array.isArray(messages) || messages.length === 0) return;
+  // 过滤掉开场白和流式中的消息，保留完整对话
+  const validMessages = messages
+    .filter(m => !m.opening && !m.streaming && m.content?.trim())
+    .map(m => ({
+      id: m.id,
+      role: m.role,
+      content: String(m.content).slice(0, 2000), // 单条消息限制长度
+      reasoning: m.reasoning ? String(m.reasoning).slice(0, 1000) : undefined,
+    }));
+  if (validMessages.length === 0) return;
+  const sessionTitle = title?.trim() ||
+    validMessages.find(m => m.role === 'user')?.content?.slice(0, 20) ||
+    '未命名会话';
+
+  // 如果提供了 sessionId，尝试更新现有会话
+  if (sessionId) {
+    const existingIndex = (petState.chatHistories || []).findIndex(h => h.id === sessionId);
+    if (existingIndex >= 0) {
+      // 更新现有会话
+      const existing = petState.chatHistories[existingIndex];
+      petState.chatHistories[existingIndex] = {
+        ...existing,
+        title: sessionTitle,
+        messages: validMessages.slice(0, 10), // 每会话最多保留 10 条消息
+        updatedAt: new Date().toISOString(),
+      };
+      // 将该会话移到列表开头
+      const updated = petState.chatHistories.splice(existingIndex, 1)[0];
+      petState.chatHistories = [updated, ...petState.chatHistories];
+      persistPetState();
+      broadcastPetStateChanged();
+      return;
+    }
+  }
+
+  // 创建新会话
+  const newSession = {
+    id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: sessionTitle,
+    messages: validMessages.slice(0, 10), // 每会话最多保留 10 条消息
+    createdAt: new Date().toISOString(),
+  };
+  // 将新会话添加到开头，最多保留 10 条
+  petState.chatHistories = [newSession, ...(petState.chatHistories || [])].slice(0, 10);
+  persistPetState();
+  broadcastPetStateChanged();
+}
+
+/**
+ * 获取 AI 对话历史列表（不含消息详情）
+ */
+function getChatHistories() {
+  return (petState.chatHistories || []).map(h => ({
+    id: h.id,
+    title: h.title,
+    createdAt: h.createdAt,
+    messageCount: h.messages?.length || 0,
+  }));
+}
+
+/**
+ * 获取指定会话的完整消息
+ */
+function getChatHistoryById(sessionId) {
+  const session = (petState.chatHistories || []).find(h => h.id === sessionId);
+  return session ? { ...session } : null;
+}
+
+/**
+ * 删除指定会话
+ */
+function deleteChatHistory(sessionId) {
+  petState.chatHistories = (petState.chatHistories || []).filter(h => h.id !== sessionId);
+  persistPetState();
+  broadcastPetStateChanged();
 }
 
 function persistPetState() {
@@ -1390,6 +1493,22 @@ function setupIpc() {
       debugLog('ai-chat:send', 'NETWORK', err?.message || String(err));
       return { ok: false, error: 'NETWORK', message: err?.message || '网络错误' };
     }
+  });
+
+  // AI 对话历史相关 IPC
+  ipcMain.handle('ai-chat:save-history', (_event, messages, title, currentHistoryId) => {
+    saveChatHistory(messages, title, currentHistoryId);
+    return { ok: true };
+  });
+  ipcMain.handle('ai-chat:get-histories', () => {
+    return getChatHistories();
+  });
+  ipcMain.handle('ai-chat:get-history', (_event, sessionId) => {
+    return getChatHistoryById(sessionId);
+  });
+  ipcMain.handle('ai-chat:delete-history', (_event, sessionId) => {
+    deleteChatHistory(sessionId);
+    return { ok: true };
   });
 
   // 2) 收藏夹模块

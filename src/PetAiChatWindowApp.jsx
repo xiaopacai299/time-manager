@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PetAiChatPanel from './components/PetAiChatPanel'
 import PetAiSkillsEditorPage from './components/PetAiChatPanel/PetAiSkillsEditorPage.jsx'
 import { useTimeManagerPetBridge } from './hooks/useTimeManagerPetBridge'
@@ -22,6 +22,7 @@ function usePetAiWindowHashRoute() {
 export default function PetAiChatWindowApp() {
   const { petState, isBridgeReady } = useTimeManagerPetBridge()
   const route = usePetAiWindowHashRoute()
+  const chatPanelRef = useRef(null)
 
   const goChat = () => {
     if (typeof window !== 'undefined') window.location.hash = '#pet-ai-chat'
@@ -34,6 +35,18 @@ export default function PetAiChatWindowApp() {
     if (typeof document === 'undefined') return
     document.title = route === 'skills' ? 'AI 技能' : 'AI 对话'
   }, [route])
+
+  // 监听窗口关闭事件，保存对话历史
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 尝试保存当前对话历史
+      if (chatPanelRef.current?.saveHistory) {
+        chatPanelRef.current.saveHistory()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
 
   const ps = petState?.petSettings || {}
   const bgKind = ps.petAiChatBgKind === 'preset' || ps.petAiChatBgKind === 'image' ? ps.petAiChatBgKind : 'default'
@@ -71,6 +84,7 @@ export default function PetAiChatWindowApp() {
             aria-hidden={route !== 'chat'}
           >
             <PetAiChatPanel
+              ref={chatPanelRef}
               layout="window"
               hasOpenAiKey={Boolean(petState?.petSettings?.hasOpenAiKey)}
               llmSkills={petState?.petSettings?.llmSkills}
