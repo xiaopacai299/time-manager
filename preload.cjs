@@ -437,4 +437,19 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<{ok: boolean}>}
    */
   deleteChatHistory: (sessionId) => ipcRenderer.invoke('ai-chat:delete-history', sessionId),
+
+  /**
+   * 获取开机自动启动状态。
+   * 主进程通道：`auto-launch:get`（invoke/handle）
+   * @returns {Promise<{enabled: boolean, error?: string}>}
+   */
+  getAutoLaunchStatus: () => ipcRenderer.invoke('auto-launch:get'),
+
+  /**
+   * 设置开机自动启动状态。
+   * 主进程通道：`auto-launch:set`（invoke/handle）
+   * @param {boolean} enabled - 是否开启开机自动启动
+   * @returns {Promise<{ok: boolean, enabled?: boolean, error?: string}>}
+   */
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('auto-launch:set', enabled),
 });

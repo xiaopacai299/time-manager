@@ -17,11 +17,13 @@ export function createMenuModule({
   onOpenSettings,
   onOpenStatsWindow,
   onEmitPetAction,
+  onToggleAutoLaunch,
 }) {
   let tray = null;
 
   function buildTrayMenu() {
     const petState = getPetState();
+    const loginItemSettings = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
       {
         label: petState.followMouse ? '猫捉老鼠' : '关闭猫捉老鼠',
@@ -58,6 +60,13 @@ export function createMenuModule({
       },
       { type: 'separator' },
       {
+        label: '开机自动启动',
+        type: 'checkbox',
+        checked: loginItemSettings.openAtLogin,
+        click: () => onToggleAutoLaunch(),
+      },
+      { type: 'separator' },
+      {
         label: '退出',
         click: () => app.quit(),
       },
@@ -66,6 +75,7 @@ export function createMenuModule({
 
   function buildPetContextMenu() {
     const petState = getPetState();
+    const loginItemSettings = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
       {
         label: petState.followMouse ? '关闭猫捉老鼠' : '猫捉老鼠',
@@ -103,6 +113,13 @@ export function createMenuModule({
           { label: '提醒 remind', click: () => onEmitPetAction('remind') },
           { label: '报警 long-work', click: () => onEmitPetAction('long-work') },
         ],
+      },
+      { type: 'separator' },
+      {
+        label: '开机自动启动',
+        type: 'checkbox',
+        checked: loginItemSettings.openAtLogin,
+        click: () => onToggleAutoLaunch(),
       },
       { type: 'separator' },
       { label: '退出', click: () => app.quit() },

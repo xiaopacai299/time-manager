@@ -822,6 +822,7 @@ const menuModule = createMenuModule({
   onOpenSettings: () => openSettingsWindow(),
   onOpenStatsWindow: () => openStatsDetailWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
+  onToggleAutoLaunch: () => toggleAutoLaunch(),
 });
 
 // 宠物运动模块：管理拖拽、追鼠标、捣乱模式、全局鼠标 Hook 及相关 IPC。
@@ -1043,6 +1044,33 @@ function toggleChaosCat() {
   persistPetState();
   menuModule.refreshTrayMenu();
   return petState.chaosCat;
+}
+
+/**
+ * 切换开机自动启动状态
+ * 使用 Electron 的 app.setLoginItemSettings API 设置 Windows 登录时自动启动
+ */
+function toggleAutoLaunch() {
+  try {
+    const settings = app.getLoginItemSettings();
+    const newValue = !settings.openAtLogin;
+
+    app.setLoginItemSettings({
+      openAtLogin: newValue,
+      openAsHidden: false, // 启动时显示窗口（不是隐藏）
+      path: process.execPath, // 使用当前可执行文件路径
+      args: [], // 启动参数
+    });
+
+    // 刷新菜单以更新勾选状态
+    menuModule.refreshTrayMenu();
+
+    console.log(`[AutoLaunch] 开机自动启动已${newValue ? '开启' : '关闭'}`);
+    return newValue;
+  } catch (error) {
+    console.error('[AutoLaunch] 切换开机自动启动失败:', error);
+    return null;
+  }
 }
 
 process.on('uncaughtException', (error) => {
@@ -1298,6 +1326,36 @@ function setupIpc() {
     persistPetState();
     broadcastPetStateChanged();
     return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };
+  });
+
+  // 开机自动启动相关 IPC
+  ipcMain.handle('auto-launch:get', () => {
+    try {
+      const settings = app.getLoginItemSettings();
+      return { enabled: settings.openAtLogin };
+    } catch (error) {
+      console.error('[AutoLaunch] 获取开机启动状态失败:', error);
+      return { enabled: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('auto-launch:set', (_event, enabled) => {
+    try {
+      const shouldEnable = Boolean(enabled);
+      app.setLoginItemSettings({
+        openAtLogin: shouldEnable,
+        openAsHidden: false,
+        path: process.execPath,
+        args: [],
+      });
+      // 刷新菜单勾选状态
+      menuModule.refreshTrayMenu();
+      console.log(`[AutoLaunch] 开机自动启动已${shouldEnable ? '开启' : '关闭'} (via IPC)`);
+      return { ok: true, enabled: shouldEnable };
+    } catch (error) {
+      console.error('[AutoLaunch] 设置开机启动状态失败:', error);
+      return { ok: false, error: error.message };
+    }
   });
 
   ipcMain.handle('pet-ai-chat-bg:choose-image', async (event) => {
