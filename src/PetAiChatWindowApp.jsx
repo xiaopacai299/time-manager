@@ -49,7 +49,7 @@ export default function PetAiChatWindowApp() {
   }, [])
 
   const ps = petState?.petSettings || {}
-  const bgKind = ps.petAiChatBgKind === 'preset' || ps.petAiChatBgKind === 'image' ? ps.petAiChatBgKind : 'default'
+  const bgKind = ['preset', 'image', 'image-fill'].includes(ps.petAiChatBgKind) ? ps.petAiChatBgKind : 'default'
   const bgPreset = String(ps.petAiChatBgPreset || 'mist_blue').trim() || 'mist_blue'
   const bgImageUrl = String(ps.petAiChatBgImageUrl || '').trim()
 
@@ -58,17 +58,18 @@ export default function PetAiChatWindowApp() {
     bgKind === 'default' ? 'pet-ai-chat-window-root--bg-default' : '',
     bgKind === 'preset' ? `pet-ai-chat-window-root--bg-preset-${bgPreset}` : '',
     bgKind === 'image' ? 'pet-ai-chat-window-root--bg-image' : '',
+    bgKind === 'image-fill' ? 'pet-ai-chat-window-root--bg-image-fill' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
   const rootStyle =
-    bgKind === 'image' && bgImageUrl
+    (bgKind === 'image' || bgKind === 'image-fill') && bgImageUrl
       ? {
           backgroundImage: `url(${JSON.stringify(bgImageUrl)})`,
-          backgroundRepeat: 'repeat',
-          backgroundPosition: '0 0',
-          backgroundSize: 'auto',
+          backgroundRepeat: bgKind === 'image-fill' ? 'no-repeat' : 'repeat',
+          backgroundPosition: 'center center',
+          backgroundSize: bgKind === 'image-fill' ? '100% 100%' : 'auto',
         }
       : undefined
 

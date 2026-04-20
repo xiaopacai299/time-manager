@@ -280,7 +280,7 @@ const LLM_SKILL_MAX = 8;
 const LLM_SKILL_BODY_MAX = 4000;
 const LLM_SKILL_APPENDIX_MAX = 6000;
 
-const PET_AI_CHAT_BG_KINDS = new Set(['default', 'preset', 'image']);
+const PET_AI_CHAT_BG_KINDS = new Set(['default', 'preset', 'image', 'image-fill']);
 const PET_AI_CHAT_BG_PRESETS = new Set(['mist_blue', 'lavender_mist', 'warm_paper', 'dark_navy', 'mint_soft']);
 const PET_AI_CHAT_BG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 const PET_AI_CHAT_BG_MAX_BYTES = 12 * 1024 * 1024;
@@ -349,7 +349,7 @@ function mergePetAiChatBgSettings(input, prev) {
     imageRel = '';
   }
 
-  if (kind === 'image' && !imageRel) {
+  if ((kind === 'image' || kind === 'image-fill') && !imageRel) {
     kind = 'default';
   }
 
@@ -1279,6 +1279,7 @@ function setupIpc() {
   ipcMain.handle('pet-settings:get', () => sanitizePetSettingsForClient(petState.petSettings));
   ipcMain.handle('pet-settings:update', (_event, payload) => {
     const input = payload && typeof payload === 'object' ? payload : {};
+    console.log('[DEBUG] pet-settings:update input:', { petAiChatBgKind: input.petAiChatBgKind });
     const bubbleTextsRaw =
       input.bubbleTexts && typeof input.bubbleTexts === 'object' ? input.bubbleTexts : {};
     const remindContinuousMs = Number.isFinite(Number(input.remindContinuousMs))
@@ -1305,6 +1306,7 @@ function setupIpc() {
       ? normalizeLlmSkills(input.llmSkills)
       : normalizeLlmSkills(prevPs.llmSkills);
     const petAiChatBg = mergePetAiChatBgSettings(input, prevPs);
+    console.log('[DEBUG] mergePetAiChatBgSettings result:', petAiChatBg);
     petState.petSettings = {
       selectedPet: String(input.selectedPet || prevPs.selectedPet || 'black-coal'),
       bubbleTexts: {
@@ -1402,8 +1404,11 @@ function setupIpc() {
     if (prevRel && prevRel !== base) {
       tryUnlinkPetAiChatBgImage(prevRel);
     }
+    // 保留当前的背景类型（image 或 image-fill）
+    const currentKind = petState.petSettings?.petAiChatBgKind;
+    const targetKind = (currentKind === 'image' || currentKind === 'image-fill') ? currentKind : 'image';
     const petAiChatBg = mergePetAiChatBgSettings(
-      { petAiChatBgKind: 'image', petAiChatBgImageRel: base },
+      { petAiChatBgKind: targetKind, petAiChatBgImageRel: base },
       { ...petState.petSettings, petAiChatBgImageRel: base },
     );
     petState.petSettings = { ...petState.petSettings, ...petAiChatBg };

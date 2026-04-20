@@ -77,7 +77,7 @@ export default function SettingsWindowApp() {
       setLlmChatUrl(String(data.llmChatUrl || ''))
       setLlmModel(String(data.llmModel || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
       const k = String(data.petAiChatBgKind || '').trim()
-      setPetAiChatBgKind(k === 'preset' || k === 'image' ? k : 'default')
+      setPetAiChatBgKind(['preset', 'image', 'image-fill'].includes(k) ? k : 'default')
       const presetIds = new Set(PET_AI_CHAT_BG_PRESET_OPTIONS.map((o) => o.id))
       const pr = String(data.petAiChatBgPreset || '').trim()
       setPetAiChatBgPreset(presetIds.has(pr) ? pr : 'mist_blue')
@@ -101,6 +101,7 @@ export default function SettingsWindowApp() {
         return
       }
 
+      console.log('[DEBUG] Saving petAiChatBgKind:', petAiChatBgKind)
       const payload = {
         selectedPet,
         bubbleTexts,
@@ -111,6 +112,7 @@ export default function SettingsWindowApp() {
         petAiChatBgKind,
         petAiChatBgPreset,
       }
+      console.log('[DEBUG] payload:', payload)
       if (clearOpenAiKey) {
         payload.clearOpenAiApiKey = true
       } else if (openAiKeyDraft.trim()) {
@@ -127,7 +129,7 @@ export default function SettingsWindowApp() {
       const ps = result.petSettings
       if (ps) {
         const nk = String(ps.petAiChatBgKind || '').trim()
-        setPetAiChatBgKind(nk === 'preset' || nk === 'image' ? nk : 'default')
+        setPetAiChatBgKind(['preset', 'image', 'image-fill'].includes(nk) ? nk : 'default')
         const presetIds = new Set(PET_AI_CHAT_BG_PRESET_OPTIONS.map((o) => o.id))
         const npr = String(ps.petAiChatBgPreset || '').trim()
         setPetAiChatBgPreset(presetIds.has(npr) ? npr : 'mist_blue')
@@ -179,7 +181,7 @@ export default function SettingsWindowApp() {
       const ps = r.petSettings
       if (ps) {
         const nk = String(ps.petAiChatBgKind || '').trim()
-        setPetAiChatBgKind(nk === 'preset' || nk === 'image' ? nk : 'default')
+        setPetAiChatBgKind(['preset', 'image', 'image-fill'].includes(nk) ? nk : 'default')
         setPetAiChatBgImageUrl(String(ps.petAiChatBgImageUrl || ''))
         setPetAiChatBgImageRel(String(ps.petAiChatBgImageRel || ''))
       } else {
@@ -255,7 +257,16 @@ export default function SettingsWindowApp() {
                   checked={petAiChatBgKind === 'image'}
                   onChange={() => setPetAiChatBgKind('image')}
                 />
-                自定义图片
+                自定义图片（平铺）
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="pet-ai-chat-bg-kind"
+                  checked={petAiChatBgKind === 'image-fill'}
+                  onChange={() => setPetAiChatBgKind('image-fill')}
+                />
+                自定义图片（填充）
               </label>
             </div>
           </div>
@@ -281,7 +292,7 @@ export default function SettingsWindowApp() {
               </p>
             </div>
           ) : null}
-          {petAiChatBgKind === 'image' ? (
+          {petAiChatBgKind === 'image' || petAiChatBgKind === 'image-fill' ? (
             <div className="settings-field">
               <span>本地图片</span>
               <div className="settings-ai-bg-actions">
@@ -295,7 +306,12 @@ export default function SettingsWindowApp() {
                 ) : null}
               </div>
               {petAiChatBgImageUrl ? (
-                <img className="settings-ai-bg-preview" src={petAiChatBgImageUrl} alt="当前自定义背景预览" />
+                <>
+                  <img className="settings-ai-bg-preview" src={petAiChatBgImageUrl} alt="当前自定义背景预览" />
+                  <p className="settings-sub" style={{ marginTop: 8, marginBottom: 0 }}>
+                    {petAiChatBgKind === 'image' ? '平铺模式：图片会像瓷砖一样重复排列。' : '填充模式：图片会拉伸变形以填满整个窗口。'}
+                  </p>
+                </>
               ) : (
                 <p className="settings-sub" style={{ marginTop: 8, marginBottom: 0 }}>
                   选择图片后会立即保存并生效；支持 png / jpg / webp / gif，最大约 12MB。
