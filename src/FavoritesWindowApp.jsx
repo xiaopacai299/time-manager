@@ -68,20 +68,17 @@ export default function FavoritesWindowApp() {
   }
 
   return (
-    <main className="favorites-page">
+    <main 
+      className={`favorites-page${isDragover ? ' favorites-page--dragover' : ''}`}
+      onDragOver={(event) => {
+        event.preventDefault()
+        setIsDragover(true)
+      }}
+      onDragLeave={() => setIsDragover(false)}
+      onDrop={onDrop}
+    >
       <div className="favorites-wrap">
-        <div
-          className={`favorites-drop-zone${isDragover ? ' favorites-drop-zone--dragover' : ''}`}
-          onDragOver={(event) => {
-            event.preventDefault()
-            setIsDragover(true)
-          }}
-          onDragLeave={() => setIsDragover(false)}
-          onDrop={onDrop}
-        >
-          <div className="favorites-hint">仅支持拖入应用快捷方式（.lnk）</div>
-        </div>
-        <div className="favorites-tips">双击图标打开应用，右键图标可删除。</div>
+        {/* <div className="favorites-tips">双击图标打开应用，右键图标可删除。</div> */}
         <div className="favorites-msg">{message}</div>
         <div className="favorites-list">
           {!items.length ? (

@@ -210,7 +210,8 @@ function loadPetRenderer(win, hash) {
   });
   appendLaunchLog(`loadPetRenderer: isPackaged=${app.isPackaged}, useLocalFile=${useLocalFile}, path=${htmlPath}`);
 
-  if (app.isPackaged || useLocalFile) {
+  if (app.isPackaged) {
+    // 打包模式：必须使用本地文件
     if (!useLocalFile) {
       const msg = `未找到界面文件：\n${htmlPath}\n请确认使用「npm run build」后再打包。`;
       appendLaunchLog(`missing dist: ${htmlPath}`);
@@ -222,7 +223,8 @@ function loadPetRenderer(win, hash) {
     else win.loadFile(htmlPath);
     return;
   }
-  // 只有开发模式且本地文件不存在时才使用 localhost
+  
+  // 开发模式：优先使用开发服务器（支持热更新）
   const url = hash
     ? `${PET_RENDERER_ORIGIN}/#${String(hash).replace(/^#/, '')}`
     : `${PET_RENDERER_ORIGIN}/`;

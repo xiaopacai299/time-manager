@@ -26,24 +26,33 @@ export function createMenuModule({
     const loginItemSettings = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
       {
-        label: petState.followMouse ? '猫捉老鼠' : '关闭猫捉老鼠',
-        click: () => onToggleFollowMouse(),
-      },
-      {
-        label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
-        click: () => onToggleChaosCat(),
+        label: '游戏一下',
+        submenu: [
+          {
+            label: petState.followMouse ?'关闭追鼠标':'追鼠标',
+            click: () => onToggleFollowMouse(),
+          },
+          {
+            label: petState.chaosCat ? '停止捣蛋鬼' : '捣蛋鬼',
+            click: () => onToggleChaosCat(),
+          },
+        ],
       },
       {
         label: '收藏夹',
         click: () => onOpenFavorites(),
       },
       {
-        label: '添加工作清单',
+        label: '工作清单',
         click: () => onOpenWorklist(),
       },
       {
-        label: '摸鱼',
+        label: '阅读',
         click: () => onOpenReader(),
+      },
+       {
+        label: '应用时长统计',
+        click: () => onOpenStatsWindow?.(),
       },
       {
         label: '设置',
@@ -78,27 +87,32 @@ export function createMenuModule({
     const loginItemSettings = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
       {
-        label: petState.followMouse ? '关闭猫捉老鼠' : '猫捉老鼠',
-        click: () => onToggleFollowMouse(),
-      },
-      {
-        label: petState.chaosCat ? '停止捣乱' : '捣乱的小猫',
-        click: () => onToggleChaosCat(),
+        label: '游戏一下',
+        submenu: [
+          {
+            label: petState.followMouse ? '关闭追鼠标':'追鼠标',
+            click: () => onToggleFollowMouse(),
+          },
+          {
+            label: petState.chaosCat ? '停止捣蛋鬼' : '捣蛋鬼',
+            click: () => onToggleChaosCat(),
+          },
+        ],
       },
       {
         label: '收藏夹',
         click: () => onOpenFavorites(),
       },
       {
-        label: '添加工作清单',
+        label: '工作清单',
         click: () => onOpenWorklist(),
       },
       {
-        label: '摸鱼',
+        label: '阅读',
         click: () => onOpenReader(),
       },
       {
-        label: '使用统计',
+        label: '应用时长统计',
         click: () => onOpenStatsWindow?.(),
       },
       {
