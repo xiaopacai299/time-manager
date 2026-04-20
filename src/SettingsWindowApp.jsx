@@ -107,8 +107,7 @@ export default function SettingsWindowApp() {
         bubbleTexts,
         remindContinuousMs: remindMs,
         longWorkContinuousMs: longMs,
-        llmChatUrl,
-        llmModel,
+        // llmChatUrl 和 llmModel 已硬编码，不在设置中修改
         petAiChatBgKind,
         petAiChatBgPreset,
       }
@@ -325,24 +324,25 @@ export default function SettingsWindowApp() {
       <section className="settings-card">
         <h2 className="settings-title">AI 对话（API）</h2>
         <p className="settings-sub">
-          用于左键双击宠物后的对话面板。须为与 OpenAI 兼容的 Chat Completions（默认请求流式 SSE；若接口不支持，可设环境变量
-          TIME_MANAGER_LLM_STREAM=false 强制整包 JSON）。密钥仅保存在本机配置中；API 地址与模型名可下发到界面，不含密钥。
+          已配置为火山引擎 Ark API。当前使用硬编码配置，不支持在设置中修改。
         </p>
         <div className="settings-form">
           <label className="settings-field">
-            <span>对话接口 URL（可选，空则官方 OpenAI）</span>
+            <span>对话接口 URL（已固定）</span>
             <input
               value={llmChatUrl}
-              onChange={(e) => setLlmChatUrl(e.target.value)}
-              placeholder="https://api.openai.com/v1/chat/completions"
+              disabled
+              readOnly
+              style={{ backgroundColor: '#f5f5f5', color: '#666' }}
             />
           </label>
           <label className="settings-field">
-            <span>模型名 model</span>
+            <span>模型名 model（已固定）</span>
             <input
               value={llmModel}
-              onChange={(e) => setLlmModel(e.target.value)}
-              placeholder="gpt-4o-mini"
+              disabled
+              readOnly
+              style={{ backgroundColor: '#f5f5f5', color: '#666' }}
             />
           </label>
           <label className="settings-field">

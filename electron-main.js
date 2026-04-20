@@ -28,6 +28,13 @@ import { debugLog } from './main/debug-log.js';
 const REMIND_CONTINUOUS_MS = 25 * 60 * 1000;
 const LONG_WORK_CONTINUOUS_MS = 50 * 60 * 1000;
 
+// 硬编码的火山引擎 API 配置
+const HARDCODED_LLM_CHAT_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+const HARDCODED_LLM_MODEL = 'ep-20260418123459-schx9';
+const HARDCODED_OPENAI_API_KEY = 'ark-15dc8144-2fd4-487b-a2f1-b5327a9244d4-fbf38';
+// 保留旧的默认值作为后备
+const DEFAULT_LLM_CHAT_URL = HARDCODED_LLM_CHAT_URL;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
@@ -95,7 +102,42 @@ const APP_ICON_CANDIDATES = [
 ];
 const APP_ICON_PATH = APP_ICON_CANDIDATES.find((p) => fs.existsSync(p)) || APP_ICON_CANDIDATES[2];
 
-const petIndexHtmlPath = path.join(__dirname, 'dist', 'index.html');
+/**
+ * 获取宠物窗口的 HTML 文件路径
+ * 在 asar 打包环境中，需要特殊处理路径
+ */
+function getPetIndexHtmlPath() {
+  // 尝试多个可能的路径
+  const candidates = [
+    // 标准路径（开发模式和未打包）
+    path.join(__dirname, 'dist', 'index.html'),
+    // asar 包内的路径
+    path.join(process.resourcesPath, 'app', 'dist', 'index.html'),
+    // 另一种可能的 asar 路径
+    path.join(process.resourcesPath, 'dist', 'index.html'),
+    // 相对于可执行文件的路径
+    path.join(path.dirname(process.execPath), 'resources', 'app', 'dist', 'index.html'),
+    // 当前工作目录
+    path.join(process.cwd(), 'dist', 'index.html'),
+  ];
+  
+  for (const candidate of candidates) {
+    try {
+      // 使用 Electron 的 API 检查文件是否存在（支持 asar）
+      if (require('fs').existsSync(candidate)) {
+        console.log('[DEBUG] Found index.html at:', candidate);
+        return candidate;
+      }
+    } catch (e) {
+      // 忽略错误，继续尝试下一个
+    }
+  }
+  
+  // 默认返回第一个路径（即使不存在，让后续逻辑处理错误）
+  return candidates[0];
+}
+
+const petIndexHtmlPath = getPetIndexHtmlPath();
 
 /** 启动诊断日志：用于排查打包后白屏/加载失败等问题。 */
 function appendLaunchLog(line) {
@@ -152,18 +194,35 @@ if (!gotSingleInstanceLock) {
 
 /** 开发态走本地 Vite；安装包内从 dist 以 file:// 加载（勿再用 localhost:4567）。 */
 function loadPetRenderer(win, hash) {
-  if (app.isPackaged) {
-    if (!fs.existsSync(petIndexHtmlPath)) {
-      const msg = `未找到界面文件：\n${petIndexHtmlPath}\n请确认使用「npm run build」后再打包。`;
-      appendLaunchLog(`missing dist: ${petIndexHtmlPath}`);
+  // 动态获取路径（支持 asar 环境）
+  const htmlPath = getPetIndexHtmlPath();
+  const useLocalFile = fs.existsSync(htmlPath);
+  
+  // 调试日志
+  console.log('[DEBUG] loadPetRenderer:', {
+    isPackaged: app.isPackaged,
+    useLocalFile,
+    htmlPath,
+    __dirname,
+    cwd: process.cwd(),
+    resourcesPath: process.resourcesPath,
+    execPath: process.execPath,
+  });
+  appendLaunchLog(`loadPetRenderer: isPackaged=${app.isPackaged}, useLocalFile=${useLocalFile}, path=${htmlPath}`);
+
+  if (app.isPackaged || useLocalFile) {
+    if (!useLocalFile) {
+      const msg = `未找到界面文件：\n${htmlPath}\n请确认使用「npm run build」后再打包。`;
+      appendLaunchLog(`missing dist: ${htmlPath}`);
       dialog.showErrorBox('Time Pet 无法启动', msg);
       return;
     }
     const h = hash ? String(hash).replace(/^#/, '') : '';
-    if (h) win.loadFile(petIndexHtmlPath, { hash: h });
-    else win.loadFile(petIndexHtmlPath);
+    if (h) win.loadFile(htmlPath, { hash: h });
+    else win.loadFile(htmlPath);
     return;
   }
+  // 只有开发模式且本地文件不存在时才使用 localhost
   const url = hash
     ? `${PET_RENDERER_ORIGIN}/#${String(hash).replace(/^#/, '')}`
     : `${PET_RENDERER_ORIGIN}/`;
@@ -254,12 +313,12 @@ const petState = {
     // 宠物形态切换阈值（毫秒）
     remindContinuousMs: REMIND_CONTINUOUS_MS,
     longWorkContinuousMs: LONG_WORK_CONTINUOUS_MS,
-    /** OpenAI API 密钥，仅主进程使用，不向渲染进程广播明文 */
-    openAiApiKey: '',
-    /** 兼容 OpenAI Chat Completions 的完整 POST 地址；空则使用官方默认 */
-    llmChatUrl: '',
-    /** 请求体中的 model 字段 */
-    llmModel: 'gpt-4o-mini',
+    /** OpenAI API 密钥（硬编码为火山引擎密钥） */
+    openAiApiKey: HARDCODED_OPENAI_API_KEY,
+    /** 兼容 OpenAI Chat Completions 的完整 POST 地址（硬编码为火山引擎地址） */
+    llmChatUrl: HARDCODED_LLM_CHAT_URL,
+    /** 请求体中的 model 字段（硬编码为火山引擎模型） */
+    llmModel: HARDCODED_LLM_MODEL,
     /**
      * 对话技能（类似 Cursor SKILL）：{ id, name, body, enabled }[]
      * 已启用的 body 会拼进系统提示；仅主进程持久化。
@@ -360,8 +419,6 @@ function mergePetAiChatBgSettings(input, prev) {
   };
 }
 
-const DEFAULT_LLM_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
-
 function normalizeLlmSkills(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
@@ -414,12 +471,10 @@ function isAllowedLlmChatUrl(u) {
 }
 
 function resolveLlmChatPostUrl() {
-  const fromEnv = String(process.env.TIME_MANAGER_LLM_CHAT_URL || '').trim();
-  const fromSettings = String(petState.petSettings?.llmChatUrl || '').trim();
-  const raw = fromEnv || fromSettings;
-  if (!raw) return { ok: true, url: DEFAULT_LLM_CHAT_URL };
+  // 使用硬编码的火山引擎 URL，忽略环境变量和用户设置
+  const url = HARDCODED_LLM_CHAT_URL;
   try {
-    const u = new URL(raw);
+    const u = new URL(url);
     if (!isAllowedLlmChatUrl(u)) {
       return { ok: false, message: 'API 地址仅支持 https，或 http://127.0.0.1 / localhost' };
     }
@@ -603,9 +658,10 @@ function loadPetState() {
           },
           remindContinuousMs,
           longWorkContinuousMs,
-          openAiApiKey: String(parsed.petSettings.openAiApiKey || '').trim().slice(0, 256),
-          llmChatUrl: String(parsed.petSettings.llmChatUrl || '').trim().slice(0, 512),
-          llmModel: String(parsed.petSettings.llmModel || 'gpt-4o-mini').trim().slice(0, 128) || 'gpt-4o-mini',
+          // 使用硬编码的配置，忽略文件中保存的值
+          openAiApiKey: HARDCODED_OPENAI_API_KEY,
+          llmChatUrl: HARDCODED_LLM_CHAT_URL,
+          llmModel: HARDCODED_LLM_MODEL,
           llmSkills: normalizeLlmSkills(parsed.petSettings.llmSkills),
           petAiChatBgKind: PET_AI_CHAT_BG_KINDS.has(String(parsed.petSettings.petAiChatBgKind || '').trim())
             ? String(parsed.petSettings.petAiChatBgKind).trim()
@@ -635,7 +691,7 @@ function loadPetState() {
   }
 }
 
-/** 不把 OpenAI 密钥下发到宠物窗口渲染进程 */
+/** 不下发明文 API 密钥，但下发其他配置给渲染进程 */
 function sanitizePetSettingsForClient(raw) {
   if (!raw || typeof raw !== 'object') return raw;
   const { openAiApiKey: _secret, ...rest } = raw;
@@ -644,6 +700,9 @@ function sanitizePetSettingsForClient(raw) {
     ...rest,
     hasOpenAiKey: Boolean(String(_secret || '').trim()),
     petAiChatBgImageUrl: imageUrl,
+    // 下发硬编码的配置给前端显示
+    llmChatUrl: HARDCODED_LLM_CHAT_URL,
+    llmModel: HARDCODED_LLM_MODEL,
   };
 }
 
@@ -1289,19 +1348,10 @@ function setupIpc() {
       ? Math.max(0, Number(input.longWorkContinuousMs))
       : petState.petSettings.longWorkContinuousMs ?? LONG_WORK_CONTINUOUS_MS;
     const prevPs = petState.petSettings;
-    let openAiApiKey = String(prevPs.openAiApiKey || '').trim();
-    if (input.clearOpenAiApiKey === true) {
-      openAiApiKey = '';
-    } else if (typeof input.openAiApiKey === 'string' && input.openAiApiKey.trim().length > 0) {
-      openAiApiKey = input.openAiApiKey.trim().slice(0, 256);
-    }
-    const llmChatUrl =
-      typeof input.llmChatUrl === 'string' ? input.llmChatUrl.trim().slice(0, 512) : (prevPs.llmChatUrl ?? '');
-    const llmModelRaw =
-      typeof input.llmModel === 'string' && input.llmModel.trim()
-        ? input.llmModel.trim().slice(0, 128)
-        : (prevPs.llmModel || 'gpt-4o-mini');
-    const llmModel = llmModelRaw || 'gpt-4o-mini';
+    // 使用硬编码的 API 配置，忽略用户输入
+    const openAiApiKey = HARDCODED_OPENAI_API_KEY;
+    const llmChatUrl = HARDCODED_LLM_CHAT_URL;
+    const llmModel = HARDCODED_LLM_MODEL;
     const llmSkills = Array.isArray(input.llmSkills)
       ? normalizeLlmSkills(input.llmSkills)
       : normalizeLlmSkills(prevPs.llmSkills);
@@ -1423,13 +1473,14 @@ function setupIpc() {
       debugLog('ai-chat:send', 'abort', 'EMPTY_MESSAGES');
       return { ok: false, error: 'EMPTY_MESSAGES', message: '没有可发送的消息。' };
     }
-    const key = String(process.env.OPENAI_API_KEY || petState.petSettings?.openAiApiKey || '').trim();
+    // 使用硬编码的火山引擎 API 密钥
+    const key = HARDCODED_OPENAI_API_KEY;
     if (!key) {
       debugLog('ai-chat:send', 'abort', 'MISSING_KEY');
       return {
         ok: false,
         error: 'MISSING_KEY',
-        message: '未配置 API 密钥：在「设置」里填写并保存，或设置环境变量 OPENAI_API_KEY。',
+        message: 'API 密钥配置错误。',
       };
     }
     const urlResolved = resolveLlmChatPostUrl();
