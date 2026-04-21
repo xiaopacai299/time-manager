@@ -483,4 +483,34 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<Array<object>>}
    */
   deleteDiary: (id) => ipcRenderer.invoke('diary:delete-diary', id),
+
+  /**
+   * 检查是否设置了日记密码。
+   * 主进程通道：`diary:has-password`（invoke/handle）
+   * @returns {Promise<boolean>}
+   */
+  hasDiaryPassword: () => ipcRenderer.invoke('diary:has-password'),
+
+  /**
+   * 验证日记密码。
+   * 主进程通道：`diary:verify-password`（invoke/handle）
+   * @param {string} password - 密码
+   * @returns {Promise<boolean>}
+   */
+  verifyDiaryPassword: (password) => ipcRenderer.invoke('diary:verify-password', password),
+
+  /**
+   * 设置日记密码。
+   * 主进程通道：`diary:set-password`（invoke/handle）
+   * @param {string} password - 密码
+   * @returns {Promise<{success: boolean, message?: string}>}
+   */
+  setDiaryPassword: (password) => ipcRenderer.invoke('diary:set-password', password),
+
+  /**
+   * 移除日记密码。
+   * 主进程通道：`diary:remove-password`（invoke/handle）
+   * @returns {Promise<{success: boolean, message?: string}>}
+   */
+  removeDiaryPassword: () => ipcRenderer.invoke('diary:remove-password'),
 });

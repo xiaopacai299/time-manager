@@ -382,6 +382,10 @@ const petState = {
   chatHistories: [],
   /** 日记列表 */
   diaries: [],
+  /** 日记密码（哈希值） */
+  diaryPasswordHash: null,
+  /** 日记密码设置时间 */
+  diaryPasswordSetAt: null,
 };
 
 const LLM_SKILL_MAX = 8;
@@ -1700,6 +1704,48 @@ function setupIpc() {
     petState.diaries = petState.diaries.filter(d => d.id !== id);
     persistPetState();
     return petState.diaries;
+  });
+
+  // 日记密码模块
+  ipcMain.handle('diary:has-password', () => {
+    return !!petState.diaryPasswordHash;
+  });
+
+  ipcMain.handle('diary:verify-password', (_event, password) => {
+    try {
+      const crypto = require('crypto');
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      return hash === petState.diaryPasswordHash;
+    } catch (error) {
+      console.error('Failed to verify password:', error);
+      return false;
+    }
+  });
+
+  ipcMain.handle('diary:set-password', (_event, password) => {
+    try {
+      const crypto = require('crypto');
+      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      petState.diaryPasswordHash = hash;
+      petState.diaryPasswordSetAt = new Date().toISOString();
+      persistPetState();
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to set password:', error);
+      return { success: false, message: '设置密码失败' };
+    }
+  });
+
+  ipcMain.handle('diary:remove-password', () => {
+    try {
+      petState.diaryPasswordHash = null;
+      petState.diaryPasswordSetAt = null;
+      persistPetState();
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to remove password:', error);
+      return { success: false, message: '移除密码失败' };
+    }
   });
 
   // 2) 收藏夹模块

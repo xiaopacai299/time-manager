@@ -16,7 +16,40 @@
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   display: flex;
+  flex-direction: column;
   overflow: hidden;
+}
+
+.diary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.diary-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.diary-settings-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.diary-settings-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .diary-left {
@@ -248,4 +281,139 @@
 
 .diary-list::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* 密码相关样式 */
+.diary-password-prompt,
+.diary-password-settings {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.diary-password-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  width: 400px;
+  max-width: 90%;
+}
+
+.diary-password-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.diary-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.diary-password-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diary-password-input-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+}
+
+.diary-password-input-group input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.diary-password-input-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.diary-password-error {
+  color: #eb4d4b;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px;
+  background: #fee;
+  border-radius: 6px;
+}
+
+.diary-password-message {
+  color: #27ae60;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px;
+  background: #efe;
+  border-radius: 6px;
+}
+
+.diary-password-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.diary-password-btn {
+  flex: 1;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.diary-password-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.diary-password-btn-secondary {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.diary-password-btn-secondary:hover {
+  background: #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.diary-password-remove {
+  margin-top: 20px;
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.diary-password-btn-remove {
+  padding: 10px 20px;
+  background: #f0f0f0;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.diary-password-btn-remove:hover {
+  background: #e0e0e0;
+  color: #333;
 }
