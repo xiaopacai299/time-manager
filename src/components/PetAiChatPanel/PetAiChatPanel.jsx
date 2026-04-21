@@ -10,6 +10,14 @@ function nextId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
 function buildOpeningGreeting(selectedPet) {
   const name = getPetDefinition(selectedPet).name
   return `你好呀，我是${name}，你的小搭档，有啥可以帮你的呀？`
@@ -40,6 +48,8 @@ function PetAiChatPanelInner({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [attachedFiles, setAttachedFiles] = useState([])
+  const fileInputRef = useRef(null)
   /** 默认收起：仅显示「技能」入口，点击后再展开列表与管理 */
   const [skillsOpen, setSkillsOpen] = useState(false)
   /** 历史记录区域展开状态 */
@@ -165,16 +175,64 @@ function PetAiChatPanelInner({
 
   const send = useCallback(async () => {
     const text = input.trim()
-    if (!text || busy) return
+    if (!text && attachedFiles.length === 0) return
     setInput('')
+    setAttachedFiles([])
     setErr('')
-    const userMsg = { id: nextId(), role: 'user', content: text }
+    
+    let content = text
+    let apiContent = text
+    
+    if (attachedFiles.length > 0) {
+      const fileInfos = attachedFiles.map(f => `[文件: ${f.name} (${formatFileSize(f.size)})]`).join('\n')
+      content = text ? `${text}\n\n${fileInfos}` : fileInfos
+      
+      // 处理图片文件，转换为base64
+      const imageFiles = attachedFiles.filter(f => f.type.startsWith('image/'))
+      if (imageFiles.length > 0) {
+        const contentParts = []
+        if (text) {
+          contentParts.push({ type: 'text', text })
+        }
+        
+        // 转换图片为base64
+        for (const file of imageFiles) {
+          try {
+            const base64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve(reader.result.split(',')[1])
+              reader.onerror = reject
+              reader.readAsDataURL(file)
+            })
+            contentParts.push({
+              type: 'image_url',
+              image_url: {
+                url: `data:${file.type};base64,${base64}`
+              }
+            })
+          } catch (e) {
+            console.error('图片转换失败:', e)
+          }
+        }
+        
+        apiContent = contentParts
+      } else {
+        apiContent = content
+      }
+    }
+    
+    const userMsg = { id: nextId(), role: 'user', content }
     const threadForApi = [...messages, userMsg]
       .filter((m) => !m.streaming)
       .map(({ role, content }) => ({
         role: role === 'assistant' ? 'assistant' : 'user',
         content: String(content || '').slice(0, 8000),
       }))
+    
+    // 替换最后一条消息的content为多模态格式
+    if (Array.isArray(apiContent)) {
+      threadForApi[threadForApi.length - 1].content = apiContent
+    }
     const assistantShell = {
       id: nextId(),
       role: 'assistant',
@@ -236,7 +294,28 @@ function PetAiChatPanelInner({
       unsub()
       setBusy(false)
     }
-  }, [busy, input, messages])
+  }, [busy, input, messages, attachedFiles])
+
+  const handleFileSelect = useCallback((e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    
+    const maxSize = 10 * 1024 * 1024
+    const validFiles = files.filter(f => f.size <= maxSize)
+    
+    if (validFiles.length < files.length) {
+      setErr('部分文件超过10MB限制，已自动过滤')
+    }
+    
+    setAttachedFiles(prev => [...prev, ...validFiles])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }, [])
+
+  const handleRemoveFile = useCallback((index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index))
+  }, [])
 
   const layoutClass = layout === 'window' ? ' pet-ai-panel--window' : ''
 
@@ -397,22 +476,63 @@ function PetAiChatPanelInner({
 
       {err ? <p className="pet-ai-panel__err">{err}</p> : null}
       <footer className="pet-ai-panel__foot">
-        <textarea
-          className="pet-ai-panel__input"
-          rows={3}
-          value={input}
-          placeholder={busy ? '正在回复…' : 'Enter 发送 · Shift+Enter 换行'}
-          disabled={busy}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter') return
-            if (e.shiftKey) return
-            if (e.nativeEvent.isComposing) return
-            e.preventDefault()
-            send()
-          }}
-        />
-        <button type="button" className="pet-ai-panel__send" disabled={busy || !input.trim()} onClick={send}>
+        {attachedFiles.length > 0 && (
+          <div className="pet-ai-panel__attachments">
+            {attachedFiles.map((file, index) => (
+              <div key={index} className="pet-ai-panel__attachment">
+                <span className="pet-ai-panel__attachment-name" title={file.name}>
+                  📎 {file.name}
+                </span>
+                <span className="pet-ai-panel__attachment-size">
+                  {formatFileSize(file.size)}
+                </span>
+                <button
+                  type="button"
+                  className="pet-ai-panel__attachment-remove"
+                  onClick={() => handleRemoveFile(index)}
+                  aria-label="移除附件"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="pet-ai-panel__input-wrapper">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="pet-ai-panel__file-input"
+            onChange={handleFileSelect}
+            multiple
+            accept="image/*,.txt,.pdf,.doc,.docx,.md"
+          />
+          <button
+            type="button"
+            className="pet-ai-panel__attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+            title="上传文件（支持图片、文本、PDF等，最大10MB）"
+          >
+            📎
+          </button>
+          <textarea
+            className="pet-ai-panel__input"
+            rows={3}
+            value={input}
+            placeholder={busy ? '正在回复…' : 'Enter 发送 · Shift+Enter 换行'}
+            disabled={busy}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              if (e.shiftKey) return
+              if (e.nativeEvent.isComposing) return
+              e.preventDefault()
+              send()
+            }}
+          />
+        </div>
+        <button type="button" className="pet-ai-panel__send" disabled={busy || (!input.trim() && attachedFiles.length === 0)} onClick={send}>
           {busy ? '…' : '发送'}
         </button>
       </footer>

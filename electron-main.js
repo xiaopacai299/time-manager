@@ -71,7 +71,7 @@ const PET_AI_CHAT_MARGIN = 20;
 const PET_AI_CHAT_MIN_WIDTH = 360;
 const PET_AI_CHAT_MIN_HEIGHT = 280;
 /** 打开时的默认宽度上限（宽屏不再拉满整行）；小屏仍保证左右至少各留 `PET_AI_CHAT_MARGIN`。 */
-const PET_AI_CHAT_MAX_WIDTH = 640;
+const PET_AI_CHAT_MAX_WIDTH = 800;
 
 /**
  * AI 对话子窗口：宽度不超过 `PET_AI_CHAT_MAX_WIDTH`，在工作区内水平居中；高度随工作区比例变化并垂直居中。
@@ -82,10 +82,10 @@ function getPetAiChatWindowBounds() {
   const m = PET_AI_CHAT_MARGIN;
   const maxUsable = Math.max(PET_AI_CHAT_MIN_WIDTH, Math.round(wa.width - 2 * m));
   const width = Math.min(PET_AI_CHAT_MAX_WIDTH, maxUsable);
-  const x = Math.round(wa.x + (wa.width - width) / 2);
+  const x = Math.round(wa.x + wa.width - width - m); // 右侧对齐
   const height = Math.min(
     720,
-    Math.max(PET_AI_CHAT_MIN_HEIGHT, Math.round(wa.height * 0.62)),
+    Math.max(PET_AI_CHAT_MIN_HEIGHT, Math.round(wa.height * 0.8)),
   );
   const y = Math.round(wa.y + (wa.height - height) / 2);
   return { x, y, width, height };
@@ -1505,7 +1505,8 @@ function setupIpc() {
       { role: 'system', content: systemContent },
       ...rawMessages.slice(-24).map((m) => {
         const role = m.role === 'assistant' ? 'assistant' : 'user';
-        return { role, content: String(m.content || '').slice(0, 8000) };
+        // 保留原始content格式，支持多模态内容
+        return { role, content: m.content || '' };
       }),
     ];
     const wantStream = payload?.stream !== false;
