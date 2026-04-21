@@ -216,6 +216,10 @@ export default function DiaryWindowApp() {
         setMessage('密码设置成功')
         setPassword('')
         setConfirmPassword('')
+        // 成功后返回写日记页面
+        setTimeout(() => {
+          onCancel()
+        }, 1000)
       } else {
         setError(result.message || '设置密码失败')
       }
@@ -228,6 +232,10 @@ export default function DiaryWindowApp() {
           setMessage('密码已移除')
           setPassword('')
           setConfirmPassword('')
+          // 成功后返回写日记页面
+          setTimeout(() => {
+            onCancel()
+          }, 1000)
         } else {
           setError(result.message || '移除密码失败')
         }
@@ -291,9 +299,8 @@ export default function DiaryWindowApp() {
           onRemove={removePassword}
         />
       ) : isAuthenticated ? (
-        <div className="diary-container">
+        <>
           <div className="diary-header">
-            <div className="diary-header-title">写日记</div>
             <button 
               className="diary-settings-btn"
               onClick={() => setShowPasswordSettings(true)}
@@ -301,66 +308,69 @@ export default function DiaryWindowApp() {
               设置密码
             </button>
           </div>
-          <div className="diary-left">
-            <div className="diary-date">{today}</div>
-            <div className="diary-actions">
-              {isEditing && (
-                <button
-                  className="diary-new-btn"
-                  onClick={startNewDiary}
-                >
-                  新增日记
-                </button>
-              )}
+          <div className="diary-container">
+            <div className="diary-left">
+              <div className="diary-list-title">写日记</div>
+              <div className="diary-actions">
+                {isEditing && (
+                  <button
+                    className="diary-new-btn"
+                    onClick={startNewDiary}
+                  >
+                    新增日记
+                  </button>
+                )}
+              </div>
+              <textarea
+                className="diary-textarea"
+                value={currentDiary}
+                onChange={(e) => setCurrentDiary(e.target.value)}
+                placeholder="写下今天的心情..."
+              />
+              <div className="diary-date">{today}</div>
+              <button
+                className="diary-save-btn"
+                onClick={isEditing ? updateDiary : saveDiary}
+              >
+                {isEditing ? '更新日记' : '保存日记'}
+              </button>
             </div>
-            <textarea
-              className="diary-textarea"
-              value={currentDiary}
-              onChange={(e) => setCurrentDiary(e.target.value)}
-              placeholder="写下今天的心情..."
-            />
-            <button
-              className="diary-save-btn"
-              onClick={isEditing ? updateDiary : saveDiary}
-            >
-              {isEditing ? '更新日记' : '保存日记'}
-            </button>
-          </div>
-          <div className="diary-right">
-            <div className="diary-list-title">日记列表</div>
-            <div className="diary-list">
-              {diaries.length === 0 ? (
-                <div className="diary-empty">暂无日记，开始写第一篇吧</div>
-              ) : (
-                diaries.map((diary) => (
-                  <div key={diary.id} className="diary-item">
-                    <div className="diary-item-content">
-                      <div className="diary-item-date">{diary.date}</div>
-                      <div className="diary-item-preview">{getDiaryPreview(diary.content)}</div>
+            <div className="diary-right">
+              <div className="diary-list-title">日记列表</div>
+              <div className="diary-list">
+                {diaries.length === 0 ? (
+                  <div className="diary-empty">暂无日记，开始写第一篇吧</div>
+                ) : (
+                  diaries.map((diary) => (
+                    <div key={diary.id} className="diary-item">
+                      <div className="diary-item-content">
+                        <div className="diary-item-date">{diary.date}</div>
+                        <div className="diary-item-preview">{getDiaryPreview(diary.content)}</div>
+                      </div>
+                      <div className="diary-item-actions">
+                        <button
+                          className="diary-action-btn diary-action-detail"
+                          onClick={() => setSelectedDiary(diary)}
+                        >
+                          详情
+                        </button>
+                        <button
+                          className="diary-action-btn diary-action-edit"
+                          onClick={() => editDiary(diary)}
+                        >
+                          编辑
+                        </button>
+                        <button
+                          className="diary-action-btn diary-action-delete"
+                          onClick={() => deleteDiary(diary.id)}
+                        >
+                          删除
+                        </button>
+                      </div>
                     </div>
-                    <div className="diary-item-actions">
-                      <button
-                        className="diary-action-btn diary-action-detail"
-                        onClick={() => setSelectedDiary(diary)}
-                      >
-                        详情
-                      </button>
-                      <button
-                        className="diary-action-btn diary-action-edit"
-                        onClick={() => editDiary(diary)}
-                      >
-                        编辑
-                      </button>
-                      <button
-                        className="diary-action-btn diary-action-delete"
-                        onClick={() => deleteDiary(diary.id)}
-                      >
-                        删除
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
           {selectedDiary && (
@@ -376,7 +386,7 @@ export default function DiaryWindowApp() {
               </button>
             </div>
           )}
-        </div>
+        </>
       ) : null}
     </main>
   )
