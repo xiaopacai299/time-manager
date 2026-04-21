@@ -63,6 +63,7 @@ let statsWindow = null;
 let settingsWindow = null;
 let readerWindow = null;
 let petAiChatWindow = null;
+let diaryWindow = null;
 let worklistReminderTimer = null;
 /** 展开模式：宠物、气泡与统计区 */
 const PET_WINDOW_WIDTH = 620;
@@ -283,6 +284,50 @@ function openStatsDetailWindow() {
   }
   refreshTrayMenu();
 }
+
+function openDiaryWindow() {
+  if (diaryWindow && !diaryWindow.isDestroyed()) {
+    diaryWindow.show();
+    diaryWindow.focus();
+    return;
+  }
+
+  petMotionModule.resetDragState();
+  diaryWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    show: false,
+    title: '写日记',
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      webSecurity: false,
+    },
+  });
+
+  diaryWindow.once('ready-to-show', () => {
+    if (!diaryWindow || diaryWindow.isDestroyed()) return;
+    diaryWindow.setMenuBarVisibility(false);
+    diaryWindow.show();
+  });
+
+  loadPetRenderer(diaryWindow, 'diary');
+
+  diaryWindow.on('closed', () => {
+    diaryWindow = null;
+    refreshTrayMenu();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  });
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+  refreshTrayMenu();
+}
 // 监控前台
 const monitor = new TimeMonitorService({ sampleIntervalMs: 1000, breakThresholdSeconds: 600 });
 /** 主状态对象：持久化与跨模块共享的单一事实来源。 */
@@ -335,6 +380,8 @@ const petState = {
   },
   /** AI 对话历史：最多保留 10 条会话，每会话最多 10 条消息 */
   chatHistories: [],
+  /** 日记列表 */
+  diaries: [],
 };
 
 const LLM_SKILL_MAX = 8;
@@ -882,6 +929,7 @@ const menuModule = createMenuModule({
   onOpenReader: () => openReaderWindow(),
   onOpenSettings: () => openSettingsWindow(),
   onOpenStatsWindow: () => openStatsDetailWindow(),
+  onOpenDiary: () => openDiaryWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
   onToggleAutoLaunch: () => toggleAutoLaunch(),
 });
@@ -1626,6 +1674,32 @@ function setupIpc() {
   ipcMain.handle('ai-chat:delete-history', (_event, sessionId) => {
     deleteChatHistory(sessionId);
     return { ok: true };
+  });
+
+  // 日记模块
+  ipcMain.handle('diary:get-diaries', () => {
+    return petState.diaries;
+  });
+
+  ipcMain.handle('diary:add-diary', (_event, diary) => {
+    petState.diaries.unshift(diary);
+    persistPetState();
+    return petState.diaries;
+  });
+
+  ipcMain.handle('diary:update-diary', (_event, updatedDiary) => {
+    const index = petState.diaries.findIndex(d => d.id === updatedDiary.id);
+    if (index !== -1) {
+      petState.diaries[index] = updatedDiary;
+      persistPetState();
+    }
+    return petState.diaries;
+  });
+
+  ipcMain.handle('diary:delete-diary', (_event, id) => {
+    petState.diaries = petState.diaries.filter(d => d.id !== id);
+    persistPetState();
+    return petState.diaries;
   });
 
   // 2) 收藏夹模块

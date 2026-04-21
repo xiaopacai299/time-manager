@@ -9,6 +9,7 @@ import WorklistEstimateConfirmApp from './WorklistEstimateConfirmApp.jsx'
 import SettingsWindowApp from './SettingsWindowApp.jsx'
 import ReaderWindowApp from './ReaderWindowApp.jsx'
 import PetAiChatWindowApp from './PetAiChatWindowApp.jsx'
+import DiaryWindowApp from './DiaryWindowApp.jsx'
 
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
@@ -21,6 +22,7 @@ const isReaderWindow = typeof window !== 'undefined' && window.location.hash ===
 const petAiHash = typeof window !== 'undefined' ? window.location.hash : ''
 const isPetAiChatWindow =
   petAiHash === '#pet-ai-chat' || petAiHash === '#pet-ai-chat/skills'
+const isDiaryWindow = typeof window !== 'undefined' && window.location.hash === '#diary'
 
 if (typeof document !== 'undefined') {
   if (isStatsWindow) {
@@ -37,6 +39,8 @@ if (typeof document !== 'undefined') {
     document.title = '摸鱼阅读'
   } else if (isPetAiChatWindow) {
     document.title = petAiHash === '#pet-ai-chat/skills' ? 'AI 技能' : 'AI 对话'
+  } else if (isDiaryWindow) {
+    document.title = '写日记'
   } else {
     document.title = '桌面宠物'
   }
@@ -58,6 +62,8 @@ createRoot(root).render(
       <ReaderWindowApp />
     ) : isPetAiChatWindow ? (
       <PetAiChatWindowApp />
+    ) : isDiaryWindow ? (
+      <DiaryWindowApp />
     ) : (
       <App />
     )}

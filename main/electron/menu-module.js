@@ -16,7 +16,8 @@ export function createMenuModule({
   onOpenReader,
   onOpenSettings,
   onOpenStatsWindow,
-  onEmitPetAction,
+  onOpenDiary,
+  // onEmitPetAction,
   onToggleAutoLaunch,
 }) {
   let tray = null;
@@ -55,18 +56,22 @@ export function createMenuModule({
         click: () => onOpenStatsWindow?.(),
       },
       {
+        label: '写日记',
+        click: () => onOpenDiary?.(),
+      },
+      {
         label: '设置',
         click: () => onOpenSettings(),
       },
-      {
-        label: '动作测试',
-        submenu: [
-          { label: '休息 rest', click: () => onEmitPetAction('rest') },
-          { label: '工作 work', click: () => onEmitPetAction('work') },
-          { label: '提醒 remind', click: () => onEmitPetAction('remind') },
-          { label: '报警 long-work', click: () => onEmitPetAction('long-work') },
-        ],
-      },
+      // {
+      //   label: '动作测试',
+      //   submenu: [
+      //     { label: '休息 rest', click: () => onEmitPetAction('rest') },
+      //     { label: '工作 work', click: () => onEmitPetAction('work') },
+      //     { label: '提醒 remind', click: () => onEmitPetAction('remind') },
+      //     { label: '报警 long-work', click: () => onEmitPetAction('long-work') },
+      //   ],
+      // },
       { type: 'separator' },
       {
         label: '开机自动启动',
@@ -116,18 +121,22 @@ export function createMenuModule({
         click: () => onOpenStatsWindow?.(),
       },
       {
+        label: '写日记',
+        click: () => onOpenDiary?.(),
+      },
+      {
         label: '设置',
         click: () => onOpenSettings(),
       },
-      {
-        label: '动作测试',
-        submenu: [
-          { label: '休息 rest', click: () => onEmitPetAction('rest') },
-          { label: '工作 work', click: () => onEmitPetAction('work') },
-          { label: '提醒 remind', click: () => onEmitPetAction('remind') },
-          { label: '报警 long-work', click: () => onEmitPetAction('long-work') },
-        ],
-      },
+      // {
+      //   label: '动作测试',
+      //   submenu: [
+      //     { label: '休息 rest', click: () => onEmitPetAction('rest') },
+      //     { label: '工作 work', click: () => onEmitPetAction('work') },
+      //     { label: '提醒 remind', click: () => onEmitPetAction('remind') },
+      //     { label: '报警 long-work', click: () => onEmitPetAction('long-work') },
+      //   ],
+      // },
       { type: 'separator' },
       {
         label: '开机自动启动',

@@ -452,4 +452,35 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<{ok: boolean, enabled?: boolean, error?: string}>}
    */
   setAutoLaunch: (enabled) => ipcRenderer.invoke('auto-launch:set', enabled),
+
+  /**
+   * 获取日记列表。
+   * 主进程通道：`diary:get-diaries`（invoke/handle）
+   * @returns {Promise<Array<object>>}
+   */
+  getDiaries: () => ipcRenderer.invoke('diary:get-diaries'),
+
+  /**
+   * 添加新日记。
+   * 主进程通道：`diary:add-diary`（invoke/handle）
+   * @param {object} diary - 日记对象
+   * @returns {Promise<Array<object>>}
+   */
+  addDiary: (diary) => ipcRenderer.invoke('diary:add-diary', diary),
+
+  /**
+   * 更新日记。
+   * 主进程通道：`diary:update-diary`（invoke/handle）
+   * @param {object} diary - 更新后的日记对象
+   * @returns {Promise<Array<object>>}
+   */
+  updateDiary: (diary) => ipcRenderer.invoke('diary:update-diary', diary),
+
+  /**
+   * 删除日记。
+   * 主进程通道：`diary:delete-diary`（invoke/handle）
+   * @param {string} id - 日记ID
+   * @returns {Promise<Array<object>>}
+   */
+  deleteDiary: (id) => ipcRenderer.invoke('diary:delete-diary', id),
 });
