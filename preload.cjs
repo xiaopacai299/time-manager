@@ -165,6 +165,13 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
   removeWorklistItem: (payload) => ipcRenderer.invoke('worklist:remove', payload),
 
   /**
+   * 打开导出日志窗口。
+   * 主进程通道：`worklist:open-export`（invoke/handle）
+   * @returns {Promise<void>}
+   */
+  openWorklistExport: () => ipcRenderer.invoke('worklist:open-export'),
+
+  /**
    * 获取备忘录列表（提醒时间 + 正文）。
    * 主进程通道：`memo-list:get`
    * @returns {Promise<Array<object>>}

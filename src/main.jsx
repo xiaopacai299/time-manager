@@ -10,11 +10,13 @@ import SettingsWindowApp from './SettingsWindowApp.jsx'
 import ReaderWindowApp from './ReaderWindowApp.jsx'
 import PetAiChatWindowApp from './PetAiChatWindowApp.jsx'
 import DiaryWindowApp from './DiaryWindowApp.jsx'
+import WorklistExportApp from './WorklistExportApp.jsx'
 
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
 const isFavoritesWindow = typeof window !== 'undefined' && window.location.hash === '#favorites'
 const isWorklistWindow = typeof window !== 'undefined' && window.location.hash === '#worklist'
+const isWorklistExportWindow = typeof window !== 'undefined' && window.location.hash === '#worklist-export'
 const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
 const isSettingsWindow = typeof window !== 'undefined' && window.location.hash === '#settings'
@@ -31,6 +33,8 @@ if (typeof document !== 'undefined') {
     document.title = '收藏夹'
   } else if (isWorklistWindow) {
     document.title = '工作清单'
+  } else if (isWorklistExportWindow) {
+    document.title = '导出日志'
   } else if (isEstimateConfirmWindow) {
     document.title = '工作确认'
   } else if (isSettingsWindow) {
@@ -52,6 +56,8 @@ createRoot(root).render(
       <StatsWindowApp />
     ) : isFavoritesWindow ? (
       <FavoritesWindowApp />
+    ) : isWorklistExportWindow ? (
+      <WorklistExportApp />
     ) : isWorklistWindow ? (
       <WorkListWindowApp />
     ) : isEstimateConfirmWindow ? (

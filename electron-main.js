@@ -930,6 +930,7 @@ const menuModule = createMenuModule({
   onToggleChaosCat: () => toggleChaosCat(),
   onOpenFavorites: () => favoritesModule.openWindow(),
   onOpenWorklist: () => worklistModule.openWindow(),
+  onOpenWorklistExport: () => worklistModule.openExportWindow(),
   onOpenReader: () => openReaderWindow(),
   onOpenSettings: () => openSettingsWindow(),
   onOpenStatsWindow: () => openStatsDetailWindow(),

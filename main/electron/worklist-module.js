@@ -10,6 +10,7 @@ export function createWorklistModule({
 }) {
   const WORKLIST_ICON_MAX_LEN = 420000;
   let worklistWindow = null;
+  let exportWindow = null;
   let estimateConfirmWindow = null;
   let estimatePromptPayload = null;
   let estimatePromptResolver = null;
@@ -481,8 +482,44 @@ export function createWorklistModule({
     loadPetRenderer(worklistWindow, 'worklist');
   }
 
+  function openExportWindow() {
+    if (exportWindow && !exportWindow.isDestroyed()) {
+      exportWindow.show();
+      exportWindow.focus();
+      return;
+    }
+
+    exportWindow = new BrowserWindow({
+      width: 600,
+      height: 500,
+      show: false,
+      title: '导出日志',
+      icon: iconPath,
+      autoHideMenuBar: true,
+      resizable: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.cjs'),
+        contextIsolation: true,
+        webSecurity: false,
+      },
+    });
+
+    exportWindow.once('ready-to-show', () => {
+      if (!exportWindow || exportWindow.isDestroyed()) return;
+      exportWindow.setMenuBarVisibility(false);
+      exportWindow.show();
+    });
+
+    exportWindow.on('closed', () => {
+      exportWindow = null;
+    });
+
+    loadPetRenderer(exportWindow, 'worklist-export');
+  }
+
   function registerIpc(ipcMain) {
     ipcMain.handle('worklist:get-list', () => getWorklist());
+    ipcMain.handle('worklist:open-export', () => openExportWindow());
     ipcMain.handle('memo-list:get', () => getMemoList());
     ipcMain.handle('memo-list:add', (_event, payload) => addMemoItem(payload));
     ipcMain.handle('memo-list:update', (_event, payload) => updateMemoItem(payload));
@@ -514,6 +551,7 @@ export function createWorklistModule({
 
   return {
     openWindow,
+    openExportWindow,
     tick: checkReminders,
     checkReminders,
     registerIpc,
