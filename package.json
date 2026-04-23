@@ -1,71 +1,24 @@
 {
-  "name": "time-manger",
+  "name": "time-manger-monorepo",
   "private": true,
   "version": "0.0.0",
-  "main": "electron-main.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "test": "node --test",
-    "preview": "vite preview",
-    "react-start": "vite --port 4567 --strictPort",
-    "electron-start": "concurrently \"npm run react-start\" \"wait-on http://localhost:4567 && electron .\"",
-    "electron-main-only": "electron .",
-    "electron-start-debug": "concurrently -n WEB,ELECTRON -c blue,green \"npm run react-start\" \"wait-on http://localhost:4567 && npm run electron-main-only\"",
-    "electron-start-debug-log": "concurrently \"npm run react-start\" \"wait-on http://localhost:4567 && set DEBUG_LOG=true&& electron .\"",
-    "electron-build": "npm run icon:ico && vite build && node scripts/electron-build.mjs",
-    "icon:ico": "node scripts/generate-icon-ico.mjs",
-    "assets:run-cat": "node scripts/build-run-cat.mjs"
-  },
-  "dependencies": {
-    "epubjs": "^0.3.93",
-    "lottie-web": "^5.13.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "recharts": "^3.8.1",
-    "uiohook-napi": "^1.5.5"
+    "desktop:dev": "pnpm --filter @time-manger/desktop electron-start",
+    "desktop:build": "pnpm --filter @time-manger/desktop electron-build",
+    "server:dev": "pnpm --filter @time-manger/server dev",
+    "shared:build": "pnpm --filter @time-manger/shared build",
+    "mobile:start": "pnpm --filter @time-manger/mobile start",
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "concurrently": "^9.2.1",
-    "electron": "^41.2.0",
-    "electron-builder": "^26.8.1",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "png-to-ico": "^3.0.1",
-    "vite": "^8.0.4",
-    "wait-on": "^9.0.4"
+    "typescript": "5.7.3"
   },
-  "build": {
-    "appId": "com.timemanager.pet",
-    "productName": "work master",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "files": [
-      "dist/**/*",
-      "electron-main.js",
-      "preload.cjs",
-      "preload-favorites.cjs",
-      "favorites.html",
-      "main/**/*",
-      "assets/**/*"
-    ],
-    "npmRebuild": false,
-    "electronDownload": {
-      "mirror": "https://npmmirror.com/mirrors/electron/"
-    },
-    "win": {
-      "icon": "build/icon.ico",
-      "signAndEditExecutable": false
-    }
-  }
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.0"
 }
