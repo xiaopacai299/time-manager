@@ -1,7 +1,7 @@
 import { VERSION } from '@time-manger/shared';
 
+export const PLACEHOLDER_MESSAGE = `time-manger mobile placeholder (shared v${VERSION})`;
+
 export default function App() {
-  const msg = `time-manger mobile placeholder (shared v${VERSION})`;
-  console.log(msg);
   return null;
 }
