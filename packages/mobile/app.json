@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "time-manger-mobile",
+    "slug": "time-manger-mobile",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic"
+  }
+}

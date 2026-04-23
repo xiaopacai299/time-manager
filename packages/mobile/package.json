@@ -1,0 +1,19 @@
+{
+  "name": "@time-manger/mobile",
+  "private": true,
+  "version": "0.0.0",
+  "main": "App.tsx",
+  "scripts": {
+    "start": "echo \"(Phase 1 将执行 expo init 填充真实内容)\"",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "echo \"(mobile uses tsc for lint)\"",
+    "test": "echo \"(Phase 1 加 jest)\""
+  },
+  "dependencies": {
+    "@time-manger/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3",
+    "@types/react": "^19.2.14"
+  }
+}
