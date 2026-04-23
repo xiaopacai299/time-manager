@@ -1,5 +1,6 @@
 import express from 'express';
 import type { Express } from 'express';
+import { pathToFileURL } from 'node:url';
 import { VERSION } from '@time-manger/shared';
 
 export function createApp(): Express {
@@ -21,7 +22,8 @@ function main() {
   });
 }
 
-const isEntry = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
+const isEntry =
+  !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isEntry) {
   main();
 }
