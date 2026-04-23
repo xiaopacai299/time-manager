@@ -11,15 +11,18 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p .",
     "build:watch": "tsc -p . --watch",
     "typecheck": "tsc -p . --noEmit",
     "lint": "echo \"(shared uses tsc for lint)\"",
-    "test": "node --test --experimental-strip-types src/**/*.test.ts"
+    "test": "tsx --test src/index.test.ts"
   },
   "devDependencies": {
+    "tsx": "^4.19.2",
     "typescript": "5.7.3"
   }
 }
