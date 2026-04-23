@@ -79,6 +79,15 @@ export function createPetMotionModule({
     petState.chaosCat = true;
     const speedFactor = 0.2;
     const maxStep = 22;
+    
+    // 捣蛋鬼模式状态
+    let chaosState = 'ramble'; // 'ramble' | 'circle' | 'circle_complete'
+    let circleCenter = { x: 0, y: 0 };
+    let circleAngle = 0;
+    let circleRadius = 80;
+    let circleCount = 0;
+    let lastMouseCheckTime = Date.now();
+    
     const armNextTarget = () => {
       const [tw, th] = getTargetSize();
       const bounds = mainWindow.getBounds();
@@ -92,12 +101,67 @@ export function createPetMotionModule({
       rambleTarget.x = p.x;
       rambleTarget.y = p.y;
     };
-    armNextTarget();
-    chaosCatTimer = setInterval(() => {
-      const win = getMainWindow();
-      if (!win || win.isDestroyed() || !petState.chaosCat) return;
-      if (dragState.active) return;
-      const [tw, th] = getTargetSize();
+    
+    const startCircleAroundMouse = () => {
+      const cursor = screen.getCursorScreenPoint();
+      circleCenter = { x: cursor.x, y: cursor.y };
+      circleAngle = 0;
+      circleCount = 0;
+      chaosState = 'circle';
+      console.log('[ChaosCat] Starting circle around mouse at', circleCenter);
+    };
+    
+    const updateCircleMotion = (win, tw, th) => {
+      // 实时获取当前鼠标位置，更新圆心
+      const cursor = screen.getCursorScreenPoint();
+      circleCenter.x = cursor.x;
+      circleCenter.y = cursor.y;
+      
+      // 计算圆周上的目标位置
+      const targetX = circleCenter.x + Math.cos(circleAngle) * circleRadius;
+      const targetY = circleCenter.y + Math.sin(circleAngle) * circleRadius;
+      
+      const bounds = win.getBounds();
+      const centerX = bounds.x + Math.round(bounds.width / 2);
+      const centerY = bounds.y + Math.round(bounds.height / 2);
+      
+      const dx = targetX - centerX;
+      const dy = targetY - centerY;
+      
+      // 更新角度（顺时针旋转）
+      const angleStep = 0.15; // 每帧旋转的角度
+      circleAngle += angleStep;
+      
+      // 检查是否完成一圈
+      if (circleAngle >= Math.PI * 2) {
+        circleAngle = 0;
+        circleCount++;
+        console.log('[ChaosCat] Completed circle', circleCount);
+        if (circleCount >= 4) {
+          // 完成四圈，回到无规则运动
+          chaosState = 'ramble';
+          armNextTarget();
+          lastMouseCheckTime = Date.now();
+          console.log('[ChaosCat] Circle complete (4 circles), returning to ramble');
+          return;
+        }
+      }
+      
+      const mirrorX = dx > 0;
+      sendPetMotion({ running: true, mirrorX });
+      
+      const stepX = Math.max(-maxStep, Math.min(maxStep, dx * speedFactor));
+      const stepY = Math.max(-maxStep, Math.min(maxStep, dy * speedFactor));
+      
+      win.setBounds({
+        x: Math.round(bounds.x + stepX),
+        y: Math.round(bounds.y + stepY),
+        width: tw,
+        height: th,
+      });
+    };
+    
+    const updateRambleMotion = (win, tw, th) => {
       const bounds = win.getBounds();
       const centerX = bounds.x + Math.round(bounds.width / 2);
       const centerY = bounds.y + Math.round(bounds.height / 2);
@@ -118,6 +182,28 @@ export function createPetMotionModule({
         width: tw,
         height: th,
       });
+    };
+    
+    armNextTarget();
+    chaosCatTimer = setInterval(() => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed() || !petState.chaosCat) return;
+      if (dragState.active) return;
+      
+      const [tw, th] = getTargetSize();
+      const now = Date.now();
+      
+      // 检查是否需要开始绕圈（每隔10秒）
+      if (chaosState === 'ramble' && now - lastMouseCheckTime >= 10000) {
+        startCircleAroundMouse();
+        return;
+      }
+      
+      if (chaosState === 'circle') {
+        updateCircleMotion(win, tw, th);
+      } else {
+        updateRambleMotion(win, tw, th);
+      }
     }, 16);
   }
 
