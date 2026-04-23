@@ -127,15 +127,17 @@ git status
 ```
 Expected：`On branch refactor/monorepo-phase-0`，`working tree clean`。
 
-- [ ] **Step 6：Commit 死文件夹清理**
+- [ ] **Step 6：尝试 commit 死文件夹清理（条件执行）**
 
 Run:
 ```powershell
-git add -A
 git status
-git commit -m "-删除死文件夹 client/"
 ```
-Expected：一条新 commit，`client/` 已被记录为删除。
+
+- 若 `git status` 显示 `deleted: client/...`：`client/` 曾被 git 追踪，执行 `git add -A; git commit -m "-删除死文件夹 client/"`
+- 若 `git status` 显示 `nothing to commit, working tree clean`：说明 `client/` 在被删前就是 git 未追踪的空目录，**跳过 commit**（Task 1 在文件系统层面已完成，Task 1 的 commit 改为由计划修正自身产出）
+
+Expected：二者之一成立即可。
 
 ---
 
