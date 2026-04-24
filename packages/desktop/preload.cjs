@@ -520,4 +520,16 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<{success: boolean, message?: string}>}
    */
   removeDiaryPassword: () => ipcRenderer.invoke('diary:remove-password'),
+
+  /**
+   * 同步层 IPC 桥接
+   * 主进程通道：sync:getAuthState / sync:saveAuthState / sync:clearAuth / sync:getState / sync:setState
+   */
+  sync: {
+    getAuthState: () => ipcRenderer.invoke('sync:getAuthState'),
+    saveAuthState: (data) => ipcRenderer.invoke('sync:saveAuthState', data),
+    clearAuth: () => ipcRenderer.invoke('sync:clearAuth'),
+    getState: () => ipcRenderer.invoke('sync:getState'),
+    setState: (partial) => ipcRenderer.invoke('sync:setState', partial),
+  },
 });
