@@ -69,7 +69,13 @@ function AccountSection() {
         apiBase,
         deviceId,
       })
-      setAuthState({ ...data, apiBase, deviceId })
+      setAuthState({
+        ...data,
+        email: data.user?.email,
+        userId: data.user?.id,
+        apiBase,
+        deviceId,
+      })
       setMsg(tab === 'login' ? '登录成功！' : '注册成功！')
     } catch (e) {
       setMsg(e instanceof Error ? e.message : '操作失败')

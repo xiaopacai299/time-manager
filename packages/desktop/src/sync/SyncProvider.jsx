@@ -41,10 +41,10 @@ export function SyncProvider({ children }) {
   useEffect(() => {
     let mounted = true;
     async function init() {
-      await initDeviceId();
+      const deviceId = await initDeviceId();
       const auth = await getAuthState();
       if (!mounted) return;
-      setAuthState(auth);
+      setAuthState(auth ? { ...auth, deviceId } : null);
     }
     void init();
     return () => { mounted = false; };
