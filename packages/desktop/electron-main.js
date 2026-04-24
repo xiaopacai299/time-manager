@@ -10,6 +10,7 @@ import {
   nativeImage,
   globalShortcut,
   screen,
+  safeStorage,
 } from 'electron';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -652,6 +653,114 @@ async function readChatCompletionSseStream(webContents, res) {
 
 function getStateFilePath() {
   return path.join(app.getPath('userData'), 'pet-window-state.json');
+}
+
+/** sync-tokens 文件路径（safeStorage 加密后的二进制） */
+function getSyncTokensPath() {
+  return path.join(app.getPath('userData'), 'sync-tokens.bin');
+}
+
+/** sync-state 文件路径（非敏感，明文 JSON） */
+function getSyncStatePath() {
+  return path.join(app.getPath('userData'), 'sync-state.json');
+}
+
+/** 从加密文件读取 auth tokens；失败返回 null */
+function readSyncTokens() {
+  try {
+    if (!fs.existsSync(getSyncTokensPath())) return null;
+    const encrypted = fs.readFileSync(getSyncTokensPath());
+    const json = safeStorage.decryptString(encrypted);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/** 将 auth tokens 加密写入文件 */
+function writeSyncTokens(data) {
+  try {
+    const json = JSON.stringify(data);
+    const encrypted = safeStorage.encryptString(json);
+    fs.writeFileSync(getSyncTokensPath(), encrypted);
+  } catch (err) {
+    console.error('[sync] Failed to write tokens:', err);
+  }
+}
+
+/** 读取 sync-state（lastSyncAt, dirty, stableIds, deviceId）；失败返回默认值 */
+function readSyncState() {
+  try {
+    if (!fs.existsSync(getSyncStatePath())) return defaultSyncState();
+    const raw = fs.readFileSync(getSyncStatePath(), 'utf8');
+    return { ...defaultSyncState(), ...JSON.parse(raw) };
+  } catch {
+    return defaultSyncState();
+  }
+}
+
+function defaultSyncState() {
+  return {
+    deviceId: null,
+    lastSyncAt: {},
+    dirty: { 'time-records': {} },
+    stableIds: {},
+  };
+}
+
+/** 持久化 sync-state */
+function writeSyncState(state) {
+  try {
+    fs.writeFileSync(getSyncStatePath(), JSON.stringify(state, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[sync] Failed to write sync state:', err);
+  }
+}
+
+/**
+ * 将当前快照中的 perAppToday 写入 dirty queue。
+ * snapshot.perAppToday: Array<{ appId, processName, durationMs, windowTitle }>
+ * snapshot.dayKey: "2026-04-24"
+ */
+function updateDirtyTimeRecords(snapshot) {
+  try {
+    const { perAppToday = [], dayKey } = snapshot;
+    if (!dayKey || !perAppToday.length) return;
+    const state = readSyncState();
+    const deviceId = state.deviceId || 'offline';
+    const now = new Date().toISOString();
+    for (const app of perAppToday) {
+      const appKey = String(app.appId || '').trim();
+      if (!appKey) continue;
+      const stableKey = `${dayKey}|${appKey}`;
+      if (!state.stableIds[stableKey]) {
+        state.stableIds[stableKey] = generateSyncUUID();
+      }
+      const id = state.stableIds[stableKey];
+      state.dirty['time-records'] = state.dirty['time-records'] || {};
+      state.dirty['time-records'][id] = {
+        id,
+        date: dayKey,
+        appKey,
+        appName: String(app.processName || app.appId || appKey),
+        durationMs: Math.round(Number(app.durationMs) || 0),
+        updatedAt: now,
+        deletedAt: null,
+        clientDeviceId: deviceId,
+      };
+    }
+    writeSyncState(state);
+  } catch (err) {
+    console.error('[sync] updateDirtyTimeRecords error:', err);
+  }
+}
+
+function generateSyncUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /** 启动时加载持久化状态；失败时回退到默认值。 */
@@ -1749,6 +1858,53 @@ function setupIpc() {
     }
   });
 
+  // ── 同步层 IPC ──────────────────────────────────────────────
+  ipcMain.handle('sync:getAuthState', () => {
+    return readSyncTokens();
+  });
+
+  ipcMain.handle('sync:saveAuthState', (_event, data) => {
+    const { accessToken, refreshToken, userId, email, apiBase, deviceId } = data;
+    writeSyncTokens({ accessToken, refreshToken, userId, email, apiBase });
+    if (deviceId) {
+      const state = readSyncState();
+      state.deviceId = deviceId;
+      writeSyncState(state);
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle('sync:clearAuth', () => {
+    try {
+      if (fs.existsSync(getSyncTokensPath())) {
+        fs.unlinkSync(getSyncTokensPath());
+      }
+    } catch {}
+    return { ok: true };
+  });
+
+  ipcMain.handle('sync:getState', () => {
+    return readSyncState();
+  });
+
+  ipcMain.handle('sync:setState', (_event, partial) => {
+    const state = readSyncState();
+    if (partial.lastSyncAt !== undefined) {
+      state.lastSyncAt = { ...state.lastSyncAt, ...partial.lastSyncAt };
+    }
+    if (partial.dirty !== undefined) {
+      state.dirty = { ...state.dirty, ...partial.dirty };
+    }
+    if (partial.stableIds !== undefined) {
+      state.stableIds = { ...state.stableIds, ...partial.stableIds };
+    }
+    if (partial.deviceId !== undefined) {
+      state.deviceId = partial.deviceId;
+    }
+    writeSyncState(state);
+    return { ok: true };
+  });
+
   // 2) 收藏夹模块
   favoritesModule.registerIpc(ipcMain);
 
@@ -1822,6 +1978,7 @@ app.whenReady().then(() => {
       if (statsWindow && !statsWindow.isDestroyed()) {
         statsWindow.webContents.send('time-stats:update', payload);
       }
+      updateDirtyTimeRecords(payload);
     });
   } catch (err) {
     appendLaunchLog(`whenReady error: ${err?.stack || err}`);
