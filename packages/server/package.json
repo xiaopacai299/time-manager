@@ -5,20 +5,30 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p .",
+    "build": "prisma generate && tsc -p .",
     "start": "node dist/index.js",
-    "typecheck": "tsc -p . --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "lint": "echo \"(server uses tsc for lint)\"",
-    "test": "tsx --test src/index.test.ts"
+    "test": "tsx --test src/index.test.ts tests/integration.test.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@time-manger/shared": "workspace:*",
+    "argon2": "^0.44.0",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
-    "@time-manger/shared": "workspace:*"
+    "express-rate-limit": "^8.4.0",
+    "jose": "^6.2.2",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^20.17.10",
     "@types/supertest": "^6.0.2",
+    "prisma": "^5.22.0",
     "supertest": "^7.0.0",
     "tsx": "^4.19.2",
     "typescript": "5.7.3"

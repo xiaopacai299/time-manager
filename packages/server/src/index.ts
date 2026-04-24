@@ -1,24 +1,17 @@
-import express from 'express';
-import type { Express } from 'express';
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
 import { pathToFileURL } from 'node:url';
-import { VERSION } from '@time-manger/shared';
+import { loadServerEnv } from './config/env.js';
+import { createApp } from './createApp.js';
 
-export function createApp(): Express {
-  const app = express();
-  app.use(express.json());
-
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', sharedVersion: VERSION });
-  });
-
-  return app;
-}
+const prisma = new PrismaClient();
 
 function main() {
-  const port = Number(process.env.PORT ?? 3000);
-  const app = createApp();
+  const env = loadServerEnv();
+  const app = createApp(prisma, env);
+  const port = env.PORT;
   app.listen(port, () => {
-    console.log(`[server] listening on http://localhost:${port} (shared v${VERSION})`);
+    console.log(`[server] listening on http://localhost:${port}`);
   });
 }
 
@@ -27,3 +20,6 @@ const isEntry =
 if (isEntry) {
   main();
 }
+
+export { createApp } from './createApp.js';
+export { loadServerEnv } from './config/env.js';

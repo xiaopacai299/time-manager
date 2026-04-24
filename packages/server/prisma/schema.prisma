@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  devices         Device[]
+  timeRecords     TimeRecord[]
+  diaries         DiaryEntry[]
+  aiConversations AiConversation[]
+  aiSkills        AiSkill[]
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Device {
+  id         String    @id
+  userId     String
+  platform   String
+  name       String
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TimeRecord {
+  id             String    @id
+  userId         String
+  date           String
+  appKey         String
+  appName        String
+  durationMs     Int
+  updatedAt      DateTime
+  deletedAt      DateTime?
+  clientDeviceId String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, appKey])
+  @@index([userId, updatedAt])
+}
+
+model DiaryEntry {
+  id             String    @id
+  userId         String
+  date           String
+  titleCipher    String
+  contentCipher  String    @db.Text
+  nonce          String
+  schemaVersion  Int       @default(1)
+  updatedAt      DateTime
+  deletedAt      DateTime?
+  clientDeviceId String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+model AiConversation {
+  id             String    @id
+  userId         String
+  title          String
+  pet            String?
+  skillId        String?
+  messagesJson   String    @db.Text
+  updatedAt      DateTime
+  deletedAt      DateTime?
+  clientDeviceId String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+model AiSkill {
+  id             String    @id
+  userId         String
+  name           String
+  promptTemplate String    @db.Text
+  configJson     String    @db.Text
+  updatedAt      DateTime
+  deletedAt      DateTime?
+  clientDeviceId String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
