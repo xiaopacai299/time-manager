@@ -18,6 +18,25 @@ export function SyncProvider({ children }) {
   const engineRef = useRef(null);
   const syncingRef = useRef(false); // 防止并发同步
 
+  const triggerSync = useCallback(async () => {
+    if (!engineRef.current) return;
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    setStatus('syncing');
+    setError(null);
+    try {
+      await engineRef.current.syncAll(RESOURCES);
+      setLastSyncAt(new Date().toLocaleTimeString('zh-CN'));
+      setStatus('idle');
+    } catch (e) {
+      console.warn('[sync] syncAll failed:', e);
+      setError(e instanceof Error ? e.message : '同步失败');
+      setStatus('error');
+    } finally {
+      syncingRef.current = false;
+    }
+  }, []);
+
   // 初始化：读取 auth 状态
   useEffect(() => {
     let mounted = true;
@@ -48,27 +67,7 @@ export function SyncProvider({ children }) {
     engineRef.current = new SyncEngine(store, client, authState.deviceId);
     // 构建完成后立即同步一次
     void triggerSync();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authState]);
-
-  const triggerSync = useCallback(async () => {
-    if (!engineRef.current) return;
-    if (syncingRef.current) return;
-    syncingRef.current = true;
-    setStatus('syncing');
-    setError(null);
-    try {
-      await engineRef.current.syncAll(RESOURCES);
-      setLastSyncAt(new Date().toLocaleTimeString('zh-CN'));
-      setStatus('idle');
-    } catch (e) {
-      console.warn('[sync] syncAll failed:', e);
-      setError(e instanceof Error ? e.message : '同步失败');
-      setStatus('error');
-    } finally {
-      syncingRef.current = false;
-    }
-  }, []);
+  }, [authState, triggerSync]);
 
   // 定时同步（5 分钟）
   useEffect(() => {
