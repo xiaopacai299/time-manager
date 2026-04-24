@@ -690,10 +690,15 @@ function writeSyncTokens(data) {
 
 /** 读取 sync-state（lastSyncAt, dirty, stableIds, deviceId）；失败返回默认值 */
 function readSyncState() {
+  if (_syncStateCache) return _syncStateCache;
   try {
-    if (!fs.existsSync(getSyncStatePath())) return defaultSyncState();
+    if (!fs.existsSync(getSyncStatePath())) {
+      _syncStateCache = defaultSyncState();
+      return _syncStateCache;
+    }
     const raw = fs.readFileSync(getSyncStatePath(), 'utf8');
-    return { ...defaultSyncState(), ...JSON.parse(raw) };
+    _syncStateCache = { ...defaultSyncState(), ...JSON.parse(raw) };
+    return _syncStateCache;
   } catch {
     return defaultSyncState();
   }
@@ -708,13 +713,25 @@ function defaultSyncState() {
   };
 }
 
-/** 持久化 sync-state */
+let _syncStateCache = null;
+let _writeDebounceTimer = null;
+
+/** 持久化 sync-state（5 秒去抖 + 原子写入） */
+// TODO: stableIds 无界增长，Phase 2 前清理超过 90 天的条目
 function writeSyncState(state) {
-  try {
-    fs.writeFileSync(getSyncStatePath(), JSON.stringify(state, null, 2), 'utf8');
-  } catch (err) {
-    console.error('[sync] Failed to write sync state:', err);
-  }
+  _syncStateCache = state;
+  clearTimeout(_writeDebounceTimer);
+  _writeDebounceTimer = setTimeout(() => {
+    const target = getSyncStatePath();
+    const tmp = target + '.tmp';
+    try {
+      fs.writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf8');
+      fs.renameSync(tmp, target);
+    } catch (err) {
+      console.error('[sync] Failed to write sync state:', err);
+      try { fs.unlinkSync(tmp); } catch {}
+    }
+  }, 5000);
 }
 
 /**
@@ -729,8 +746,8 @@ function updateDirtyTimeRecords(snapshot) {
     const state = readSyncState();
     const deviceId = state.deviceId || 'offline';
     const now = new Date().toISOString();
-    for (const app of perAppToday) {
-      const appKey = String(app.appId || '').trim();
+    for (const appRecord of perAppToday) {
+      const appKey = String(appRecord.appId || '').trim();
       if (!appKey) continue;
       const stableKey = `${dayKey}|${appKey}`;
       if (!state.stableIds[stableKey]) {
@@ -742,8 +759,8 @@ function updateDirtyTimeRecords(snapshot) {
         id,
         date: dayKey,
         appKey,
-        appName: String(app.processName || app.appId || appKey),
-        durationMs: Math.round(Number(app.durationMs) || 0),
+        appName: String(appRecord.processName || appRecord.appId || appKey),
+        durationMs: Math.round(Number(appRecord.durationMs) || 0),
         updatedAt: now,
         deletedAt: null,
         clientDeviceId: deviceId,
@@ -1879,7 +1896,9 @@ function setupIpc() {
       if (fs.existsSync(getSyncTokensPath())) {
         fs.unlinkSync(getSyncTokensPath());
       }
-    } catch {}
+    } catch (err) {
+      console.error('[sync] Failed to clear auth tokens:', err);
+    }
     return { ok: true };
   });
 
