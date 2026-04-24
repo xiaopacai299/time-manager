@@ -3,6 +3,9 @@ import lottie from 'lottie-web'
 import './SettingsWindowApp.css'
 import { PET_LIST } from './pets/registry'
 import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './configKeys'
+import { useSyncContext } from './sync/SyncProvider.jsx'
+import { clearAuthState, initDeviceId, saveAuthState } from './sync/authStore.js'
+import { ApiClient } from './sync/ApiClient.js'
 
 const PET_AI_CHAT_BG_PRESET_OPTIONS = [
   { id: 'mist_blue', label: '浅蓝雾' },
@@ -35,6 +38,138 @@ function PetLottieIcon({ animationData }) {
     return () => anim.destroy()
   }, [animationData])
   return <span className="settings-pet-icon settings-pet-icon--lottie" ref={ref} aria-hidden="true" />
+}
+
+function AccountSection() {
+  const { authState, setAuthState, triggerSync, status, lastSyncAt, error } = useSyncContext()
+  const [tab, setTab] = useState('login') // 'login' | 'register'
+  const [apiBase, setApiBase] = useState('http://localhost:3000')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const isLoggedIn = !!authState?.accessToken
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setBusy(true)
+    setMsg('')
+    try {
+      const deviceId = await initDeviceId()
+      const client = new ApiClient(apiBase, () => null, deviceId)
+      const data = tab === 'login'
+        ? await client.login(email, password)
+        : await client.register(email, password)
+      await saveAuthState({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        userId: data.user.id,
+        email: data.user.email,
+        apiBase,
+        deviceId,
+      })
+      setAuthState({ ...data, apiBase, deviceId })
+      setMsg(tab === 'login' ? '登录成功！' : '注册成功！')
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : '操作失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleLogout() {
+    setBusy(true)
+    try {
+      if (authState?.refreshToken && authState?.apiBase && authState?.deviceId) {
+        const client = new ApiClient(authState.apiBase, () => authState.accessToken, authState.deviceId)
+        await client.logout(authState.refreshToken).catch(() => {})
+      }
+      await clearAuthState()
+      setAuthState(null)
+      setMsg('已退出登录')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (isLoggedIn) {
+    return (
+      <div className="settings-section">
+        <h3 className="settings-section-title">账号与同步</h3>
+        <p style={{ marginBottom: 8, color: '#555' }}>已登录：{authState.email}</p>
+        <p style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>
+          {status === 'syncing' ? '同步中…' : status === 'error' ? `同步错误：${error}` : '就绪'}
+          {lastSyncAt && ` · 上次同步：${lastSyncAt}`}
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="settings-btn"
+            onClick={() => void triggerSync()}
+            disabled={busy || status === 'syncing'}
+          >
+            立即同步
+          </button>
+          <button
+            className="settings-btn"
+            style={{ color: '#e53e3e', borderColor: '#e53e3e' }}
+            onClick={() => void handleLogout()}
+            disabled={busy}
+          >
+            退出登录
+          </button>
+        </div>
+        {msg && <p style={{ marginTop: 8, color: '#555', fontSize: 13 }}>{msg}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="settings-section">
+      <h3 className="settings-section-title">账号与同步</h3>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button
+          className={`settings-btn${tab === 'login' ? ' settings-btn--active' : ''}`}
+          onClick={() => setTab('login')}
+        >登录</button>
+        <button
+          className={`settings-btn${tab === 'register' ? ' settings-btn--active' : ''}`}
+          onClick={() => setTab('register')}
+        >注册</button>
+      </div>
+      <form onSubmit={(e) => void handleSubmit(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <input
+          type="url"
+          placeholder="服务器地址（如 https://api.example.com）"
+          value={apiBase}
+          onChange={e => setApiBase(e.target.value)}
+          className="settings-input"
+          required
+        />
+        <input
+          type="email"
+          placeholder="邮箱"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          className="settings-input"
+          required
+        />
+        <input
+          type="password"
+          placeholder="密码（至少 8 位）"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          className="settings-input"
+          minLength={8}
+          required
+        />
+        <button type="submit" className="settings-btn" disabled={busy}>
+          {busy ? '处理中…' : tab === 'login' ? '登录' : '注册'}
+        </button>
+      </form>
+      {msg && <p style={{ marginTop: 8, color: '#e53e3e', fontSize: 13 }}>{msg}</p>}
+    </div>
+  )
 }
 
 export default function SettingsWindowApp() {
@@ -449,6 +584,9 @@ export default function SettingsWindowApp() {
           {msg ? <span className="settings-msg">{msg}</span> : null}
         </div>
       </section>
+
+      {/* 账号与同步 */}
+      <AccountSection />
     </main>
   )
 }
