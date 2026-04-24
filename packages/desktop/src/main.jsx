@@ -11,6 +11,7 @@ import ReaderWindowApp from './ReaderWindowApp.jsx'
 import PetAiChatWindowApp from './PetAiChatWindowApp.jsx'
 import DiaryWindowApp from './DiaryWindowApp.jsx'
 import WorklistExportApp from './WorklistExportApp.jsx'
+import { SyncProvider } from './sync/SyncProvider.jsx'
 
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
@@ -52,26 +53,28 @@ if (typeof document !== 'undefined') {
 
 createRoot(root).render(
   <StrictMode>
-    {isStatsWindow ? (
-      <StatsWindowApp />
-    ) : isFavoritesWindow ? (
-      <FavoritesWindowApp />
-    ) : isWorklistExportWindow ? (
-      <WorklistExportApp />
-    ) : isWorklistWindow ? (
-      <WorkListWindowApp />
-    ) : isEstimateConfirmWindow ? (
-      <WorklistEstimateConfirmApp />
-    ) : isSettingsWindow ? (
-      <SettingsWindowApp />
-    ) : isReaderWindow ? (
-      <ReaderWindowApp />
-    ) : isPetAiChatWindow ? (
-      <PetAiChatWindowApp />
-    ) : isDiaryWindow ? (
-      <DiaryWindowApp />
-    ) : (
-      <App />
-    )}
+    <SyncProvider>
+      {isStatsWindow ? (
+        <StatsWindowApp />
+      ) : isFavoritesWindow ? (
+        <FavoritesWindowApp />
+      ) : isWorklistExportWindow ? (
+        <WorklistExportApp />
+      ) : isWorklistWindow ? (
+        <WorkListWindowApp />
+      ) : isEstimateConfirmWindow ? (
+        <WorklistEstimateConfirmApp />
+      ) : isSettingsWindow ? (
+        <SettingsWindowApp />
+      ) : isReaderWindow ? (
+        <ReaderWindowApp />
+      ) : isPetAiChatWindow ? (
+        <PetAiChatWindowApp />
+      ) : isDiaryWindow ? (
+        <DiaryWindowApp />
+      ) : (
+        <App />
+      )}
+    </SyncProvider>
   </StrictMode>,
 )
