@@ -1,5 +1,6 @@
 import type { Express } from 'express';
-import { Prisma } from '@prisma/client';
+import prismaPkg from '@prisma/client';
+const { Prisma } = prismaPkg;
 import * as argon2 from 'argon2';
 import rateLimit from 'express-rate-limit';
 import type { PrismaClient } from '@prisma/client';

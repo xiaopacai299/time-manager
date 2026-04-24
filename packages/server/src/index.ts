@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
+const { PrismaClient } = prismaPkg;
 import { pathToFileURL } from 'node:url';
 import { loadServerEnv } from './config/env.js';
 import { createApp } from './createApp.js';

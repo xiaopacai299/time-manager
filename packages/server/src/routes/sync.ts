@@ -1,6 +1,8 @@
 import type { Express } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { Prisma, type PrismaClient } from '@prisma/client';
+import prismaPkg from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+const { Prisma } = prismaPkg;
 import {
   PushTimeRecordsBodySchema,
   SyncPullQuerySchema,
