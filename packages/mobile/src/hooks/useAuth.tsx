@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   createContext,
   useContext,
   useState,
@@ -9,10 +9,12 @@ import {
   getUser,
   saveTokens,
   saveUser,
+  saveApiBase,
   clearAuth,
   getApiBase,
   type AuthUser,
 } from "../storage/authStore";
+import { clearSyncData } from "../storage/syncDb";
 import { ApiClient } from "../api/apiClient";
 
 export type AuthState =
@@ -56,11 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await Promise.all([
       saveTokens(data.accessToken, data.refreshToken),
       saveUser(data.user),
+      saveApiBase(apiBase),
     ]);
     setAuth({ status: "authenticated", user: data.user, client });
   };
 
   const logout = async (): Promise<void> => {
+    await clearSyncData();
     await clearAuth();
     setAuth({ status: "unauthenticated" });
   };

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../hooks/useAuth";
+import { useSync } from "../sync/SyncProvider";
+import { fetchTodayRecords } from "../storage/timeRecordQueries";
 import type { TimeRecordPayload } from "@time-manger/shared";
 
 function formatMs(ms: number): string {
@@ -31,30 +33,30 @@ function todayDate(): string {
 
 export function HomeScreen() {
   const { auth, logout } = useAuth();
+  const { triggerSync, status, lastSyncAt, error: syncError, syncTick } =
+    useSync();
   const [records, setRecords] = useState<TimeRecordPayload[]>([]);
-  const [syncing, setSyncing] = useState(false);
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingDb, setLoadingDb] = useState(false);
 
-  const handleSync = useCallback(async () => {
-    if (auth.status !== "authenticated") return;
-    setSyncing(true);
-    setError(null);
+  const reloadFromLocal = useCallback(async () => {
+    setLoadingDb(true);
     try {
       const today = todayDate();
-      const all = await auth.client.pullTimeRecords(null);
-      const todayRecords = all.filter(
-        (r) => r.date === today && !r.deletedAt
-      );
-      todayRecords.sort((a, b) => b.durationMs - a.durationMs);
-      setRecords(todayRecords);
-      setLastSyncAt(new Date().toLocaleTimeString());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "同步失败");
+      const rows = await fetchTodayRecords(today);
+      setRecords(rows);
     } finally {
-      setSyncing(false);
+      setLoadingDb(false);
     }
-  }, [auth]);
+  }, []);
+
+  useEffect(() => {
+    void reloadFromLocal();
+  }, [reloadFromLocal, syncTick]);
+
+  const handleSync = useCallback(async () => {
+    await triggerSync();
+    await reloadFromLocal();
+  }, [triggerSync, reloadFromLocal]);
 
   const handleLogout = useCallback(() => {
     Alert.alert("登出", "确定要退出登录吗？", [
@@ -69,6 +71,7 @@ export function HomeScreen() {
 
   const user = auth.status === "authenticated" ? auth.user : null;
   const total = records.reduce((sum, r) => sum + r.durationMs, 0);
+  const syncing = status === "syncing";
 
   return (
     <SafeAreaView style={styles.flex}>
@@ -96,17 +99,20 @@ export function HomeScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={syncing} onRefresh={handleSync} />
+          <RefreshControl
+            refreshing={syncing || loadingDb}
+            onRefresh={() => void handleSync()}
+          />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            {syncing ? (
+            {syncing || loadingDb ? (
               <ActivityIndicator size="large" color="#4f46e5" />
             ) : (
               <>
                 <Text style={styles.emptyText}>暂无今日数据</Text>
                 <Text style={styles.emptyHint}>
-                  下拉刷新或点击"立即同步"
+                  下拉刷新或点击「立即同步」（与桌面端共用 SyncEngine）
                 </Text>
               </>
             )}
@@ -123,11 +129,11 @@ export function HomeScreen() {
         )}
       />
 
-      {error && (
+      {syncError ? (
         <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{syncError}</Text>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.footer}>
         {lastSyncAt && (
@@ -135,7 +141,7 @@ export function HomeScreen() {
         )}
         <TouchableOpacity
           style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
-          onPress={handleSync}
+          onPress={() => void handleSync()}
           disabled={syncing}
         >
           {syncing ? (
@@ -185,7 +191,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: { fontSize: 16, color: "#888", marginBottom: 6 },
-  emptyHint: { fontSize: 13, color: "#bbb" },
+  emptyHint: { fontSize: 13, color: "#bbb", textAlign: "center", paddingHorizontal: 24 },
   row: {
     backgroundColor: "#fff",
     borderRadius: 10,
