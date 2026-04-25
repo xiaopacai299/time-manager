@@ -10,6 +10,8 @@ lerna-debug.log*
 # Deps
 node_modules/
 **/node_modules/
+.expo/
+**/.expo/
 
 # Build outputs
 dist/
@@ -19,6 +21,7 @@ build/
 **/build/
 release/
 **/release/
+.expo-export-*/
 
 # TS
 *.tsbuildinfo

@@ -8,5 +8,5 @@
     "strict": true,
     "lib": ["ES2022"]
   },
-  "include": ["App.tsx", "src/**/*"]
+  "include": ["index.ts", "App.tsx", "src/**/*"]
 }
