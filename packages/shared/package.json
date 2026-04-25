@@ -19,7 +19,7 @@
     "build:watch": "tsc -p . --watch",
     "typecheck": "tsc -p . --noEmit",
     "lint": "echo \"(shared uses tsc for lint)\"",
-    "test": "tsx --test src/index.test.ts src/sync/lww.test.ts"
+    "test": "tsx --test src/index.test.ts src/sync/lww.test.ts src/sync/engine.test.ts"
   },
   "dependencies": {
     "zod": "^3.24.1"

@@ -1,9 +1,14 @@
-﻿import type {
+import type {
   PullResponse,
   PushResponse,
   TimeRecordPayload,
 } from "@time-manger/shared";
-import { getAccessToken, getOrCreateDeviceId } from "../storage/authStore";
+import {
+  getAccessToken,
+  getOrCreateDeviceId,
+  getRefreshToken,
+  saveAccessToken,
+} from "../storage/authStore";
 
 export class ApiClient {
   constructor(private readonly baseUrl: string) {}
@@ -26,12 +31,36 @@ export class ApiClient {
       ...options,
       headers,
     });
+    if (res.status === 401 && path !== "/api/v1/auth/refresh") {
+      const refreshed = await this.refreshAccessToken(deviceId);
+      if (refreshed) {
+        return this.request<T>(path, options);
+      }
+    }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       const msg = (body as { error?: { message?: string } }).error?.message ?? res.statusText;
       throw new Error(`API ${res.status}: ${msg}`);
     }
     return res.json() as Promise<T>;
+  }
+
+  private async refreshAccessToken(deviceId: string): Promise<boolean> {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) return false;
+    const res = await fetch(`${this.baseUrl}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Device-Id": deviceId,
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { accessToken?: string };
+    if (!data.accessToken) return false;
+    await saveAccessToken(data.accessToken);
+    return true;
   }
 
   async login(

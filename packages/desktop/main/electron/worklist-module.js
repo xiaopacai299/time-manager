@@ -1,6 +1,8 @@
 export function createWorklistModule({
   petState,
   persistPetState,
+  markDirtyWorklistItem,
+  createSyncId,
   BrowserWindow,
   Notification,
   iconPath,
@@ -34,6 +36,12 @@ export function createWorklistModule({
     }
     if (lastResetKey === todayKey) return false;
     const hadItems = Array.isArray(petState.worklist) && petState.worklist.length > 0;
+    if (hadItems) {
+      const deletedAt = new Date(now).toISOString();
+      for (const item of getWorklist()) {
+        markDirtyWorklistItem?.(item, deletedAt);
+      }
+    }
     petState.worklist = [];
     petState.worklistLastResetDate = todayKey;
     persistPetState();
@@ -70,6 +78,8 @@ export function createWorklistModule({
     const estimateDoneAt = normalizeWorklistDatetime(raw.estimateDoneAt);
     const note = String(raw.note || '').trim().slice(0, 2000);
     const createdAt = normalizeWorklistDatetime(raw.createdAt);
+    const updatedAt = normalizeWorklistDatetime(raw.updatedAt) || createdAt;
+    const deletedAt = normalizeWorklistDatetime(raw.deletedAt);
     const reminderNotified = Boolean(raw.reminderNotified);
     const completionResultRaw = String(raw.completionResult || '').trim().toLowerCase();
     const completionResult =
@@ -77,7 +87,7 @@ export function createWorklistModule({
         ? completionResultRaw
         : '';
     const confirmSnoozeUntil = normalizeWorklistDatetime(raw.confirmSnoozeUntil);
-    return { id, icon, name, reminderAt, estimateDoneAt, note, createdAt, reminderNotified, completionResult, confirmSnoozeUntil };
+    return { id, icon, name, reminderAt, estimateDoneAt, note, createdAt, updatedAt, deletedAt, reminderNotified, completionResult, confirmSnoozeUntil };
   }
 
   function broadcastWorklistUpdate() {
@@ -201,7 +211,10 @@ export function createWorklistModule({
 
   function addWorklistItem(payload) {
     maybeResetWorklistForNewDay();
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const now = new Date().toISOString();
+    const id = typeof createSyncId === 'function'
+      ? createSyncId()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const entry = sanitizeWorklistEntry({
       id,
       icon: payload?.icon,
@@ -209,7 +222,8 @@ export function createWorklistModule({
       reminderAt: payload?.reminderAt,
       estimateDoneAt: payload?.estimateDoneAt,
       note: payload?.note,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
       reminderNotified: false,
       completionResult: '',
       confirmSnoozeUntil: '',
@@ -218,6 +232,7 @@ export function createWorklistModule({
       return { ok: false, error: '请填写工作清单名称', list: getWorklist() };
     }
     petState.worklist = [...getWorklist(), entry];
+    markDirtyWorklistItem?.(entry);
     persistPetState();
     broadcastWorklistUpdate();
     return { ok: true, list: getWorklist() };
@@ -241,6 +256,7 @@ export function createWorklistModule({
       estimateDoneAt: payload?.estimateDoneAt,
       note: payload?.note,
       createdAt: existing.createdAt,
+      updatedAt: new Date().toISOString(),
       reminderNotified: existing.reminderNotified,
       completionResult: existing.completionResult,
       confirmSnoozeUntil: existing.confirmSnoozeUntil,
@@ -248,7 +264,8 @@ export function createWorklistModule({
     if (!entry) {
       return { ok: false, error: '请填写工作清单名称', list: getWorklist() };
     }
-    petState.worklist = getWorklist().map((item) => (item.id === id ? entry : item));
+    const syncedEntry = markDirtyWorklistItem?.(entry) || entry;
+    petState.worklist = getWorklist().map((item) => (item.id === id ? syncedEntry : item));
     persistPetState();
     broadcastWorklistUpdate();
     return { ok: true, list: getWorklist() };
@@ -265,6 +282,8 @@ export function createWorklistModule({
     if (next.length === before.length) {
       return { ok: false, error: '未找到要删除的清单', list: before };
     }
+    const existing = before.find((item) => item.id === id);
+    if (existing) markDirtyWorklistItem?.(existing, new Date().toISOString());
     petState.worklist = next;
     persistPetState();
     broadcastWorklistUpdate();
@@ -298,7 +317,13 @@ export function createWorklistModule({
       return { ...item, reminderNotified: true, reminderAt };
     });
     if (changed) {
-      petState.worklist = next;
+      const nowIso = new Date(now).toISOString();
+      petState.worklist = next.map((item, index) => {
+        if (item === raw[index]) return item;
+        const changedItem = { ...item, updatedAt: nowIso };
+        markDirtyWorklistItem?.(changedItem);
+        return changedItem;
+      });
       persistPetState();
       broadcastWorklistUpdate();
     }
@@ -356,13 +381,15 @@ export function createWorklistModule({
       petState.worklist = getWorklist().map((item) => {
         if (item.id !== candidate.id) return item;
         if (action === 'completed') {
-          return { ...item, completionResult: 'completed', confirmSnoozeUntil: nowIso };
+          return { ...item, completionResult: 'completed', confirmSnoozeUntil: nowIso, updatedAt: nowIso };
         }
         if (action === 'incomplete') {
-          return { ...item, completionResult: 'incomplete', confirmSnoozeUntil: nowIso };
+          return { ...item, completionResult: 'incomplete', confirmSnoozeUntil: nowIso, updatedAt: nowIso };
         }
-        return { ...item, confirmSnoozeUntil: snoozeIso };
+        return { ...item, confirmSnoozeUntil: snoozeIso, updatedAt: nowIso };
       });
+      const changedItem = petState.worklist.find((item) => item.id === candidate.id);
+      if (changedItem) markDirtyWorklistItem?.({ ...changedItem, updatedAt: nowIso });
       persistPetState();
       broadcastWorklistUpdate();
     } catch (error) {
@@ -552,6 +579,7 @@ export function createWorklistModule({
   return {
     openWindow,
     openExportWindow,
+    broadcastWorklistUpdate,
     tick: checkReminders,
     checkReminders,
     registerIpc,

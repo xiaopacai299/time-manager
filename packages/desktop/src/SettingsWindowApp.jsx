@@ -5,7 +5,7 @@ import { PET_LIST } from './pets/registry'
 import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './configKeys'
 import { useSyncContext } from './sync/SyncProvider.jsx'
 import { clearAuthState, initDeviceId, saveAuthState } from './sync/authStore.js'
-import { ApiClient } from './sync/ApiClient.js'
+import { ApiClient, normalizeApiBase } from './sync/ApiClient.js'
 
 const PET_AI_CHAT_BG_PRESET_OPTIONS = [
   { id: 'mist_blue', label: '浅蓝雾' },
@@ -57,7 +57,8 @@ function AccountSection() {
     setMsg('')
     try {
       const deviceId = await initDeviceId()
-      const client = new ApiClient(apiBase, () => null, deviceId)
+      const normalizedApiBase = normalizeApiBase(apiBase)
+      const client = new ApiClient(normalizedApiBase, () => null, deviceId)
       const data = tab === 'login'
         ? await client.login(email, password)
         : await client.register(email, password)
@@ -66,16 +67,17 @@ function AccountSection() {
         refreshToken: data.refreshToken,
         userId: data.user.id,
         email: data.user.email,
-        apiBase,
+        apiBase: normalizedApiBase,
         deviceId,
       })
       setAuthState({
         ...data,
         email: data.user?.email,
         userId: data.user?.id,
-        apiBase,
+        apiBase: normalizedApiBase,
         deviceId,
       })
+      setApiBase(normalizedApiBase)
       setMsg(tab === 'login' ? '登录成功！' : '注册成功！')
     } catch (e) {
       setMsg(e instanceof Error ? e.message : '操作失败')
@@ -104,6 +106,9 @@ function AccountSection() {
       <div className="settings-section">
         <h3 className="settings-section-title">账号与同步</h3>
         <p style={{ marginBottom: 8, color: '#555' }}>已登录：{authState.email}</p>
+        <p style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>
+          同步服务器：{authState.apiBase}
+        </p>
         <p style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>
           {status === 'syncing' ? '同步中…' : status === 'error' ? `同步错误：${error}` : '就绪'}
           {lastSyncAt && ` · 上次同步：${lastSyncAt}`}

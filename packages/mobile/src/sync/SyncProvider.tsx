@@ -14,7 +14,7 @@ import { getSyncDb } from "../storage/syncDb";
 import { MobileLocalStore } from "../storage/LocalStore.mobile";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
-const RESOURCES = ["time-records"] as const;
+const RESOURCES = ["time-records", "diaries", "worklist-items"] as const;
 
 type SyncStatus = "idle" | "syncing" | "error" | "unauthenticated";
 

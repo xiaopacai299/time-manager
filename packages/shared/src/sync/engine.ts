@@ -5,7 +5,11 @@ export interface LocalStore {
   setLastSyncAt(resource: string, serverTime: string): Promise<void>;
   getDirtyRecords<T>(resource: string): Promise<T[]>;
   upsertRemote<T>(resource: string, records: T[]): Promise<void>;
-  markClean(resource: string, ids: string[]): Promise<void>;
+  markClean(
+    resource: string,
+    ids: string[],
+    accepted?: Array<{ id: string; updatedAt: string }>,
+  ): Promise<void>;
 }
 
 export interface ApiClient {
@@ -41,7 +45,7 @@ export class SyncEngine {
   ) {}
 
   async syncResource(resource: string): Promise<SyncResult> {
-    let since = await this.store.getLastSyncAt(resource);
+    const since = await this.store.getLastSyncAt(resource);
     let cursor: string | null = null;
     let pulled = 0;
     let lastServerTime: string | null = null;
@@ -54,11 +58,12 @@ export class SyncEngine {
       if (batch.length) {
         await this.store.upsertRemote(resource, batch);
       }
-      await this.store.setLastSyncAt(resource, page.serverTime);
-      since = page.serverTime;
       if (!page.hasMore) break;
       cursor = page.nextCursor;
       if (cursor == null) break;
+    }
+    if (lastServerTime) {
+      await this.store.setLastSyncAt(resource, lastServerTime);
     }
 
     const dirty = await this.store.getDirtyRecords(resource);
@@ -72,6 +77,7 @@ export class SyncEngine {
         await this.store.markClean(
           resource,
           pushRes.accepted.map((a) => a.id),
+          pushRes.accepted,
         );
       }
       await this.store.setLastSyncAt(resource, pushRes.serverTime);

@@ -15,6 +15,12 @@ export default function DiaryWindowApp() {
 
   useEffect(() => {
     checkPasswordStatus()
+    const unsubscribe = window.timeManagerAPI?.onDiariesUpdated?.((nextDiaries) => {
+      setDiaries(Array.isArray(nextDiaries) ? nextDiaries : [])
+    })
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
   }, [])
 
   const checkPasswordStatus = async () => {

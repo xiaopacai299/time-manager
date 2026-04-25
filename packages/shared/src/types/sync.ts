@@ -12,3 +12,21 @@ export type TimeRecord = SyncableRecord & {
   appName: string;
   durationMs: number;
 };
+
+export type DiaryRecord = SyncableRecord & {
+  date: string;
+  content: string;
+  createdAt: string;
+};
+
+export type WorklistItemRecord = SyncableRecord & {
+  name: string;
+  icon: string;
+  note: string;
+  reminderAt: string | null;
+  estimateDoneAt: string | null;
+  createdAt: string;
+  reminderNotified: boolean;
+  completionResult: '' | 'completed' | 'incomplete';
+  confirmSnoozeUntil: string | null;
+};

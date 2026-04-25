@@ -34,17 +34,43 @@ export class DesktopLocalStore {
    * 仅做日志记录，不写入 petState。
    */
   async upsertRemote(resource, records) {
+    if (resource === 'diaries' || resource === 'worklist-items') {
+      await ipc()?.applyRemoteRecords(resource, records);
+      return;
+    }
     if (records.length > 0) {
       console.debug(`[sync] upsertRemote ${resource}: ${records.length} records (desktop pull, read-only)`);
     }
   }
 
-  async markClean(resource, ids) {
-    const state = await ipc()?.getState();
-    const bucket = { ...(state?.dirty?.[resource] ?? {}) };
-    for (const id of ids) {
-      delete bucket[id];
+  async markClean(resource, ids, accepted = []) {
+    const acceptedRows = accepted.length
+      ? accepted
+      : ids.map((id) => ({ id, updatedAt: null }));
+    const syncApi = ipc();
+    if (typeof syncApi?.markClean === 'function') {
+      try {
+        await syncApi.markClean(resource, acceptedRows);
+        return;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error || '');
+        if (!message.includes('No handler registered')) {
+          throw error;
+        }
+      }
     }
-    await ipc()?.setState({ dirty: { [resource]: bucket } });
+
+    // Dev-only compatibility: the renderer can hot-reload before Electron's main
+    // process is restarted with the newer sync:markClean IPC handler.
+    const state = await syncApi?.getState();
+    const bucket = { ...(state?.dirty?.[resource] ?? {}) };
+    for (const item of acceptedRows) {
+      const id = String(item?.id || '');
+      const updatedAt = item?.updatedAt ? String(item.updatedAt) : null;
+      if (id && (!updatedAt || bucket[id]?.updatedAt === updatedAt)) {
+        delete bucket[id];
+      }
+    }
+    await syncApi?.setState({ dirty: { [resource]: bucket } });
   }
 }

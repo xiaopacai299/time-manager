@@ -697,7 +697,7 @@ function readSyncState() {
       return _syncStateCache;
     }
     const raw = fs.readFileSync(getSyncStatePath(), 'utf8');
-    _syncStateCache = { ...defaultSyncState(), ...JSON.parse(raw) };
+    _syncStateCache = normalizeSyncState(JSON.parse(raw));
     return _syncStateCache;
   } catch {
     return defaultSyncState();
@@ -708,9 +708,22 @@ function defaultSyncState() {
   return {
     deviceId: null,
     lastSyncAt: {},
-    dirty: { 'time-records': {} },
+    dirty: { 'time-records': {}, diaries: {}, 'worklist-items': {} },
     stableIds: {},
   };
+}
+
+function normalizeSyncState(raw) {
+  const state = { ...defaultSyncState(), ...(raw && typeof raw === 'object' ? raw : {}) };
+  state.lastSyncAt = { ...(state.lastSyncAt || {}) };
+  state.dirty = {
+    'time-records': {},
+    diaries: {},
+    'worklist-items': {},
+    ...(state.dirty || {}),
+  };
+  state.stableIds = { ...(state.stableIds || {}) };
+  return state;
 }
 
 let _syncStateCache = null;
@@ -744,7 +757,7 @@ function updateDirtyTimeRecords(snapshot) {
     const { perAppToday = [], dayKey } = snapshot;
     if (!dayKey || !perAppToday.length) return;
     const state = readSyncState();
-    const deviceId = state.deviceId || 'offline';
+    const deviceId = getSyncDeviceId();
     const now = new Date().toISOString();
     for (const appRecord of perAppToday) {
       const appKey = String(appRecord.appId || '').trim();
@@ -780,6 +793,194 @@ function generateSyncUUID() {
   });
 }
 
+function isSyncUUID(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
+function getSyncDeviceId() {
+  const state = readSyncState();
+  if (!state.deviceId || !isSyncUUID(state.deviceId)) {
+    state.deviceId = generateSyncUUID();
+  }
+  for (const bucket of Object.values(state.dirty || {})) {
+    for (const record of Object.values(bucket || {})) {
+      if (record && typeof record === 'object' && !isSyncUUID(record.clientDeviceId)) {
+        record.clientDeviceId = state.deviceId;
+      }
+    }
+  }
+  writeSyncState(state);
+  return state.deviceId;
+}
+
+function markDirtyRecord(resource, record) {
+  if (!record?.id || !isSyncUUID(record.id)) return;
+  const state = readSyncState();
+  state.dirty[resource] = state.dirty[resource] || {};
+  state.dirty[resource][record.id] = record;
+  writeSyncState(state);
+}
+
+function normalizeDiaryForSync(raw, now = new Date().toISOString()) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
+  const content = String(raw.content || '').slice(0, 50000);
+  const date = String(raw.date || now.slice(0, 10)).slice(0, 20);
+  const createdAt = raw.createdAt && !Number.isNaN(Date.parse(raw.createdAt))
+    ? new Date(raw.createdAt).toISOString()
+    : now;
+  const updatedAt = raw.updatedAt && !Number.isNaN(Date.parse(raw.updatedAt))
+    ? new Date(raw.updatedAt).toISOString()
+    : now;
+  const deletedAt = raw.deletedAt && !Number.isNaN(Date.parse(raw.deletedAt))
+    ? new Date(raw.deletedAt).toISOString()
+    : null;
+  return { id, date, content, createdAt, updatedAt, deletedAt, clientDeviceId: getSyncDeviceId() };
+}
+
+function normalizeWorklistItemForSync(raw, now = new Date().toISOString()) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
+  const name = String(raw.name || '').trim().slice(0, 200);
+  if (!name) return null;
+  const normalizeDate = (value) => {
+    const s = String(value || '').trim();
+    if (!s) return null;
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? null : new Date(t).toISOString();
+  };
+  const completion = String(raw.completionResult || '').trim().toLowerCase();
+  return {
+    id,
+    name,
+    icon: String(raw.icon || '📋'),
+    note: String(raw.note || '').slice(0, 2000),
+    reminderAt: normalizeDate(raw.reminderAt),
+    estimateDoneAt: normalizeDate(raw.estimateDoneAt),
+    createdAt: normalizeDate(raw.createdAt) || now,
+    updatedAt: normalizeDate(raw.updatedAt) || now,
+    deletedAt: normalizeDate(raw.deletedAt),
+    reminderNotified: Boolean(raw.reminderNotified),
+    completionResult: completion === 'completed' || completion === 'incomplete' ? completion : '',
+    confirmSnoozeUntil: normalizeDate(raw.confirmSnoozeUntil),
+    clientDeviceId: getSyncDeviceId(),
+  };
+}
+
+function markDirtyDiary(raw, deletedAt = null) {
+  const now = new Date().toISOString();
+  const diary = normalizeDiaryForSync({ ...raw, updatedAt: now, deletedAt }, now);
+  if (!diary) return null;
+  markDirtyRecord('diaries', diary);
+  broadcastSyncRequest('diary-changed');
+  return diary;
+}
+
+function markDirtyWorklistItem(raw, deletedAt = null) {
+  const now = new Date().toISOString();
+  const item = normalizeWorklistItemForSync({ ...raw, updatedAt: now, deletedAt }, now);
+  if (!item) return null;
+  markDirtyRecord('worklist-items', item);
+  broadcastSyncRequest('worklist-changed');
+  return item;
+}
+
+function queueLegacyDesktopContentForSync() {
+  let changed = false;
+  let queued = false;
+
+  petState.diaries = (petState.diaries || []).map((diary) => {
+    if (isSyncUUID(diary?.id) && diary?.updatedAt) return diary;
+    const synced = markDirtyDiary(diary);
+    if (!synced) return diary;
+    changed = true;
+    queued = true;
+    return {
+      id: synced.id,
+      date: synced.date,
+      content: synced.content,
+      createdAt: synced.createdAt,
+      updatedAt: synced.updatedAt,
+    };
+  });
+
+  petState.worklist = (petState.worklist || []).map((item) => {
+    if (isSyncUUID(item?.id) && item?.updatedAt) return item;
+    const synced = markDirtyWorklistItem(item);
+    if (!synced) return item;
+    changed = true;
+    queued = true;
+    return synced;
+  });
+
+  if (changed) {
+    persistPetState();
+    broadcastDiariesUpdate();
+    worklistModule?.broadcastWorklistUpdate?.();
+  }
+  return queued;
+}
+
+function mergeRemoteDiaries(records) {
+  let changed = false;
+  const byId = new Map((petState.diaries || []).map((d) => [String(d.id), d]));
+  for (const record of records || []) {
+    const remote = normalizeDiaryForSync(record, record.updatedAt);
+    if (!remote) continue;
+    const existing = byId.get(remote.id);
+    const existingTs = Date.parse(existing?.updatedAt || existing?.createdAt || 0);
+    const remoteTs = Date.parse(remote.updatedAt);
+    if (existing && existingTs >= remoteTs) continue;
+    if (remote.deletedAt) {
+      byId.delete(remote.id);
+    } else {
+      byId.set(remote.id, {
+        id: remote.id,
+        date: remote.date,
+        content: remote.content,
+        createdAt: remote.createdAt,
+        updatedAt: remote.updatedAt,
+      });
+    }
+    changed = true;
+  }
+  if (changed) {
+    petState.diaries = [...byId.values()].sort((a, b) =>
+      String(b.createdAt || '').localeCompare(String(a.createdAt || '')),
+    );
+    persistPetState();
+    broadcastDiariesUpdate();
+  }
+  return changed;
+}
+
+function mergeRemoteWorklistItems(records) {
+  let changed = false;
+  const byId = new Map((petState.worklist || []).map((item) => [String(item.id), item]));
+  for (const record of records || []) {
+    const remote = normalizeWorklistItemForSync(record, record.updatedAt);
+    if (!remote) continue;
+    const existing = byId.get(remote.id);
+    const existingTs = Date.parse(existing?.updatedAt || existing?.createdAt || 0);
+    const remoteTs = Date.parse(remote.updatedAt);
+    if (existing && existingTs >= remoteTs) continue;
+    if (remote.deletedAt) {
+      byId.delete(remote.id);
+    } else {
+      byId.set(remote.id, remote);
+    }
+    changed = true;
+  }
+  if (changed) {
+    petState.worklist = [...byId.values()].sort((a, b) =>
+      String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
+    );
+    persistPetState();
+    worklistModule?.broadcastWorklistUpdate?.();
+  }
+  return changed;
+}
+
 /** 启动时加载持久化状态；失败时回退到默认值。 */
 // 从用户目录里读 pet-window-state.json：上次宠物窗口在哪、收藏夹、工作清单等。
 function loadPetState() {
@@ -794,6 +995,9 @@ function loadPetState() {
       petState.followMouse = Boolean(parsed.followMouse);
       petState.favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
       petState.worklist = Array.isArray(parsed.worklist) ? parsed.worklist : [];
+      petState.diaries = Array.isArray(parsed.diaries) ? parsed.diaries : [];
+      petState.diaryPasswordHash = parsed.diaryPasswordHash || null;
+      petState.diaryPasswordSetAt = parsed.diaryPasswordSetAt || null;
       if (Array.isArray(parsed.memoList)) {
         petState.memoList = parsed.memoList;
       } else if (typeof parsed.worklistMemo === 'string' && parsed.worklistMemo.trim()) {
@@ -917,6 +1121,36 @@ function broadcastPetStateChanged() {
   send(settingsWindow);
 }
 
+function broadcastDiariesUpdate() {
+  if (!diaryWindow || diaryWindow.isDestroyed()) return;
+  try {
+    diaryWindow.webContents.send('diary:updated', petState.diaries || []);
+  } catch {
+    // 窗口可能正在销毁
+  }
+}
+
+function broadcastSyncRequest(reason = 'data-changed') {
+  const payload = {
+    reason: String(reason || 'data-changed'),
+    requestedAt: new Date().toISOString(),
+  };
+  const send = (win) => {
+    if (!win || win.isDestroyed()) return;
+    try {
+      win.webContents.send('sync:request', payload);
+    } catch {
+      // 窗口可能正在销毁
+    }
+  };
+  send(mainWindow);
+  send(statsWindow);
+  send(settingsWindow);
+  send(readerWindow);
+  send(petAiChatWindow);
+  send(diaryWindow);
+}
+
 /**
  * 保存 AI 对话历史会话
  * @param {Array} messages - 当前会话的消息列表
@@ -1016,6 +1250,8 @@ function persistPetState() {
 const worklistModule = createWorklistModule({
   petState,
   persistPetState,
+  markDirtyWorklistItem,
+  createSyncId: generateSyncUUID,
   BrowserWindow,
   Notification,
   iconPath: APP_ICON_PATH,
@@ -1813,23 +2049,52 @@ function setupIpc() {
   });
 
   ipcMain.handle('diary:add-diary', (_event, diary) => {
-    petState.diaries.unshift(diary);
+    const normalized = markDirtyDiary(diary);
+    if (!normalized) return petState.diaries;
+    petState.diaries.unshift({
+      id: normalized.id,
+      date: normalized.date,
+      content: normalized.content,
+      createdAt: normalized.createdAt,
+      updatedAt: normalized.updatedAt,
+    });
     persistPetState();
+    broadcastDiariesUpdate();
     return petState.diaries;
   });
 
   ipcMain.handle('diary:update-diary', (_event, updatedDiary) => {
-    const index = petState.diaries.findIndex(d => d.id === updatedDiary.id);
+    const originalId = updatedDiary?.id;
+    const existing = petState.diaries.find(d => d.id === updatedDiary.id);
+    const normalized = markDirtyDiary({
+      ...existing,
+      ...updatedDiary,
+      createdAt: existing?.createdAt || updatedDiary.createdAt,
+    });
+    if (!normalized) return petState.diaries;
+    const index = petState.diaries.findIndex(d => d.id === originalId || d.id === normalized.id);
     if (index !== -1) {
-      petState.diaries[index] = updatedDiary;
+      petState.diaries[index] = {
+        id: normalized.id,
+        date: normalized.date,
+        content: normalized.content,
+        createdAt: normalized.createdAt,
+        updatedAt: normalized.updatedAt,
+      };
       persistPetState();
+      broadcastDiariesUpdate();
     }
     return petState.diaries;
   });
 
   ipcMain.handle('diary:delete-diary', (_event, id) => {
+    const existing = petState.diaries.find(d => d.id === id);
+    if (existing) {
+      markDirtyDiary(existing, new Date().toISOString());
+    }
     petState.diaries = petState.diaries.filter(d => d.id !== id);
     persistPetState();
+    broadcastDiariesUpdate();
     return petState.diaries;
   });
 
@@ -1888,6 +2153,8 @@ function setupIpc() {
       state.deviceId = deviceId;
       writeSyncState(state);
     }
+    queueLegacyDesktopContentForSync();
+    broadcastSyncRequest('auth-initialized');
     return { ok: true };
   });
 
@@ -1903,6 +2170,7 @@ function setupIpc() {
   });
 
   ipcMain.handle('sync:getState', () => {
+    queueLegacyDesktopContentForSync();
     return readSyncState();
   });
 
@@ -1922,6 +2190,32 @@ function setupIpc() {
     }
     writeSyncState(state);
     return { ok: true };
+  });
+
+  ipcMain.handle('sync:markClean', (_event, resource, accepted = []) => {
+    const state = readSyncState();
+    const bucket = { ...(state.dirty?.[resource] || {}) };
+    for (const item of Array.isArray(accepted) ? accepted : []) {
+      const id = String(item?.id || '');
+      const updatedAt = String(item?.updatedAt || '');
+      if (id && (!updatedAt || bucket[id]?.updatedAt === updatedAt)) {
+        delete bucket[id];
+      }
+    }
+    state.dirty = { ...(state.dirty || {}), [resource]: bucket };
+    writeSyncState(state);
+    return { ok: true };
+  });
+
+  ipcMain.handle('sync:applyRemoteRecords', (_event, resource, records) => {
+    if (resource === 'diaries') {
+      return { ok: true, changed: mergeRemoteDiaries(records) };
+    }
+    if (resource === 'worklist-items') {
+      const changed = mergeRemoteWorklistItems(records);
+      return { ok: true, changed };
+    }
+    return { ok: true, changed: false };
   });
 
   // 2) 收藏夹模块

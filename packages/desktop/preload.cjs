@@ -490,6 +490,11 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<Array<object>>}
    */
   deleteDiary: (id) => ipcRenderer.invoke('diary:delete-diary', id),
+  onDiariesUpdated: (callback) => {
+    const listener = (_event, diaries) => callback(diaries);
+    ipcRenderer.on('diary:updated', listener);
+    return () => ipcRenderer.removeListener('diary:updated', listener);
+  },
 
   /**
    * 检查是否设置了日记密码。
@@ -531,5 +536,13 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
     clearAuth: () => ipcRenderer.invoke('sync:clearAuth'),
     getState: () => ipcRenderer.invoke('sync:getState'),
     setState: (partial) => ipcRenderer.invoke('sync:setState', partial),
+    markClean: (resource, accepted) => ipcRenderer.invoke('sync:markClean', resource, accepted),
+    applyRemoteRecords: (resource, records) =>
+      ipcRenderer.invoke('sync:applyRemoteRecords', resource, records),
+    onRequest: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('sync:request', listener);
+      return () => ipcRenderer.removeListener('sync:request', listener);
+    },
   },
 });

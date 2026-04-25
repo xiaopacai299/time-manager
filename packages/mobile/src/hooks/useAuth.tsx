@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   getUser,
+  getAccessToken,
   saveTokens,
   saveUser,
   saveApiBase,
@@ -35,8 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void (async () => {
-      const [user, apiBase] = await Promise.all([getUser(), getApiBase()]);
-      if (user && apiBase) {
+      const [user, apiBase, accessToken] = await Promise.all([
+        getUser(),
+        getApiBase(),
+        getAccessToken(),
+      ]);
+      if (user && apiBase && accessToken) {
         setAuth({
           status: "authenticated",
           user,

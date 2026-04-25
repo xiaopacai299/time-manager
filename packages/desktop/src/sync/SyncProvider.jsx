@@ -3,10 +3,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { SyncEngine } from '@time-manger/shared';
 import { ApiClient } from './ApiClient.js';
 import { DesktopLocalStore } from './LocalStore.desktop.js';
-import { getAuthState, initDeviceId } from './authStore.js';
+import { getAuthState, initDeviceId, saveAuthState } from './authStore.js';
 
-const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 分钟
-const RESOURCES = ['time-records'];
+const SYNC_REQUEST_DEBOUNCE_MS = 400;
+const RESOURCES = ['time-records', 'diaries', 'worklist-items'];
 
 const SyncContext = createContext(null);
 
@@ -16,7 +16,13 @@ export function SyncProvider({ children }) {
   const [error, setError] = useState(null);
   const [authState, setAuthState] = useState(null);
   const engineRef = useRef(null);
+  const authStateRef = useRef(null);
   const syncingRef = useRef(false); // 防止并发同步
+  const syncRequestTimerRef = useRef(null);
+
+  useEffect(() => {
+    authStateRef.current = authState;
+  }, [authState]);
 
   const triggerSync = useCallback(async () => {
     if (!engineRef.current) return;
@@ -57,23 +63,47 @@ export function SyncProvider({ children }) {
       setStatus('unauthenticated');
       return;
     }
-    const currentToken = authState.accessToken;
     const store = new DesktopLocalStore();
     const client = new ApiClient(
       authState.apiBase,
-      () => currentToken,
+      () => authStateRef.current?.accessToken ?? null,
       authState.deviceId,
+      {
+        getRefreshToken: () => authStateRef.current?.refreshToken ?? null,
+        onAccessTokenRefreshed: async (accessToken) => {
+          const current = authStateRef.current;
+          if (!current) return;
+          const next = { ...current, accessToken };
+          authStateRef.current = next;
+          setAuthState(next);
+          await saveAuthState(next);
+        },
+      },
     );
     engineRef.current = new SyncEngine(store, client, authState.deviceId);
     // 构建完成后立即同步一次
     void triggerSync();
   }, [authState, triggerSync]);
 
-  // 定时同步（5 分钟）
+  // 事件驱动同步：本地数据变更后主进程会广播 sync:request
   useEffect(() => {
     if (!authState?.accessToken) return undefined;
-    const timer = setInterval(() => void triggerSync(), SYNC_INTERVAL_MS);
-    return () => clearInterval(timer);
+    const off = window.timeManagerAPI?.sync?.onRequest?.(() => {
+      if (syncRequestTimerRef.current) {
+        clearTimeout(syncRequestTimerRef.current);
+      }
+      syncRequestTimerRef.current = setTimeout(() => {
+        syncRequestTimerRef.current = null;
+        void triggerSync();
+      }, SYNC_REQUEST_DEBOUNCE_MS);
+    });
+    return () => {
+      if (syncRequestTimerRef.current) {
+        clearTimeout(syncRequestTimerRef.current);
+        syncRequestTimerRef.current = null;
+      }
+      if (typeof off === 'function') off();
+    };
   }, [authState, triggerSync]);
 
   const value = {

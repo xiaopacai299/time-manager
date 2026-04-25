@@ -15,6 +15,10 @@ import { useSync } from "../sync/SyncProvider";
 import { fetchTodayRecords } from "../storage/timeRecordQueries";
 import type { TimeRecordPayload } from "@time-manger/shared";
 
+type Props = {
+  navigation: { navigate: (screen: "Diaries" | "Worklist") => void };
+};
+
 function formatMs(ms: number): string {
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
@@ -31,7 +35,7 @@ function todayDate(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export function HomeScreen() {
+export function HomeScreen({ navigation }: Props) {
   const { auth, logout } = useAuth();
   const { triggerSync, status, lastSyncAt, error: syncError, syncTick } =
     useSync();
@@ -93,6 +97,23 @@ export function HomeScreen() {
           <Text style={styles.totalValue}>{formatMs(total)}</Text>
         </View>
       )}
+
+      <View style={styles.shortcuts}>
+        <TouchableOpacity
+          style={styles.shortcutCard}
+          onPress={() => navigation.navigate("Diaries")}
+        >
+          <Text style={styles.shortcutTitle}>日记</Text>
+          <Text style={styles.shortcutSub}>查看和编辑同步日记</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.shortcutCard}
+          onPress={() => navigation.navigate("Worklist")}
+        >
+          <Text style={styles.shortcutTitle}>工作清单</Text>
+          <Text style={styles.shortcutSub}>管理同步任务</Text>
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={records}
@@ -185,6 +206,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginTop: 4,
   },
+  shortcuts: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  shortcutCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  shortcutTitle: { fontSize: 16, fontWeight: "800", color: "#1a1a1a" },
+  shortcutSub: { fontSize: 12, color: "#888", marginTop: 4 },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   empty: {
     paddingVertical: 60,

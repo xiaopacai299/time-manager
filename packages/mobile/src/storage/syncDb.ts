@@ -22,6 +22,32 @@ export async function getSyncDb(): Promise<SQLiteDatabase> {
           deleted_at TEXT,
           client_device_id TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS diary_cache (
+          id TEXT PRIMARY KEY NOT NULL,
+          date TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT,
+          client_device_id TEXT NOT NULL,
+          dirty INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS worklist_item_cache (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          icon TEXT NOT NULL,
+          note TEXT NOT NULL,
+          reminder_at TEXT,
+          estimate_done_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT,
+          reminder_notified INTEGER NOT NULL DEFAULT 0,
+          completion_result TEXT NOT NULL DEFAULT '',
+          confirm_snooze_until TEXT,
+          client_device_id TEXT NOT NULL,
+          dirty INTEGER NOT NULL DEFAULT 0
+        );
       `);
       return db;
     })();
@@ -33,5 +59,7 @@ export async function getSyncDb(): Promise<SQLiteDatabase> {
 export async function clearSyncData(): Promise<void> {
   const db = await getSyncDb();
   await db.runAsync("DELETE FROM time_record_cache");
+  await db.runAsync("DELETE FROM diary_cache");
+  await db.runAsync("DELETE FROM worklist_item_cache");
   await db.runAsync("DELETE FROM sync_meta");
 }

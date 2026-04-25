@@ -1,14 +1,18 @@
-﻿import React from "react";
+import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, View } from "react-native";
 import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
+import { DiaryScreen } from "../screens/DiaryScreen";
+import { WorklistScreen } from "../screens/WorklistScreen";
 import { useAuth } from "../hooks/useAuth";
 
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
+  Diaries: undefined;
+  Worklist: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,7 +34,11 @@ export function RootNavigator() {
         {auth.status === "unauthenticated" ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Diaries" component={DiaryScreen} />
+            <Stack.Screen name="Worklist" component={WorklistScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

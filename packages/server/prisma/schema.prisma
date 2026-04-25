@@ -19,6 +19,7 @@ model User {
   devices         Device[]
   timeRecords     TimeRecord[]
   diaries         DiaryEntry[]
+  worklistItems   WorklistItem[]
   aiConversations AiConversation[]
   aiSkills        AiSkill[]
   refreshTokens   RefreshToken[]
@@ -67,14 +68,32 @@ model DiaryEntry {
   id             String    @id
   userId         String
   date           String
-  titleCipher    String
-  contentCipher  String    @db.Text
-  nonce          String
-  schemaVersion  Int       @default(1)
+  content        String    @db.Text
+  createdAt      DateTime  @default(now())
   updatedAt      DateTime
   deletedAt      DateTime?
   clientDeviceId String
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+model WorklistItem {
+  id                  String    @id
+  userId              String
+  name                String
+  icon                String
+  note                String    @db.Text
+  reminderAt          DateTime?
+  estimateDoneAt      DateTime?
+  createdAt           DateTime
+  updatedAt           DateTime
+  deletedAt           DateTime?
+  reminderNotified    Boolean   @default(false)
+  completionResult    String    @default("")
+  confirmSnoozeUntil  DateTime?
+  clientDeviceId      String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
 }

@@ -1,4 +1,4 @@
-﻿import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "expo-secure-store";
 
 const KEY_ACCESS_TOKEN = "tm_access_token";
 const KEY_REFRESH_TOKEN = "tm_refresh_token";
@@ -14,6 +14,10 @@ export async function saveTokens(
 ): Promise<void> {
   await SecureStore.setItemAsync(KEY_ACCESS_TOKEN, accessToken);
   await SecureStore.setItemAsync(KEY_REFRESH_TOKEN, refreshToken);
+}
+
+export async function saveAccessToken(accessToken: string): Promise<void> {
+  await SecureStore.setItemAsync(KEY_ACCESS_TOKEN, accessToken);
 }
 
 export async function getAccessToken(): Promise<string | null> {

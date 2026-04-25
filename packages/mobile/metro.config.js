@@ -18,5 +18,6 @@ config.resolver.extraNodeModules = {
   react: path.join(workspaceNodeModules, "react"),
   "react-native": path.join(workspaceNodeModules, "react-native"),
 };
+config.resolver.blockList = /.*\.expo-export-.*/;
 
 module.exports = config;
