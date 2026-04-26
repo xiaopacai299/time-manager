@@ -7,6 +7,7 @@ import FavoritesWindowApp from './FavoritesWindowApp.jsx'
 import WorkListWindowApp from './WorkListWindowApp.jsx'
 import WorklistEstimateConfirmApp from './WorklistEstimateConfirmApp.jsx'
 import SettingsWindowApp from './SettingsWindowApp.jsx'
+import LoginWindowApp from './LoginWindowApp.jsx'
 import ReaderWindowApp from './ReaderWindowApp.jsx'
 import PetAiChatWindowApp from './PetAiChatWindowApp.jsx'
 import DiaryWindowApp from './DiaryWindowApp.jsx'
@@ -21,6 +22,7 @@ const isWorklistExportWindow = typeof window !== 'undefined' && window.location.
 const isEstimateConfirmWindow =
   typeof window !== 'undefined' && window.location.hash === '#worklist-estimate-confirm'
 const isSettingsWindow = typeof window !== 'undefined' && window.location.hash === '#settings'
+const isLoginWindow = typeof window !== 'undefined' && window.location.hash === '#login'
 const isReaderWindow = typeof window !== 'undefined' && window.location.hash === '#reader'
 const petAiHash = typeof window !== 'undefined' ? window.location.hash : ''
 const isPetAiChatWindow =
@@ -40,6 +42,8 @@ if (typeof document !== 'undefined') {
     document.title = '工作确认'
   } else if (isSettingsWindow) {
     document.title = '设置'
+  } else if (isLoginWindow) {
+    document.title = '登录'
   } else if (isReaderWindow) {
     document.title = '摸鱼阅读'
   } else if (isPetAiChatWindow) {
@@ -66,6 +70,8 @@ createRoot(root).render(
         <WorklistEstimateConfirmApp />
       ) : isSettingsWindow ? (
         <SettingsWindowApp />
+      ) : isLoginWindow ? (
+        <LoginWindowApp />
       ) : isReaderWindow ? (
         <ReaderWindowApp />
       ) : isPetAiChatWindow ? (

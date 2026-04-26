@@ -15,6 +15,7 @@ export function createMenuModule({
   onOpenWorklist,
   onOpenReader,
   onOpenSettings,
+  onOpenLogin,
   onOpenStatsWindow,
   onOpenDiary,
   // onEmitPetAction,
@@ -26,6 +27,10 @@ export function createMenuModule({
     const petState = getPetState();
     const loginItemSettings = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
+      {
+        label: '登录',
+        click: () => onOpenLogin?.(),
+      },
       {
         label: '游戏一下',
         submenu: [
@@ -91,6 +96,10 @@ export function createMenuModule({
     const petState = getPetState();
     const loginItemSettings = app.getLoginItemSettings();
     return Menu.buildFromTemplate([
+      {
+        label: '登录',
+        click: () => onOpenLogin?.(),
+      },
       {
         label: '游戏一下',
         submenu: [

@@ -8,10 +8,12 @@ import { createApp } from './createApp.js';
 const prisma = new PrismaClient();
 
 function main() {
+  // 1.创建环境变量以及加载prisma
   const env = loadServerEnv();
   const app = createApp(prisma, env);
   const port = env.PORT;
   app.listen(port, () => {
+    console.log('服务已经启动了');
     console.log(`[server] listening on http://localhost:${port}`);
   });
 }

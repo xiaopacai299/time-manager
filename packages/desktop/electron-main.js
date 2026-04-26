@@ -62,6 +62,7 @@ function getUIOhook() {
 let mainWindow;
 let statsWindow = null;
 let settingsWindow = null;
+let loginWindow = null;
 let readerWindow = null;
 let petAiChatWindow = null;
 let diaryWindow = null;
@@ -1298,6 +1299,7 @@ const menuModule = createMenuModule({
   onOpenWorklistExport: () => worklistModule.openExportWindow(),
   onOpenReader: () => openReaderWindow(),
   onOpenSettings: () => openSettingsWindow(),
+  onOpenLogin: () => openLoginWindow(),
   onOpenStatsWindow: () => openStatsDetailWindow(),
   onOpenDiary: () => openDiaryWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
@@ -1594,6 +1596,37 @@ function openSettingsWindow() {
     settingsWindow = null;
   });
   loadPetRenderer(settingsWindow, 'settings');
+}
+
+function openLoginWindow() {
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.show();
+    loginWindow.focus();
+    return;
+  }
+  loginWindow = new BrowserWindow({
+    width: 520,
+    height: 660,
+    show: false,
+    title: '登录',
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
+    resizable: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      webSecurity: false,
+    },
+  });
+  loginWindow.once('ready-to-show', () => {
+    if (!loginWindow || loginWindow.isDestroyed()) return;
+    loginWindow.setMenuBarVisibility(false);
+    loginWindow.show();
+  });
+  loginWindow.on('closed', () => {
+    loginWindow = null;
+  });
+  loadPetRenderer(loginWindow, 'login');
 }
 
 function openReaderWindow() {
@@ -2321,6 +2354,10 @@ app.on('before-quit', () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.close();
     settingsWindow = null;
+  }
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    loginWindow.close();
+    loginWindow = null;
   }
   if (readerWindow && !readerWindow.isDestroyed()) {
     readerWindow.close();
