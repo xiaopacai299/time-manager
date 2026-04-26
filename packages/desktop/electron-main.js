@@ -69,6 +69,9 @@ let worklistReminderTimer = null;
 /** 展开模式：宠物、气泡与统计区 */
 const PET_WINDOW_WIDTH = 620;
 const PET_WINDOW_HEIGHT = 640;
+/** 展开模式但不含统计面板：只有气泡 + 宠物 */
+const PET_NO_STATS_WIDTH = 200;
+const PET_NO_STATS_HEIGHT = 220;
 const PET_AI_CHAT_MARGIN = 20;
 const PET_AI_CHAT_MIN_WIDTH = 360;
 const PET_AI_CHAT_MIN_HEIGHT = 280;
@@ -334,7 +337,7 @@ const monitor = new TimeMonitorService({ sampleIntervalMs: 1000, breakThresholdS
 /** 主状态对象：持久化与跨模块共享的单一事实来源。 */
 const petState = {
   clickThrough: false,
-  showStatsPanel: true,
+  showStatsPanel: false,
   windowBounds: null,
   tempInteractive: false,
   compactMode: false,
@@ -989,7 +992,7 @@ function loadPetState() {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object') {
       petState.clickThrough = Boolean(parsed.clickThrough);
-      petState.showStatsPanel = parsed.showStatsPanel !== false;
+      petState.showStatsPanel = false;
       petState.windowBounds = parsed.windowBounds || null;
       petState.compactMode = Boolean(parsed.compactMode);
       petState.followMouse = Boolean(parsed.followMouse);
@@ -1454,9 +1457,9 @@ function createMainWindow() {
 }
 
 function getTargetSize() {
-  return petState.compactMode
-    ? [PET_COMPACT_WIDTH, PET_COMPACT_HEIGHT]
-    : [PET_WINDOW_WIDTH, PET_WINDOW_HEIGHT];
+  if (petState.compactMode) return [PET_COMPACT_WIDTH, PET_COMPACT_HEIGHT];
+  if (!petState.showStatsPanel) return [PET_NO_STATS_WIDTH, PET_NO_STATS_HEIGHT];
+  return [PET_WINDOW_WIDTH, PET_WINDOW_HEIGHT];
 }
 
 function applyWindowMode() {
