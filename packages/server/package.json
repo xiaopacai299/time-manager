@@ -4,15 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @time-manger/shared build",
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc -p .",
+    "build": "pnpm dlx prisma@5.22.0 generate --schema prisma/schema.prisma && tsc -p .",
     "start": "node dist/index.js",
+    "prisma:generate": "pnpm dlx prisma@5.22.0 generate --schema prisma/schema.prisma",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "lint": "echo \"(server uses tsc for lint)\"",
     "test": "tsx --test src/index.test.ts tests/integration.test.ts",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:generate": "pnpm dlx prisma@5.22.0 generate --schema prisma/schema.prisma",
+    "db:migrate": "pnpm dlx prisma@5.22.0 migrate dev --schema prisma/schema.prisma",
+    "db:migrate:deploy": "pnpm dlx prisma@5.22.0 migrate deploy --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

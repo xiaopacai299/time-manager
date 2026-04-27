@@ -13,7 +13,7 @@ function main() {
   const app = createApp(prisma, env);
   const port = env.PORT;
   app.listen(port, () => {
-    console.log('服务已经启动了');
+    console.log('服务已经启动了，真费劲啊');
     console.log(`[server] listening on http://localhost:${port}`);
   });
 }
