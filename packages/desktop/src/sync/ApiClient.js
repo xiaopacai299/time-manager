@@ -112,6 +112,7 @@ export class ApiClient {
    * @param {unknown[]} records
    */
   async push(resource, deviceId, records) {
+    console.log('新增了一条信息：', records);
     return this._request(`/api/v1/sync/${resource}`, {
       method: 'POST',
       body: JSON.stringify({ deviceId, records }),

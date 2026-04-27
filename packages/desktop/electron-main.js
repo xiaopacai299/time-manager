@@ -746,7 +746,9 @@ function writeSyncState(state) {
       fs.renameSync(tmp, target);
     } catch (err) {
       console.error('[sync] Failed to write sync state:', err);
-      try { fs.unlinkSync(tmp); } catch {}
+      try { fs.unlinkSync(tmp); } catch (e) {
+        console.error('[sync] Failed to delete tmp file:', e);
+      }
     }
   }, 5000);
 }
@@ -822,6 +824,7 @@ function markDirtyRecord(resource, record) {
   const state = readSyncState();
   state.dirty[resource] = state.dirty[resource] || {};
   state.dirty[resource][record.id] = record;
+  // 将脏队列写入文件
   writeSyncState(state);
 }
 
@@ -873,9 +876,12 @@ function normalizeWorklistItemForSync(raw, now = new Date().toISOString()) {
 
 function markDirtyDiary(raw, deletedAt = null) {
   const now = new Date().toISOString();
+  // 1. 将原始数据转换为同步格式
   const diary = normalizeDiaryForSync({ ...raw, updatedAt: now, deletedAt }, now);
   if (!diary) return null;
+  // 2. 将同步格式数据写入脏队列（一个临时的存储，同步成功后会被清除）
   markDirtyRecord('diaries', diary);
+  // 3. 广播同步请求
   broadcastSyncRequest('diary-changed');
   return diary;
 }
@@ -1147,6 +1153,7 @@ function broadcastSyncRequest(reason = 'data-changed') {
       // 窗口可能正在销毁
     }
   };
+  // 广播同步请求给所有窗口（就是点击右侧菜单打开的每个窗口）
   send(mainWindow);
   send(statsWindow);
   send(settingsWindow);

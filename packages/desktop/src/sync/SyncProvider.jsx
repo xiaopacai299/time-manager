@@ -31,6 +31,7 @@ export function SyncProvider({ children }) {
     setStatus('syncing');
     setError(null);
     try {
+      // 执行真正的同步逻辑，将数据传送到服务端
       await engineRef.current.syncAll(RESOURCES);
       setLastSyncAt(new Date().toLocaleTimeString('zh-CN'));
       setStatus('idle');
@@ -64,6 +65,7 @@ export function SyncProvider({ children }) {
       return;
     }
     const store = new DesktopLocalStore();
+    // 配置的一套会自动处理鉴权和续期的HTTP客户端
     const client = new ApiClient(
       authState.apiBase,
       () => authStateRef.current?.accessToken ?? null,
@@ -85,7 +87,8 @@ export function SyncProvider({ children }) {
     void triggerSync();
   }, [authState, triggerSync]);
 
-  // 事件驱动同步：本地数据变更后主进程会广播 sync:request
+  // 事件驱动同步：本地数据变更后主进程会广播 sync:request ******
+  // 监听主进程sync:request，然后调用triggerSync()
   useEffect(() => {
     if (!authState?.accessToken) return undefined;
     const off = window.timeManagerAPI?.sync?.onRequest?.(() => {
