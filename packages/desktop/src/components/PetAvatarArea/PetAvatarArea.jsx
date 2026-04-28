@@ -12,6 +12,8 @@ export default function PetAvatarArea({ mood, petMotion, selectedPet }) {
     onAvatarPointerDown,
     onAvatarPointerUp,
     onAvatarPointerCancel,
+    onAvatarMouseDown,
+    onAvatarMouseUp,
   } = usePetAvatarInteractions()
 
   function onAvatarDoubleClick(event) {
@@ -28,6 +30,8 @@ export default function PetAvatarArea({ mood, petMotion, selectedPet }) {
         onPointerDown={onAvatarPointerDown}
         onPointerUp={onAvatarPointerUp}
         onPointerCancel={onAvatarPointerCancel}
+        onMouseDown={onAvatarMouseDown}
+        onMouseUp={onAvatarMouseUp}
         onDoubleClick={onAvatarDoubleClick}
       >
         <PetRenderErrorBoundary>

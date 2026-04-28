@@ -1661,6 +1661,9 @@ function toggleFollowMouse() {
     petMotionModule.stopFollowMouse();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
+    // Self-heal for transparent window input glitches:
+    // always re-apply mouse mode after game-mode toggles.
+    applyMouseMode();
     broadcastPetStateChanged();
   }
   persistPetState();
@@ -1679,6 +1682,8 @@ function toggleChaosCat() {
     petMotionModule.startChaosCat();
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
+    // Ensure window input mode is restored immediately after chaos toggle.
+    applyMouseMode();
     broadcastPetStateChanged();
   }
   persistPetState();

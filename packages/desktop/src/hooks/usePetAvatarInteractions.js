@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 /**
  * 宠物头像区：右键菜单、主进程拖拽窗口。
@@ -6,6 +6,7 @@ import { useCallback, useRef } from 'react'
  */
 export function usePetAvatarInteractions() {
   const dragRef = useRef({ dragging: false, pointerId: null })
+  const lastDragSourceRef = useRef(null)
 
   const openPetMenu = useCallback((event) => {
     event.preventDefault()
@@ -14,27 +15,74 @@ export function usePetAvatarInteractions() {
     window.timeManagerAPI?.openContextMenu?.(x, y)
   }, [])
 
-  const onAvatarPointerDown = useCallback((event) => {
+  const beginDrag = useCallback((event, source) => {
     if (event.button !== 0) return
+    if (dragRef.current.dragging) return
     dragRef.current = { dragging: true, pointerId: event.pointerId }
+    lastDragSourceRef.current = source
     try {
-      event.currentTarget.setPointerCapture(event.pointerId)
+      if (source === 'pointer' && Number.isInteger(event.pointerId)) {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }
     } catch {
       // ignore capture failures
     }
     window.timeManagerAPI?.startDrag?.(event.clientX, event.clientY)
   }, [])
 
-  const onAvatarPointerUp = useCallback((event) => {
+  const endDrag = useCallback((event, source) => {
+    if (!dragRef.current.dragging) return
+    // Avoid duplicate mouseup following pointerup on some platforms.
+    if (source === 'mouse' && lastDragSourceRef.current === 'pointer') return
     try {
-      if (dragRef.current.pointerId !== null) {
+      if (source === 'pointer' && dragRef.current.pointerId !== null) {
         event.currentTarget.releasePointerCapture(dragRef.current.pointerId)
       }
     } catch {
       // ignore capture release failures
     }
     dragRef.current = { dragging: false, pointerId: null }
+    lastDragSourceRef.current = null
     window.timeManagerAPI?.endDrag?.()
+  }, [])
+
+  const onAvatarPointerDown = useCallback((event) => {
+    beginDrag(event, 'pointer')
+  }, [beginDrag])
+
+  const onAvatarPointerUp = useCallback((event) => {
+    endDrag(event, 'pointer')
+  }, [endDrag])
+
+  const onAvatarMouseDown = useCallback((event) => {
+    beginDrag(event, 'mouse')
+  }, [beginDrag])
+
+  const onAvatarMouseUp = useCallback((event) => {
+    endDrag(event, 'mouse')
+  }, [endDrag])
+
+  useEffect(() => {
+    const forceEndDrag = () => {
+      if (!dragRef.current.dragging) return
+      dragRef.current = { dragging: false, pointerId: null }
+      lastDragSourceRef.current = null
+      window.timeManagerAPI?.endDrag?.()
+    }
+    const onVisibilityChange = () => {
+      if (document.hidden) forceEndDrag()
+    }
+
+    window.addEventListener('mouseup', forceEndDrag)
+    window.addEventListener('blur', forceEndDrag)
+    window.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      forceEndDrag()
+      window.removeEventListener('mouseup', forceEndDrag)
+      window.removeEventListener('blur', forceEndDrag)
+      window.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
   return {
@@ -42,5 +90,7 @@ export function usePetAvatarInteractions() {
     onAvatarPointerDown,
     onAvatarPointerUp,
     onAvatarPointerCancel: onAvatarPointerUp,
+    onAvatarMouseDown,
+    onAvatarMouseUp,
   }
 }

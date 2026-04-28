@@ -72,6 +72,8 @@ export function createPetMotionModule({
   function startChaosCat() {
     const mainWindow = getMainWindow();
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    // Keep modes mutually exclusive even if state changes out of expected order.
+    if (petState.followMouse) return;
     if (chaosCatTimer) {
       clearInterval(chaosCatTimer);
       chaosCatTimer = null;
@@ -188,6 +190,10 @@ export function createPetMotionModule({
     chaosCatTimer = setInterval(() => {
       const win = getMainWindow();
       if (!win || win.isDestroyed() || !petState.chaosCat) return;
+      if (petState.followMouse) {
+        stopChaosCat();
+        return;
+      }
       if (dragState.active) return;
       
       const [tw, th] = getTargetSize();
@@ -244,9 +250,23 @@ export function createPetMotionModule({
 
   function triggerFollowBurst() {
     if (!petState.followMouse) return false;
+    if (petState.chaosCat) return false;
     if (petContextMenuOpen) return false;
     if (Date.now() < suppressFollowMouseUntil) return false;
     if (followTarget.active) return false;
+    // Clicking directly on the pet should prioritize local interactions
+    // (drag, double-click, context actions) over global follow triggering.
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+      const bounds = win.getBounds();
+      const cursor = screen.getCursorScreenPoint();
+      const insidePetWindow =
+        cursor.x >= bounds.x &&
+        cursor.x <= bounds.x + bounds.width &&
+        cursor.y >= bounds.y &&
+        cursor.y <= bounds.y + bounds.height;
+      if (insidePetWindow) return false;
+    }
     const cursor = screen.getCursorScreenPoint();
     followTarget.x = cursor.x;
     followTarget.y = cursor.y;
