@@ -4,12 +4,16 @@ import prismaPkg from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import {
   PushDiariesBodySchema,
+  PushMemoItemsBodySchema,
   PushTimeRecordsBodySchema,
+  PushWorkYearDigestsBodySchema,
   PushWorklistItemsBodySchema,
   SyncPullQuerySchema,
   lwwServerPush,
   type DiaryPayload,
+  type MemoItemPayload,
   type TimeRecordPayload,
+  type WorkYearDigestPayload,
   type WorklistItemPayload,
 } from '@time-manger/shared';
 import type { ServerEnv } from '../config/env.js';
@@ -21,8 +25,18 @@ import { requireAccessAuth } from '../middleware/requireAccessAuth.js';
 
 const { Prisma } = prismaPkg;
 
-type SyncResource = 'time-records' | 'diaries' | 'worklist-items';
-type SyncPayload = TimeRecordPayload | DiaryPayload | WorklistItemPayload;
+type SyncResource =
+  | 'time-records'
+  | 'diaries'
+  | 'worklist-items'
+  | 'memo-items'
+  | 'work-year-digests';
+type SyncPayload =
+  | TimeRecordPayload
+  | DiaryPayload
+  | WorklistItemPayload
+  | MemoItemPayload
+  | WorkYearDigestPayload;
 type SyncRow = {
   id: string;
   userId: string;
@@ -37,7 +51,12 @@ type SyncDelegate<Row extends SyncRow> = {
 
 type ResourceConfig<Row extends SyncRow, Payload extends SyncPayload> = {
   delegate: SyncDelegate<Row>;
-  schema: typeof PushTimeRecordsBodySchema | typeof PushDiariesBodySchema | typeof PushWorklistItemsBodySchema;
+  schema:
+    | typeof PushTimeRecordsBodySchema
+    | typeof PushDiariesBodySchema
+    | typeof PushWorklistItemsBodySchema
+    | typeof PushMemoItemsBodySchema
+    | typeof PushWorkYearDigestsBodySchema;
   toDto: (row: Row) => Payload;
   toCreate: (record: Payload, userId: string) => Record<string, unknown>;
   toUpdate: (record: Payload, userId: string) => Record<string, unknown>;
@@ -47,7 +66,9 @@ function parseResource(resource: string): SyncResource | null {
   if (
     resource === 'time-records' ||
     resource === 'diaries' ||
-    resource === 'worklist-items'
+    resource === 'worklist-items' ||
+    resource === 'memo-items' ||
+    resource === 'work-year-digests'
   ) {
     return resource;
   }
@@ -72,6 +93,50 @@ function diaryToDto(row: {
     date: row.date,
     content: row.content,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    clientDeviceId: row.clientDeviceId,
+  };
+}
+
+function memoItemToDto(row: {
+  id: string;
+  name: string;
+  icon: string;
+  content: string;
+  reminderAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  reminderNotified: boolean;
+  clientDeviceId: string;
+}): MemoItemPayload {
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon,
+    content: row.content,
+    reminderAt: row.reminderAt ? row.reminderAt.toISOString() : null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    reminderNotified: row.reminderNotified,
+    clientDeviceId: row.clientDeviceId,
+  };
+}
+
+function workYearDigestToDto(row: {
+  id: string;
+  year: number;
+  payloadJson: string;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  clientDeviceId: string;
+}): WorkYearDigestPayload {
+  return {
+    id: row.id,
+    year: row.year,
+    payloadJson: row.payloadJson,
     updatedAt: row.updatedAt.toISOString(),
     deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     clientDeviceId: row.clientDeviceId,
@@ -187,45 +252,116 @@ function getResourceConfig(
     };
   }
 
+  if (resource === 'worklist-items') {
+    return {
+      delegate: prisma.worklistItem as unknown as SyncDelegate<SyncRow>,
+      schema: PushWorklistItemsBodySchema,
+      toDto: (row) =>
+        worklistItemToDto(row as unknown as Parameters<typeof worklistItemToDto>[0]),
+      toCreate: (record, userId) => {
+        const rec = record as WorklistItemPayload;
+        return {
+          id: rec.id,
+          userId,
+          name: rec.name,
+          icon: rec.icon,
+          note: rec.note,
+          reminderAt: nullableDate(rec.reminderAt),
+          estimateDoneAt: nullableDate(rec.estimateDoneAt),
+          createdAt: new Date(rec.createdAt),
+          updatedAt: new Date(rec.updatedAt),
+          deletedAt: nullableDate(rec.deletedAt),
+          reminderNotified: rec.reminderNotified,
+          completionResult: rec.completionResult,
+          confirmSnoozeUntil: nullableDate(rec.confirmSnoozeUntil),
+          clientDeviceId: rec.clientDeviceId,
+        };
+      },
+      toUpdate: (record, userId) => {
+        const rec = record as WorklistItemPayload;
+        return {
+          userId,
+          name: rec.name,
+          icon: rec.icon,
+          note: rec.note,
+          reminderAt: nullableDate(rec.reminderAt),
+          estimateDoneAt: nullableDate(rec.estimateDoneAt),
+          createdAt: new Date(rec.createdAt),
+          updatedAt: new Date(rec.updatedAt),
+          deletedAt: nullableDate(rec.deletedAt),
+          reminderNotified: rec.reminderNotified,
+          completionResult: rec.completionResult,
+          confirmSnoozeUntil: nullableDate(rec.confirmSnoozeUntil),
+          clientDeviceId: rec.clientDeviceId,
+        };
+      },
+    };
+  }
+
+  if (resource === 'memo-items') {
+    return {
+      delegate: prisma.memoItem as unknown as SyncDelegate<SyncRow>,
+      schema: PushMemoItemsBodySchema,
+      toDto: (row) => memoItemToDto(row as unknown as Parameters<typeof memoItemToDto>[0]),
+      toCreate: (record, userId) => {
+        const rec = record as MemoItemPayload;
+        return {
+          id: rec.id,
+          userId,
+          name: rec.name,
+          icon: rec.icon,
+          content: rec.content,
+          reminderAt: nullableDate(rec.reminderAt),
+          createdAt: new Date(rec.createdAt),
+          updatedAt: new Date(rec.updatedAt),
+          deletedAt: nullableDate(rec.deletedAt),
+          reminderNotified: rec.reminderNotified,
+          clientDeviceId: rec.clientDeviceId,
+        };
+      },
+      toUpdate: (record, userId) => {
+        const rec = record as MemoItemPayload;
+        return {
+          userId,
+          name: rec.name,
+          icon: rec.icon,
+          content: rec.content,
+          reminderAt: nullableDate(rec.reminderAt),
+          createdAt: new Date(rec.createdAt),
+          updatedAt: new Date(rec.updatedAt),
+          deletedAt: nullableDate(rec.deletedAt),
+          reminderNotified: rec.reminderNotified,
+          clientDeviceId: rec.clientDeviceId,
+        };
+      },
+    };
+  }
+
   return {
-    delegate: prisma.worklistItem as unknown as SyncDelegate<SyncRow>,
-    schema: PushWorklistItemsBodySchema,
+    delegate: prisma.workYearDigest as unknown as SyncDelegate<SyncRow>,
+    schema: PushWorkYearDigestsBodySchema,
     toDto: (row) =>
-      worklistItemToDto(row as unknown as Parameters<typeof worklistItemToDto>[0]),
+      workYearDigestToDto(row as unknown as Parameters<typeof workYearDigestToDto>[0]),
     toCreate: (record, userId) => {
-      const rec = record as WorklistItemPayload;
+      const rec = record as WorkYearDigestPayload;
       return {
         id: rec.id,
         userId,
-        name: rec.name,
-        icon: rec.icon,
-        note: rec.note,
-        reminderAt: nullableDate(rec.reminderAt),
-        estimateDoneAt: nullableDate(rec.estimateDoneAt),
-        createdAt: new Date(rec.createdAt),
+        year: rec.year,
+        payloadJson: rec.payloadJson,
         updatedAt: new Date(rec.updatedAt),
         deletedAt: nullableDate(rec.deletedAt),
-        reminderNotified: rec.reminderNotified,
-        completionResult: rec.completionResult,
-        confirmSnoozeUntil: nullableDate(rec.confirmSnoozeUntil),
         clientDeviceId: rec.clientDeviceId,
       };
     },
     toUpdate: (record, userId) => {
-      const rec = record as WorklistItemPayload;
+      const rec = record as WorkYearDigestPayload;
       return {
         userId,
-        name: rec.name,
-        icon: rec.icon,
-        note: rec.note,
-        reminderAt: nullableDate(rec.reminderAt),
-        estimateDoneAt: nullableDate(rec.estimateDoneAt),
-        createdAt: new Date(rec.createdAt),
+        year: rec.year,
+        payloadJson: rec.payloadJson,
         updatedAt: new Date(rec.updatedAt),
         deletedAt: nullableDate(rec.deletedAt),
-        reminderNotified: rec.reminderNotified,
-        completionResult: rec.completionResult,
-        confirmSnoozeUntil: nullableDate(rec.confirmSnoozeUntil),
         clientDeviceId: rec.clientDeviceId,
       };
     },
@@ -343,6 +479,88 @@ export function mountSyncRoutes(
       });
       return;
     }
+
+    const deviceHeader = req.deviceId!;
+
+    if (resource === 'work-year-digests') {
+      const parsed = PushWorkYearDigestsBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        sendApiError(res, 400, 'VALIDATION_FAILED', 'Invalid request body', {
+          issues: parsed.error.flatten(),
+        });
+        return;
+      }
+      if (parsed.data.deviceId !== deviceHeader) {
+        sendApiError(res, 400, 'VALIDATION_FAILED', 'deviceId must match X-Device-Id', {});
+        return;
+      }
+      for (const rec of parsed.data.records) {
+        if (rec.clientDeviceId !== deviceHeader) {
+          sendApiError(
+            res,
+            400,
+            'VALIDATION_FAILED',
+            'record.clientDeviceId must match X-Device-Id',
+            { id: rec.id },
+          );
+          return;
+        }
+      }
+
+      const userId = req.userId!;
+      const accepted: { id: string; updatedAt: string }[] = [];
+      const rejected: { id: string; reason: 'stale' }[] = [];
+
+      for (const rec of parsed.data.records) {
+        const existing = await prisma.workYearDigest.findUnique({
+          where: { userId_year: { userId, year: rec.year } },
+        });
+        if (existing && existing.userId !== userId) {
+          sendApiError(res, 403, 'FORBIDDEN', 'Cannot modify another user record', {
+            id: rec.id,
+          });
+          return;
+        }
+        const existingDto = existing ? workYearDigestToDto(existing) : null;
+        if (lwwServerPush(rec, existingDto) === 'stale') {
+          rejected.push({ id: rec.id, reason: 'stale' });
+          continue;
+        }
+        if (existing) {
+          await prisma.workYearDigest.update({
+            where: { id: existing.id },
+            data: {
+              payloadJson: rec.payloadJson,
+              updatedAt: new Date(rec.updatedAt),
+              deletedAt: nullableDate(rec.deletedAt),
+              clientDeviceId: rec.clientDeviceId,
+            },
+          });
+        } else {
+          await prisma.workYearDigest.create({
+            data: {
+              id: rec.id,
+              userId,
+              year: rec.year,
+              payloadJson: rec.payloadJson,
+              updatedAt: new Date(rec.updatedAt),
+              deletedAt: nullableDate(rec.deletedAt),
+              clientDeviceId: rec.clientDeviceId,
+            },
+          });
+        }
+        accepted.push({ id: rec.id, updatedAt: rec.updatedAt });
+      }
+
+      res.json({
+        resource,
+        serverTime: new Date().toISOString(),
+        accepted,
+        rejected,
+      });
+      return;
+    }
+
     const config = getResourceConfig(prisma, resource);
     const parsed = config.schema.safeParse(req.body);
     if (!parsed.success) {
@@ -351,7 +569,6 @@ export function mountSyncRoutes(
       });
       return;
     }
-    const deviceHeader = req.deviceId!;
     if (parsed.data.deviceId !== deviceHeader) {
       sendApiError(res, 400, 'VALIDATION_FAILED', 'deviceId must match X-Device-Id', {});
       return;

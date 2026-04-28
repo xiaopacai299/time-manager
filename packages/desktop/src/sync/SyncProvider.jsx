@@ -6,7 +6,7 @@ import { DesktopLocalStore } from './LocalStore.desktop.js';
 import { getAuthState, initDeviceId, saveAuthState } from './authStore.js';
 
 const SYNC_REQUEST_DEBOUNCE_MS = 400;
-const RESOURCES = ['time-records', 'diaries', 'worklist-items'];
+const RESOURCES = ['time-records', 'diaries', 'worklist-items', 'memo-items', 'work-year-digests'];
 
 const SyncContext = createContext(null);
 

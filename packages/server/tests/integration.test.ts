@@ -246,3 +246,110 @@ test(
     await prisma.user.deleteMany({ where: { email: email.toLowerCase() } });
   },
 );
+
+test(
+  'auth + memo-items and work-year-digests pull/push',
+  { skip: !hasDb },
+  async () => {
+    const app = createApp(prisma, env());
+    const deviceId = '10000000-0000-4000-8000-000000000021';
+    const email = `it-sync-memo-${Date.now()}@example.com`;
+
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .set('X-Device-Id', deviceId)
+      .send({ email, password: 'password-ok-1' });
+    assert.equal(reg.status, 201, JSON.stringify(reg.body));
+    const { accessToken } = reg.body as { accessToken: string };
+
+    const memoId = '20000000-0000-4000-8000-000000000022';
+    const memoPush = await request(app)
+      .post('/api/v1/sync/memo-items')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .send({
+        deviceId,
+        records: [
+          {
+            id: memoId,
+            name: '会议备忘',
+            icon: '📝',
+            content: '周五前提交评审。',
+            reminderAt: '2026-04-26T09:00:00.000Z',
+            createdAt: '2026-04-25T08:00:00.000Z',
+            updatedAt: '2026-04-25T08:30:00.000Z',
+            deletedAt: null,
+            reminderNotified: false,
+            clientDeviceId: deviceId,
+          },
+        ],
+      });
+    assert.equal(memoPush.status, 200, JSON.stringify(memoPush.body));
+    assert.equal(memoPush.body.accepted.length, 1);
+
+    const digestIdA = '20000000-0000-4000-8000-000000000023';
+    const digestPushA = await request(app)
+      .post('/api/v1/sync/work-year-digests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .send({
+        deviceId,
+        records: [
+          {
+            id: digestIdA,
+            year: 2026,
+            payloadJson: JSON.stringify({ year: 2026, totalPlans: 1, activeDays: 1 }),
+            updatedAt: '2026-04-25T09:00:00.000Z',
+            deletedAt: null,
+            clientDeviceId: deviceId,
+          },
+        ],
+      });
+    assert.equal(digestPushA.status, 200, JSON.stringify(digestPushA.body));
+    assert.equal(digestPushA.body.accepted.length, 1);
+
+    const digestIdB = '20000000-0000-4000-8000-000000000024';
+    const digestPushB = await request(app)
+      .post('/api/v1/sync/work-year-digests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .send({
+        deviceId,
+        records: [
+          {
+            id: digestIdB,
+            year: 2026,
+            payloadJson: JSON.stringify({ year: 2026, totalPlans: 2, activeDays: 2 }),
+            updatedAt: '2026-04-25T10:00:00.000Z',
+            deletedAt: null,
+            clientDeviceId: deviceId,
+          },
+        ],
+      });
+    assert.equal(digestPushB.status, 200, JSON.stringify(digestPushB.body));
+    assert.equal(digestPushB.body.accepted.length, 1);
+
+    const userRow = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const rows = await prisma.workYearDigest.findMany({
+      where: { userId: userRow!.id, year: 2026 },
+    });
+    assert.equal(rows.length, 1, '同一用户同年应合并为一条');
+    assert.ok(
+      String(rows[0].payloadJson).includes('totalPlans'),
+      'payload 应已更新',
+    );
+
+    const memoPull = await request(app)
+      .get('/api/v1/sync/memo-items')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .query({ since: '2026-04-25T07:59:59.999Z' });
+    assert.equal(memoPull.status, 200, JSON.stringify(memoPull.body));
+    assert.ok(
+      memoPull.body.records.some((r: { id: string }) => r.id === memoId),
+      'pulled memo',
+    );
+
+    await prisma.user.deleteMany({ where: { email: email.toLowerCase() } });
+  },
+);

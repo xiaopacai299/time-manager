@@ -34,7 +34,11 @@ export class DesktopLocalStore {
    * 仅做日志记录，不写入 petState。
    */
   async upsertRemote(resource, records) {
-    if (resource === 'diaries' || resource === 'worklist-items') {
+    if (
+      resource === 'diaries' ||
+      resource === 'worklist-items' ||
+      resource === 'memo-items'
+    ) {
       await ipc()?.applyRemoteRecords(resource, records);
       return;
     }

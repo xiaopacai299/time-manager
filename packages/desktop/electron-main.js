@@ -24,6 +24,7 @@ import { createFavoritesModule } from './main/electron/favorites-module.js';
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
 import { debugLog } from './main/debug-log.js';
+import { computeYearWorkHeatmap } from '@time-manger/shared';
 
 // 主进程默认阈值（毫秒）。不要依赖 src 目录，避免打包后模块缺失。
 const REMIND_CONTINUOUS_MS = 25 * 60 * 1000;
@@ -205,15 +206,15 @@ function loadPetRenderer(win, hash) {
   const useLocalFile = fs.existsSync(htmlPath);
   
   // 调试日志
-  console.log('[DEBUG] loadPetRenderer:', {
-    isPackaged: app.isPackaged,
-    useLocalFile,
-    htmlPath,
-    __dirname,
-    cwd: process.cwd(),
-    resourcesPath: process.resourcesPath,
-    execPath: process.execPath,
-  });
+  // console.log('[DEBUG] loadPetRenderer:', {
+  //   isPackaged: app.isPackaged,
+  //   useLocalFile,
+  //   htmlPath,
+  //   __dirname,
+  //   cwd: process.cwd(),
+  //   resourcesPath: process.resourcesPath,
+  //   execPath: process.execPath,
+  // });
   appendLaunchLog(`loadPetRenderer: isPackaged=${app.isPackaged}, useLocalFile=${useLocalFile}, path=${htmlPath}`);
 
   if (app.isPackaged) {
@@ -712,7 +713,13 @@ function defaultSyncState() {
   return {
     deviceId: null,
     lastSyncAt: {},
-    dirty: { 'time-records': {}, diaries: {}, 'worklist-items': {} },
+    dirty: {
+      'time-records': {},
+      diaries: {},
+      'worklist-items': {},
+      'memo-items': {},
+      'work-year-digests': {},
+    },
     stableIds: {},
   };
 }
@@ -724,6 +731,8 @@ function normalizeSyncState(raw) {
     'time-records': {},
     diaries: {},
     'worklist-items': {},
+    'memo-items': {},
+    'work-year-digests': {},
     ...(state.dirty || {}),
   };
   state.stableIds = { ...(state.stableIds || {}) };
@@ -892,7 +901,121 @@ function markDirtyWorklistItem(raw, deletedAt = null) {
   if (!item) return null;
   markDirtyRecord('worklist-items', item);
   broadcastSyncRequest('worklist-changed');
+  try {
+    queueYearWorkDigestsDirty();
+  } catch (err) {
+    console.error('[sync] queueYearWorkDigestsDirty error:', err);
+  }
   return item;
+}
+
+function normalizeMemoForSync(raw, now = new Date().toISOString()) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
+  const deletedAt =
+    raw.deletedAt && !Number.isNaN(Date.parse(raw.deletedAt))
+      ? new Date(raw.deletedAt).toISOString()
+      : null;
+  const content = String(raw.content ?? '').trim().slice(0, 50000);
+  if (!content && !deletedAt) return null;
+  const name = String(raw.name || '').trim().slice(0, 200) || '备忘录';
+  const icon = String(raw.icon || '📝').trim().slice(0, 2000) || '📝';
+  const normalizeDate = (value) => {
+    const s = String(value || '').trim();
+    if (!s) return null;
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? null : new Date(t).toISOString();
+  };
+  const reminderAt = normalizeDate(raw.reminderAt);
+  const createdAt = normalizeDate(raw.createdAt) || now;
+  const updatedAt = normalizeDate(raw.updatedAt) || now;
+  return {
+    id,
+    name,
+    icon,
+    content,
+    reminderAt,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    reminderNotified: Boolean(raw.reminderNotified),
+    clientDeviceId: getSyncDeviceId(),
+  };
+}
+
+function markDirtyMemoItem(raw, deletedAt = null) {
+  const now = new Date().toISOString();
+  const deletedIso =
+    deletedAt && !Number.isNaN(Date.parse(deletedAt)) ? new Date(deletedAt).toISOString() : null;
+  const memo = normalizeMemoForSync({ ...raw, updatedAt: now, deletedAt: deletedIso }, now);
+  if (!memo) return null;
+  markDirtyRecord('memo-items', memo);
+  broadcastSyncRequest('memo-changed');
+  return memo;
+}
+
+function queueYearWorkDigestsDirty() {
+  const state = readSyncState();
+  const deviceId = getSyncDeviceId();
+  const items = (petState.worklist || []).map((w) => ({
+    reminderAt: w.reminderAt,
+    estimateDoneAt: w.estimateDoneAt,
+  }));
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= currentYear - 4; y -= 1) {
+    const stableKey = `year-digest|${y}`;
+    if (!state.stableIds[stableKey]) {
+      state.stableIds[stableKey] = generateSyncUUID();
+    }
+    const id = state.stableIds[stableKey];
+    const heatmap = computeYearWorkHeatmap(items, y);
+    const payloadJson = JSON.stringify(heatmap);
+    const nowIso = new Date().toISOString();
+    markDirtyRecord('work-year-digests', {
+      id,
+      year: y,
+      payloadJson,
+      updatedAt: nowIso,
+      deletedAt: null,
+      clientDeviceId: deviceId,
+    });
+  }
+}
+
+function mergeRemoteMemoItems(records) {
+  let changed = false;
+  const byId = new Map((petState.memoList || []).map((m) => [String(m.id), m]));
+  for (const record of records || []) {
+    const remote = normalizeMemoForSync(record, record.updatedAt);
+    if (!remote) continue;
+    const existing = byId.get(remote.id);
+    const existingTs = Date.parse(existing?.updatedAt || existing?.createdAt || 0);
+    const remoteTs = Date.parse(remote.updatedAt);
+    if (existing && existingTs >= remoteTs) continue;
+    if (remote.deletedAt) {
+      byId.delete(remote.id);
+    } else {
+      byId.set(remote.id, {
+        id: remote.id,
+        name: remote.name,
+        icon: remote.icon,
+        content: remote.content,
+        reminderAt: remote.reminderAt || '',
+        createdAt: remote.createdAt,
+        updatedAt: remote.updatedAt,
+        reminderNotified: remote.reminderNotified,
+      });
+    }
+    changed = true;
+  }
+  if (changed) {
+    petState.memoList = [...byId.values()].sort((a, b) =>
+      String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
+    );
+    persistPetState();
+    worklistModule?.broadcastMemoUpdate?.();
+  }
+  return changed;
 }
 
 function queueLegacyDesktopContentForSync() {
@@ -923,10 +1046,29 @@ function queueLegacyDesktopContentForSync() {
     return synced;
   });
 
+  petState.memoList = (petState.memoList || []).map((memo) => {
+    if (isSyncUUID(memo?.id) && memo?.updatedAt) return memo;
+    const synced = markDirtyMemoItem(memo);
+    if (!synced) return memo;
+    changed = true;
+    queued = true;
+    return {
+      id: synced.id,
+      name: synced.name,
+      icon: synced.icon,
+      content: synced.content,
+      reminderAt: synced.reminderAt || '',
+      createdAt: synced.createdAt,
+      updatedAt: synced.updatedAt,
+      reminderNotified: synced.reminderNotified,
+    };
+  });
+
   if (changed) {
     persistPetState();
     broadcastDiariesUpdate();
     worklistModule?.broadcastWorklistUpdate?.();
+    worklistModule?.broadcastMemoUpdate?.();
   }
   return queued;
 }
@@ -1009,8 +1151,16 @@ function loadPetState() {
       petState.diaryPasswordHash = parsed.diaryPasswordHash || null;
       petState.diaryPasswordSetAt = parsed.diaryPasswordSetAt || null;
       if (Array.isArray(parsed.memoList)) {
-        petState.memoList = parsed.memoList;
+        petState.memoList = parsed.memoList.map((m) => {
+          const createdAt = m?.createdAt || new Date().toISOString();
+          return {
+            ...m,
+            createdAt,
+            updatedAt: m?.updatedAt || createdAt,
+          };
+        });
       } else if (typeof parsed.worklistMemo === 'string' && parsed.worklistMemo.trim()) {
+        const createdAt = new Date().toISOString();
         petState.memoList = [
           {
             id: `memo-migrated-${Date.now()}`,
@@ -1019,7 +1169,8 @@ function loadPetState() {
             content: parsed.worklistMemo.slice(0, 50000),
             reminderAt: '',
             reminderNotified: true,
-            createdAt: new Date().toISOString(),
+            createdAt,
+            updatedAt: createdAt,
           },
         ];
       } else {
@@ -1262,6 +1413,7 @@ const worklistModule = createWorklistModule({
   petState,
   persistPetState,
   markDirtyWorklistItem,
+  markDirtyMemoItem,
   createSyncId: generateSyncUUID,
   BrowserWindow,
   Notification,
@@ -2257,6 +2409,9 @@ function setupIpc() {
     if (resource === 'worklist-items') {
       const changed = mergeRemoteWorklistItems(records);
       return { ok: true, changed };
+    }
+    if (resource === 'memo-items') {
+      return { ok: true, changed: mergeRemoteMemoItems(records) };
     }
     return { ok: true, changed: false };
   });

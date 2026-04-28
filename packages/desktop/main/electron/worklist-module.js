@@ -2,6 +2,7 @@ export function createWorklistModule({
   petState,
   persistPetState,
   markDirtyWorklistItem,
+  markDirtyMemoItem,
   createSyncId,
   BrowserWindow,
   Notification,
@@ -123,7 +124,11 @@ export function createWorklistModule({
     const reminderAt = normalizeWorklistDatetime(raw.reminderAt);
     const createdAt = normalizeWorklistDatetime(raw.createdAt) || new Date().toISOString();
     const reminderNotified = Boolean(raw.reminderNotified);
-    return { id, name, icon, content, reminderAt, createdAt, reminderNotified };
+    const updatedAt =
+      normalizeWorklistDatetime(raw.updatedAt) ||
+      normalizeWorklistDatetime(raw.createdAt) ||
+      createdAt;
+    return { id, name, icon, content, reminderAt, createdAt, updatedAt, reminderNotified };
   }
 
   function getMemoList() {
@@ -136,20 +141,26 @@ export function createWorklistModule({
     if (!String(payload?.name || '').trim()) {
       return { ok: false, error: '请填写备忘录名称', list: getMemoList() };
     }
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const nowIso = new Date().toISOString();
+    const id =
+      typeof createSyncId === 'function'
+        ? createSyncId()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const entry = sanitizeMemoEntry({
       id,
       name: payload?.name,
       icon: payload?.icon,
       content: payload?.content,
       reminderAt: payload?.reminderAt,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       reminderNotified: false,
     });
     if (!entry) {
       return { ok: false, error: '请填写备忘录内容', list: getMemoList() };
     }
     petState.memoList = [...getMemoList(), entry];
+    markDirtyMemoItem?.(entry);
     persistPetState();
     broadcastMemoUpdate();
     return { ok: true, list: getMemoList() };
@@ -176,12 +187,14 @@ export function createWorklistModule({
       content: payload?.content,
       reminderAt: nextReminder,
       createdAt: existing.createdAt,
+      updatedAt: new Date().toISOString(),
       reminderNotified: reminderChanged ? false : existing.reminderNotified,
     });
     if (!entry) {
       return { ok: false, error: '请填写备忘录内容', list: getMemoList() };
     }
     petState.memoList = getMemoList().map((item) => (item.id === id ? entry : item));
+    markDirtyMemoItem?.(entry);
     persistPetState();
     broadcastMemoUpdate();
     return { ok: true, list: getMemoList() };
@@ -193,9 +206,13 @@ export function createWorklistModule({
       return { ok: false, error: '缺少备忘录 ID', list: getMemoList() };
     }
     const before = getMemoList();
+    const existing = before.find((item) => item.id === id);
     const next = before.filter((item) => item.id !== id);
     if (next.length === before.length) {
       return { ok: false, error: '未找到要删除的备忘录', list: before };
+    }
+    if (existing) {
+      markDirtyMemoItem?.({ ...existing, updatedAt: new Date().toISOString() }, new Date().toISOString());
     }
     petState.memoList = next;
     persistPetState();
@@ -352,6 +369,11 @@ export function createWorklistModule({
     });
     if (memoChanged) {
       petState.memoList = nextMemos;
+      for (let i = 0; i < rawMemos.length; i += 1) {
+        if (rawMemos[i] !== nextMemos[i]) {
+          markDirtyMemoItem?.(nextMemos[i]);
+        }
+      }
       persistPetState();
       broadcastMemoUpdate();
     }
@@ -580,6 +602,7 @@ export function createWorklistModule({
     openWindow,
     openExportWindow,
     broadcastWorklistUpdate,
+    broadcastMemoUpdate,
     tick: checkReminders,
     checkReminders,
     registerIpc,

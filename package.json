@@ -15,7 +15,8 @@
     "mobile:start": "pnpm --filter @time-manger/mobile start",
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
-    "test": "pnpm -r --if-present run test"
+    "test": "pnpm -r --if-present run test",
+    "prisma:studio": "pnpm dlx prisma@5.22.0 studio --schema packages/server/prisma/schema.prisma"
   },
   "devDependencies": {
     "typescript": "5.7.3"

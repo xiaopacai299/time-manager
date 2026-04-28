@@ -30,3 +30,17 @@ export type WorklistItemRecord = SyncableRecord & {
   completionResult: '' | 'completed' | 'incomplete';
   confirmSnoozeUntil: string | null;
 };
+
+export type MemoItemRecord = SyncableRecord & {
+  name: string;
+  icon: string;
+  content: string;
+  reminderAt: string | null;
+  createdAt: string;
+  reminderNotified: boolean;
+};
+
+export type WorkYearDigestRecord = SyncableRecord & {
+  year: number;
+  payloadJson: string;
+};

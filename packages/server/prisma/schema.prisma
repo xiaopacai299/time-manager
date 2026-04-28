@@ -20,6 +20,8 @@ model User {
   timeRecords     TimeRecord[]
   diaries         DiaryEntry[]
   worklistItems   WorklistItem[]
+  memoItems       MemoItem[]
+  workYearDigests WorkYearDigest[]
   aiConversations AiConversation[]
   aiSkills        AiSkill[]
   refreshTokens   RefreshToken[]
@@ -95,6 +97,37 @@ model WorklistItem {
   clientDeviceId      String
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, updatedAt])
+}
+
+model MemoItem {
+  id               String    @id
+  userId           String
+  name             String
+  icon             String
+  content          String    @db.Text
+  reminderAt       DateTime?
+  createdAt        DateTime
+  updatedAt        DateTime
+  deletedAt        DateTime?
+  reminderNotified Boolean   @default(false)
+  clientDeviceId   String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+model WorkYearDigest {
+  id             String    @id
+  userId         String
+  year           Int
+  payloadJson    String    @db.Text
+  updatedAt      DateTime
+  deletedAt      DateTime?
+  clientDeviceId String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
   @@index([userId, updatedAt])
 }
 
