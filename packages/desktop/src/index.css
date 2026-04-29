@@ -7,6 +7,12 @@
   --tm-text-muted: rgba(58, 72, 98, 0.72);
   --tm-accent: #5f87ff;
   --tm-accent-deep: #4062d6;
+  --tm-scroll-track: rgba(196, 214, 248, 0.26);
+  --tm-scroll-thumb: linear-gradient(180deg, rgba(140, 170, 255, 0.72), rgba(106, 142, 238, 0.86));
+  --tm-scroll-thumb-hover: linear-gradient(180deg, rgba(156, 184, 255, 0.84), rgba(116, 152, 246, 0.94));
+  --tm-scroll-thumb-active: linear-gradient(180deg, rgba(122, 160, 244, 0.92), rgba(95, 131, 225, 0.96));
+  --tm-scroll-ring: rgba(255, 255, 255, 0.58);
+  --tm-scroll-glow: 0 0 0 1px rgba(120, 154, 236, 0.16), 0 2px 9px rgba(90, 130, 220, 0.18);
   --tm-page-bg-base: #edf2ff;
   --tm-window-bg-image: url('/window-bg.png');
   --tm-window-bg-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(240, 246, 255, 0.24));
@@ -176,6 +182,44 @@ body {
   min-width: 0;
   min-height: 0;
   align-items: stretch;
+}
+
+/* ---- 全局滚动条（宠物主题） ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(118, 150, 236, 0.9) rgba(196, 214, 248, 0.22);
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--tm-scroll-track);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--tm-scroll-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--tm-scroll-ring);
+  box-shadow: var(--tm-scroll-glow);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--tm-scroll-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--tm-scroll-thumb-active);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 

@@ -441,8 +441,8 @@ export function createWorklistModule({
     }
 
     estimateConfirmWindow = new BrowserWindow({
-      width: 460,
-      height: 360,
+      width: 1100,
+      height: 750,
       show: false,
       resizable: false,
       minimizable: false,
@@ -502,8 +502,8 @@ export function createWorklistModule({
     }
 
     worklistWindow = new BrowserWindow({
-      width: 1180,
-      height: 700,
+      width: 1100,
+      height: 750,
       show: false,
       title: '工作清单',
       icon: iconPath,
@@ -539,8 +539,8 @@ export function createWorklistModule({
     }
 
     exportWindow = new BrowserWindow({
-      width: 600,
-      height: 500,
+      width: 1100,
+      height: 750,
       show: false,
       title: '导出日志',
       icon: iconPath,

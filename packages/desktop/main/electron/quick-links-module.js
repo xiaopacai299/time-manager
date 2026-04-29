@@ -243,8 +243,8 @@ export function createQuickLinksModule({
     }
 
     stickyWindow = new BrowserWindow({
-      width: 640,
-      height: 640,
+      width: 1100,
+      height: 750,
       minWidth: 480,
       minHeight: 480,
       show: false,

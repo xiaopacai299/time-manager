@@ -80,34 +80,32 @@ const PET_WINDOW_HEIGHT = 640;
 /** 展开模式但不含统计面板：只有气泡 + 宠物 */
 const PET_NO_STATS_WIDTH = 200;
 const PET_NO_STATS_HEIGHT = 220;
+const DEFAULT_WINDOW_WIDTH = 1100;
+const DEFAULT_WINDOW_HEIGHT = 750;
 const PET_AI_CHAT_MARGIN = 20;
 const PET_AI_CHAT_MIN_WIDTH = 360;
 const PET_AI_CHAT_MIN_HEIGHT = 280;
-/** 打开时的默认宽度上限（宽屏不再拉满整行）；小屏仍保证左右至少各留 `PET_AI_CHAT_MARGIN`。 */
-const PET_AI_CHAT_MAX_WIDTH = 800;
 
 /**
- * AI 对话子窗口：宽度不超过 `PET_AI_CHAT_MAX_WIDTH`，在工作区内水平居中；高度随工作区比例变化并垂直居中。
+ * AI 对话子窗口：默认 1100x750；若屏幕空间不足则自动收缩到可视区域。
  */
 function getPetAiChatWindowBounds() {
   const primary = screen.getPrimaryDisplay();
   const wa = primary.workArea;
   const m = PET_AI_CHAT_MARGIN;
-  const maxUsable = Math.max(PET_AI_CHAT_MIN_WIDTH, Math.round(wa.width - 2 * m));
-  const width = Math.min(PET_AI_CHAT_MAX_WIDTH, maxUsable);
+  const maxUsableW = Math.max(PET_AI_CHAT_MIN_WIDTH, Math.round(wa.width - 2 * m));
+  const maxUsableH = Math.max(PET_AI_CHAT_MIN_HEIGHT, Math.round(wa.height - 2 * m));
+  const width = Math.min(DEFAULT_WINDOW_WIDTH, maxUsableW);
   const x = Math.round(wa.x + wa.width - width - m); // 右侧对齐
-  const height = Math.min(
-    720,
-    Math.max(PET_AI_CHAT_MIN_HEIGHT, Math.round(wa.height * 0.8)),
-  );
+  const height = Math.min(DEFAULT_WINDOW_HEIGHT, maxUsableH);
   const y = Math.round(wa.y + (wa.height - height) / 2);
   return { x, y, width, height };
 }
 const PET_COMPACT_WIDTH = 190;
 const PET_COMPACT_HEIGHT = 210;
 const PET_RENDERER_ORIGIN = 'http://localhost:4567';
-const STATS_DETAIL_WINDOW_WIDTH = 650;
-const STATS_DETAIL_WINDOW_HEIGHT = 800;
+const STATS_DETAIL_WINDOW_WIDTH = DEFAULT_WINDOW_WIDTH;
+const STATS_DETAIL_WINDOW_HEIGHT = DEFAULT_WINDOW_HEIGHT;
 const APP_ICON_CANDIDATES = [
   path.join(__dirname, 'build', 'icon.ico'),
   path.join(__dirname, 'build', 'icon.png'),
@@ -306,8 +304,8 @@ function openDiaryWindow() {
 
   petMotionModule.resetDragState();
   diaryWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: DEFAULT_WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
     show: false,
     title: '写日记',
     icon: APP_ICON_PATH,
@@ -1762,8 +1760,8 @@ function openSettingsWindow() {
     return;
   }
   settingsWindow = new BrowserWindow({
-    width: 760,
-    height: 800,
+    width: DEFAULT_WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
     show: false,
     title: '设置',
     icon: APP_ICON_PATH,
@@ -1793,8 +1791,8 @@ function openLoginWindow() {
     return;
   }
   loginWindow = new BrowserWindow({
-    width: 520,
-    height: 660,
+    width: DEFAULT_WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
     show: false,
     title: '登录',
     icon: APP_ICON_PATH,
@@ -1824,8 +1822,8 @@ function openReaderWindow() {
     return;
   }
   readerWindow = new BrowserWindow({
-    width: 980,
-    height: 780,
+    width: DEFAULT_WINDOW_WIDTH,
+    height: DEFAULT_WINDOW_HEIGHT,
     minWidth: 560,
     minHeight: 420,
     show: false,

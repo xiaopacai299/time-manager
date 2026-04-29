@@ -343,8 +343,8 @@ export function createFavoritesModule({
     }
 
     favoritesWindow = new BrowserWindow({
-      width: 380,
-      height: 520,
+      width: 1100,
+      height: 750,
       show: false,
       title: '收藏夹',
       icon: iconPath,
