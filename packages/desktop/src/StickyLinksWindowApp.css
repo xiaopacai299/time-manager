@@ -1,4 +1,4 @@
-/* 子窗口内 #root 为 height:100% + overflow:hidden；勿用 100vh，否则 vh 按屏高算、内容被裁在视窗外，列表像「添加无效」 */
+﻿/* 子窗口内 #root 为 height:100% + overflow:hidden；勿用 100vh，否则 vh 按屏高算、内容被裁在视窗外，列表像「添加无效」 */
 .sticky-page {
   margin: 0;
   height: 100%;
@@ -6,8 +6,11 @@
   overflow: hidden;
   font-family: var(--tm-font);
   color: var(--tm-text);
-  background-color: #c8d4e6;
-  background-image: var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
+  background-color: var(--tm-page-bg-base);
+  background-image: var(--tm-window-bg-overlay), var(--tm-window-bg-image), var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
+  background-size: cover, cover, auto, auto, auto, auto;
+  background-position: center, center, center, center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -363,3 +366,5 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+

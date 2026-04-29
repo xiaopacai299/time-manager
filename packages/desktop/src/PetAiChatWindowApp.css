@@ -1,4 +1,4 @@
-.pet-ai-chat-window-root {
+﻿.pet-ai-chat-window-root {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -10,8 +10,11 @@
 }
 
 .pet-ai-chat-window-root--bg-default {
-  background-color: #c8d4e6;
-  background-image: var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
+  background-color: var(--tm-page-bg-base);
+  background-image: var(--tm-window-bg-overlay), var(--tm-window-bg-image);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
 }
 
 .pet-ai-chat-window-root--bg-preset-mist_blue {
@@ -71,9 +74,9 @@
 
 /* 技能页：轻遮罩，尽量透出窗口级背景 */
 .pet-ai-chat-window-skills .pet-ai-skills-page {
-  background: rgba(255, 255, 255, 0.32);
-  -webkit-backdrop-filter: var(--tm-blur-sm);
-  backdrop-filter: var(--tm-blur-sm);
+  background: rgba(255, 255, 255, 0.24);
+  -webkit-backdrop-filter: var(--tm-blur-md);
+  backdrop-filter: var(--tm-blur-md);
 }
 
 .pet-ai-chat-window-fallback {
@@ -85,3 +88,6 @@
   border: 1px solid rgba(255, 187, 46, 0.45);
   border-radius: 8px;
 }
+
+
+

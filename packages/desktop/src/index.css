@@ -7,39 +7,42 @@
   --tm-text-muted: rgba(58, 72, 98, 0.72);
   --tm-accent: #5f87ff;
   --tm-accent-deep: #4062d6;
+  --tm-page-bg-base: #edf2ff;
+  --tm-window-bg-image: url('/window-bg.png');
+  --tm-window-bg-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(240, 246, 255, 0.24));
 
   /*
    * 毛玻璃要「看得见」，必须同时满足：
    * 1) backdrop-filter blur 足够大；2) 前面 rgba 白不要涂死（否则像白板）；
    * 3) 背后要有对比（mesh 光斑加深）。
    */
-  --tm-blur-xl: blur(52px) saturate(1.75);
-  --tm-blur-lg: blur(36px) saturate(1.62);
-  --tm-blur-md: blur(26px) saturate(1.48);
-  --tm-blur-sm: blur(16px) saturate(1.32);
+  --tm-blur-xl: blur(56px) saturate(1.9);
+  --tm-blur-lg: blur(40px) saturate(1.75);
+  --tm-blur-md: blur(28px) saturate(1.58);
+  --tm-blur-sm: blur(18px) saturate(1.4);
 
   /* 填充越低，越能透出背后模糊（质感越明显） */
-  --tm-glass-bg: rgba(255, 255, 255, 0.34);
-  --tm-glass-bg-strong: rgba(255, 255, 255, 0.48);
-  --tm-glass-border-light: rgba(255, 255, 255, 0.72);
-  --tm-glass-border: rgba(80, 110, 160, 0.28);
-  --tm-glass-shadow: 0 12px 40px rgba(12, 28, 72, 0.14);
-  --tm-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --tm-glass-bg: rgba(255, 255, 255, 0.22);
+  --tm-glass-bg-strong: rgba(255, 255, 255, 0.32);
+  --tm-glass-border-light: rgba(255, 255, 255, 0.64);
+  --tm-glass-border: rgba(112, 130, 176, 0.2);
+  --tm-glass-shadow: 0 16px 44px rgba(32, 48, 88, 0.1);
+  --tm-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.62);
 
-  /* 细微噪点叠在磨砂层上（不挡文字，只做质感） */
-  --tm-noise-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.48'/%3E%3C/svg%3E");
+  /* 细颗粒弱化：降低噪点不透明度 + 提高频率，避免粗砂感 */
+  --tm-noise-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.35' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
   --tm-glass-tint: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.52) 0%,
-    rgba(255, 255, 255, 0.38) 48%,
-    rgba(245, 248, 255, 0.44) 100%
+    162deg,
+    rgba(255, 255, 255, 0.34) 0%,
+    rgba(249, 251, 255, 0.2) 45%,
+    rgba(236, 244, 255, 0.26) 100%
   );
 
   /* 页面底层：对比更强的光斑（blur 才有东西可「糊」） */
-  --tm-mesh-base: linear-gradient(168deg, #d2ddf0 0%, #c4d2e8 38%, #b8c8df 100%);
-  --tm-mesh-a: radial-gradient(ellipse 130% 85% at 6% -15%, rgba(90, 140, 255, 0.58), transparent 52%);
-  --tm-mesh-b: radial-gradient(ellipse 95% 75% at 94% 8%, rgba(210, 175, 255, 0.42), transparent 48%);
-  --tm-mesh-c: radial-gradient(ellipse 85% 55% at 48% 112%, rgba(100, 220, 230, 0.38), transparent 46%);
+  --tm-mesh-base: linear-gradient(172deg, #f5f8ff 0%, #eef3fc 36%, #e4ecfa 68%, #dce5f7 100%);
+  --tm-mesh-a: radial-gradient(ellipse 125% 82% at 10% -8%, rgba(130, 168, 255, 0.42), transparent 56%);
+  --tm-mesh-b: radial-gradient(ellipse 100% 70% at 90% 12%, rgba(218, 195, 255, 0.36), transparent 52%);
+  --tm-mesh-c: radial-gradient(ellipse 88% 56% at 48% 106%, rgba(140, 228, 238, 0.28), transparent 50%);
 
   --tm-glass-stack: var(--tm-noise-tile), var(--tm-glass-tint);
 
@@ -134,8 +137,8 @@
     --tm-blur-lg: blur(6px) saturate(1.05);
     --tm-blur-md: blur(4px) saturate(1.05);
     --tm-blur-sm: blur(2px) saturate(1.02);
-    --tm-glass-bg: rgba(255, 255, 255, 0.88);
-    --tm-glass-bg-strong: rgba(255, 255, 255, 0.94);
+    --tm-glass-bg: rgba(255, 255, 255, 0.74);
+    --tm-glass-bg-strong: rgba(255, 255, 255, 0.84);
   }
 }
 
@@ -174,3 +177,6 @@ body {
   min-height: 0;
   align-items: stretch;
 }
+
+
+

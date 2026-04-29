@@ -1,13 +1,18 @@
-.estimate-confirm-page {
+﻿.estimate-confirm-page {
   min-height: 100vh;
   margin: 0;
   display: grid;
   place-items: center;
-  background-color: #e8d4c8;
+  background-color: var(--tm-page-bg-base);
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 220, 190, 0.9) 0%, rgba(255, 220, 190, 0.35) 22%, transparent 55%),
-    radial-gradient(circle at 88% 28%, rgba(255, 200, 200, 0.45) 0%, transparent 45%),
-    linear-gradient(180deg, #fff5ec 0%, #f0dfd4 100%);
+    var(--tm-window-bg-overlay),
+    var(--tm-window-bg-image),
+    radial-gradient(circle at 12% 18%, rgba(255, 220, 190, 0.24) 0%, rgba(255, 220, 190, 0.12) 24%, transparent 58%),
+    radial-gradient(circle at 88% 28%, rgba(255, 200, 200, 0.14) 0%, transparent 48%),
+    linear-gradient(180deg, #f8f3ff 0%, #edf3ff 100%);
+  background-size: cover, cover, auto, auto, auto;
+  background-position: center, center, center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   font-family: var(--tm-font), 'Microsoft YaHei', 'PingFang SC', sans-serif;
   color: #4f2f20;
 }
@@ -142,3 +147,6 @@
   font-size: 12px;
   color: #bf2f2f;
 }
+
+
+
