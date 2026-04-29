@@ -12,6 +12,8 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  background-color: #ccd8e8;
+  background-image: var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
 }
 
 .stats-window-shell > .stats-panel {
@@ -24,7 +26,8 @@
   margin: 0 0 14px;
   font-size: 17px;
   font-weight: 700;
-  color: #1a2d3d;
+  color: var(--tm-text);
+  letter-spacing: -0.02em;
 }
 
 .pet-shell {
@@ -110,12 +113,15 @@
 
 .warning {
   width: 100%;
-  background: rgba(255, 247, 230, 0.92);
+  background: rgba(255, 248, 230, 0.72);
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
   color: #ad6800;
-  border: 1px solid rgba(255, 187, 46, 0.5);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 200, 120, 0.45);
+  border-radius: 12px;
   padding: 6px 8px;
   font-size: 12px;
+  box-shadow: var(--tm-glass-inset), 0 4px 16px rgba(180, 120, 40, 0.08);
 }
 
 .pet-avatar {
@@ -301,24 +307,52 @@
 }
 
 .pet-actions button {
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
   padding: 5px 10px;
   font-size: 12px;
   color: #fff;
-  background: rgba(36, 52, 96, 0.86);
+  background: var(--tm-btn-dark-fill);
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
+  box-shadow: var(--tm-btn-3d-dark);
+  transition: var(--tm-btn-ease);
+}
+
+.pet-actions button:hover {
+  filter: brightness(1.05);
+  transform: var(--tm-btn-lift);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.14),
+    0 3px 8px rgba(0, 0, 0, 0.22),
+    0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.pet-actions button:active {
+  transform: var(--tm-btn-press);
+  filter: brightness(0.97);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.28),
+    0 1px 3px rgba(0, 0, 0, 0.16);
 }
 
 .stats-panel {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 10px 12px;
   font-size: 12px;
-  color: #0f1d30;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(140, 160, 190, 0.42);
-  box-shadow: 0 8px 24px rgba(18, 38, 77, 0.18);
+  color: var(--tm-text);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-xl);
+  backdrop-filter: var(--tm-blur-xl);
+  isolation: isolate;
+  border: 1px solid var(--tm-glass-border-light);
+  box-shadow: var(--tm-glass-shadow), var(--tm-glass-inset);
   -webkit-app-region: no-drag;
 }

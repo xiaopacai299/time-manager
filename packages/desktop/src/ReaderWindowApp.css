@@ -47,20 +47,22 @@
   right: 12px;
   z-index: 1000;
   padding: 6px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(30, 40, 60, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  color: #1f2a44;
+  border-radius: 12px;
+  border: 1px solid var(--tm-glass-border-light);
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: var(--tm-blur-md);
+  backdrop-filter: var(--tm-blur-md);
+  color: var(--tm-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--tm-glass-shadow), var(--tm-glass-inset);
   -webkit-app-region: no-drag;
 }
 
 .reader-exit-transparent:hover {
   border-color: rgba(95, 135, 255, 0.45);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .reader-page--dark {
@@ -72,33 +74,59 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(80, 108, 171, 0.2);
-  backdrop-filter: blur(2px);
+  border-bottom: 1px solid var(--tm-glass-border);
+  background: rgba(255, 255, 255, 0.42);
+  -webkit-backdrop-filter: var(--tm-blur-md);
+  backdrop-filter: var(--tm-blur-md);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
 }
 
 .reader-upload,
 .reader-btn,
 .reader-bg-btn {
-  border: 1px solid #c8d4ee;
-  border-radius: 10px;
-  background: #fff;
+  border: 1px solid rgba(110, 135, 185, 0.42);
+  border-radius: 12px;
+  background: var(--tm-btn-secondary-fill);
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
   color: #234;
   padding: 6px 12px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--tm-btn-3d-secondary);
+  transition: var(--tm-btn-ease);
+}
+
+.reader-upload:hover,
+.reader-btn:hover,
+.reader-bg-btn:hover {
+  box-shadow: var(--tm-btn-3d-secondary-hover);
+  transform: var(--tm-btn-lift);
+}
+
+.reader-upload:active,
+.reader-btn:active,
+.reader-bg-btn:active {
+  transform: var(--tm-btn-press);
 }
 
 .reader-btn--danger {
-  border-color: #efb4aa;
-  background: #fff4f2;
+  border-color: rgba(235, 165, 155, 0.85);
+  background: linear-gradient(180deg, #fff6f4 0%, #ffeae6 100%);
   color: #b33c2a;
+  box-shadow: var(--tm-btn-3d-danger-soft);
 }
 
 .reader-btn--toggle-on {
-  border-color: #5f87ff;
-  background: rgba(95, 135, 255, 0.14);
+  border-color: rgba(95, 135, 255, 0.48);
+  background: linear-gradient(182deg, rgba(244, 248, 255, 0.98) 0%, rgba(210, 226, 255, 0.55) 100%);
   color: #2a4a9e;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 1px rgba(70, 110, 210, 0.1),
+    0 1px 3px rgba(75, 115, 220, 0.08),
+    0 5px 14px rgba(95, 135, 255, 0.14);
 }
 
 .reader-speed {
@@ -185,16 +213,24 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid rgba(89, 115, 173, 0.28);
-  border-radius: 0 14px 14px 0;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 6px 0 28px rgba(15, 23, 42, 0.14);
+  border: 1px solid var(--tm-glass-border-light);
+  border-radius: 0 16px 16px 0;
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 88px 88px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-xl);
+  backdrop-filter: var(--tm-blur-xl);
+  isolation: isolate;
+  box-shadow: 6px 0 32px rgba(15, 23, 42, 0.12), var(--tm-glass-inset);
   overflow: hidden;
   pointer-events: auto;
 }
 
 .reader-page--dark .reader-toc {
-  background: rgba(22, 28, 42, 0.94);
+  background: rgba(22, 28, 42, 0.72);
+  -webkit-backdrop-filter: var(--tm-blur-lg);
+  backdrop-filter: var(--tm-blur-lg);
   border-color: rgba(164, 181, 220, 0.32);
   box-shadow: 6px 0 32px rgba(0, 0, 0, 0.35);
 }

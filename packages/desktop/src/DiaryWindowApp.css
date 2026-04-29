@@ -1,7 +1,11 @@
 .diary-page {
   width: 100%;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #a8b8e8;
+  background-image:
+    radial-gradient(ellipse 100% 80% at 15% 10%, rgba(120, 100, 220, 0.45), transparent 55%),
+    radial-gradient(ellipse 90% 70% at 85% 85%, rgba(100, 180, 255, 0.35), transparent 50%),
+    linear-gradient(155deg, #8b9ae8 0%, #9b7ec8 45%, #7a6bc4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,9 +17,16 @@
   /* margin-top: 60px; */
   width: 95%;
   height: 90%;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 100px 100px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-xl);
+  backdrop-filter: var(--tm-blur-xl);
+  isolation: isolate;
+  border: 1px solid var(--tm-glass-border-light);
+  border-radius: 20px;
+  box-shadow: var(--tm-glass-shadow), var(--tm-glass-inset), 0 24px 64px rgba(40, 30, 90, 0.2);
   display: flex;
   flex-direction: row;
   overflow: hidden;
@@ -46,20 +57,30 @@
   top: 30px;
   right: 25px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(165deg, #b3a9ff 0%, #8b7cef 38%, #667eea 58%, #54388f 100%);
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
   text-align: right;
-  border-radius: 6px;
+  border-radius: var(--tm-btn-radius);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--tm-btn-ease);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 1px rgba(40, 28, 95, 0.14),
+    0 1px 3px rgba(45, 32, 110, 0.08),
+    0 5px 16px rgba(70, 52, 160, 0.22),
+    0 11px 26px rgba(75, 55, 170, 0.12);
 }
 
 .diary-settings-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: var(--tm-btn-lift);
+  filter: brightness(1.03);
+}
+
+.diary-settings-btn:active {
+  transform: var(--tm-btn-press);
 }
 
 .diary-left {
@@ -86,19 +107,29 @@
 
 .diary-new-btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(165deg, #ffb8f0 0%, #ff7eb8 35%, #f5578c 65%, #d63d6a 100%);
   color: white;
-  border: none;
-  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--tm-btn-radius);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--tm-btn-ease);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 1px rgba(130, 28, 70, 0.12),
+    0 1px 3px rgba(160, 45, 95, 0.08),
+    0 5px 16px rgba(210, 70, 120, 0.2),
+    0 11px 26px rgba(220, 75, 130, 0.12);
 }
 
 .diary-new-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
+  transform: var(--tm-btn-lift);
+  filter: brightness(1.03);
+}
+
+.diary-new-btn:active {
+  transform: var(--tm-btn-press);
 }
 
 .diary-textarea {
@@ -115,19 +146,26 @@
 
 .diary-save-btn {
   padding: 12px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--tm-btn-primary-fill);
   color: white;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--tm-btn-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--tm-btn-ease);
+  box-shadow: var(--tm-btn-3d-primary);
 }
 
 .diary-save-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: var(--tm-btn-lift);
+  background: var(--tm-btn-primary-fill-hover);
+  box-shadow: var(--tm-btn-3d-primary-hover);
+}
+
+.diary-save-btn:active {
+  transform: var(--tm-btn-press);
+  box-shadow: var(--tm-btn-3d-primary-active);
 }
 
 .diary-right {
@@ -198,12 +236,13 @@
 
 .diary-action-btn {
   padding: 4px 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
+  border: 1px solid rgba(190, 195, 210, 0.85);
+  border-radius: 8px;
+  background: var(--tm-btn-secondary-fill);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--tm-btn-ease);
+  box-shadow: var(--tm-btn-3d-secondary);
 }
 
 .diary-action-detail {
@@ -222,8 +261,12 @@
 }
 
 .diary-action-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: var(--tm-btn-lift);
+  box-shadow: var(--tm-btn-3d-secondary-hover);
+}
+
+.diary-action-btn:active {
+  transform: var(--tm-btn-press);
 }
 
 .diary-detail {
@@ -381,29 +424,39 @@
 .diary-password-btn {
   flex: 1;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--tm-btn-primary-fill);
   color: white;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--tm-btn-radius);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--tm-btn-ease);
+  box-shadow: var(--tm-btn-3d-primary);
 }
 
 .diary-password-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: var(--tm-btn-lift);
+  background: var(--tm-btn-primary-fill-hover);
+  box-shadow: var(--tm-btn-3d-primary-hover);
+}
+
+.diary-password-btn:active {
+  transform: var(--tm-btn-press);
+  box-shadow: var(--tm-btn-3d-primary-active);
 }
 
 .diary-password-btn-secondary {
-  background: #f0f0f0;
+  background: var(--tm-btn-secondary-fill);
   color: #333;
+  border: 1px solid rgba(160, 165, 185, 0.55);
+  box-shadow: var(--tm-btn-3d-secondary);
 }
 
 .diary-password-btn-secondary:hover {
-  background: #e0e0e0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: var(--tm-btn-secondary-fill-hover);
+  box-shadow: var(--tm-btn-3d-secondary-hover);
+  transform: var(--tm-btn-lift);
 }
 
 .diary-password-remove {
@@ -415,16 +468,19 @@
 
 .diary-password-btn-remove {
   padding: 10px 20px;
-  background: #f0f0f0;
+  background: var(--tm-btn-secondary-fill);
   color: #666;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid rgba(180, 185, 200, 0.75);
+  border-radius: var(--tm-btn-radius);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--tm-btn-ease);
+  box-shadow: var(--tm-btn-3d-secondary);
 }
 
 .diary-password-btn-remove:hover {
-  background: #e0e0e0;
+  background: var(--tm-btn-secondary-fill-hover);
   color: #333;
+  box-shadow: var(--tm-btn-3d-secondary-hover);
+  transform: var(--tm-btn-lift);
 }

@@ -1,7 +1,144 @@
 :root {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  color: #1a2233;
+  /* Apple 系玻璃风：字体 + 语义色 */
+  font-family: var(--tm-font);
+  color: var(--tm-text);
+  --tm-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --tm-text: rgba(22, 32, 52, 0.94);
+  --tm-text-muted: rgba(58, 72, 98, 0.72);
+  --tm-accent: #5f87ff;
+  --tm-accent-deep: #4062d6;
+
+  /*
+   * 毛玻璃要「看得见」，必须同时满足：
+   * 1) backdrop-filter blur 足够大；2) 前面 rgba 白不要涂死（否则像白板）；
+   * 3) 背后要有对比（mesh 光斑加深）。
+   */
+  --tm-blur-xl: blur(52px) saturate(1.75);
+  --tm-blur-lg: blur(36px) saturate(1.62);
+  --tm-blur-md: blur(26px) saturate(1.48);
+  --tm-blur-sm: blur(16px) saturate(1.32);
+
+  /* 填充越低，越能透出背后模糊（质感越明显） */
+  --tm-glass-bg: rgba(255, 255, 255, 0.34);
+  --tm-glass-bg-strong: rgba(255, 255, 255, 0.48);
+  --tm-glass-border-light: rgba(255, 255, 255, 0.72);
+  --tm-glass-border: rgba(80, 110, 160, 0.28);
+  --tm-glass-shadow: 0 12px 40px rgba(12, 28, 72, 0.14);
+  --tm-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+
+  /* 细微噪点叠在磨砂层上（不挡文字，只做质感） */
+  --tm-noise-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.48'/%3E%3C/svg%3E");
+  --tm-glass-tint: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.52) 0%,
+    rgba(255, 255, 255, 0.38) 48%,
+    rgba(245, 248, 255, 0.44) 100%
+  );
+
+  /* 页面底层：对比更强的光斑（blur 才有东西可「糊」） */
+  --tm-mesh-base: linear-gradient(168deg, #d2ddf0 0%, #c4d2e8 38%, #b8c8df 100%);
+  --tm-mesh-a: radial-gradient(ellipse 130% 85% at 6% -15%, rgba(90, 140, 255, 0.58), transparent 52%);
+  --tm-mesh-b: radial-gradient(ellipse 95% 75% at 94% 8%, rgba(210, 175, 255, 0.42), transparent 48%);
+  --tm-mesh-c: radial-gradient(ellipse 85% 55% at 48% 112%, rgba(100, 220, 230, 0.38), transparent 46%);
+
+  --tm-glass-stack: var(--tm-noise-tile), var(--tm-glass-tint);
+
+  /*
+   * 按钮：柔和体积感 —— 多层漫射阴影 + 很轻的上下内光，避免「硬台阶」描边；
+   * 动效用 ease-out，位移 1px 级，更接近系统控件。
+   */
+  --tm-btn-ease:
+    box-shadow 0.28s cubic-bezier(0.33, 1, 0.68, 1),
+    transform 0.24s cubic-bezier(0.33, 1, 0.68, 1),
+    background 0.26s ease,
+    filter 0.22s ease,
+    border-color 0.22s ease;
+  --tm-btn-radius: 13px;
+  --tm-btn-lift: translateY(-1px);
+  --tm-btn-press: translateY(1px);
+
+  --tm-btn-primary-fill: linear-gradient(168deg, #b0bcff 0%, #93a4ff 26%, #748dff 58%, #637de8 100%);
+  --tm-btn-primary-fill-hover: linear-gradient(168deg, #bcc5ff 0%, #a2b0ff 26%, #869aff 58%, #748cf0 100%);
+  --tm-btn-shine: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --tm-btn-shade: inset 0 -1px 1px rgba(35, 55, 130, 0.12);
+  --tm-btn-3d-primary:
+    var(--tm-btn-shine),
+    var(--tm-btn-shade),
+    0 1px 2px rgba(28, 48, 120, 0.05),
+    0 4px 14px rgba(60, 90, 200, 0.2),
+    0 10px 28px rgba(70, 105, 210, 0.12);
+  --tm-btn-3d-primary-hover:
+    var(--tm-btn-shine),
+    var(--tm-btn-shade),
+    0 2px 4px rgba(28, 48, 120, 0.07),
+    0 6px 18px rgba(60, 90, 200, 0.26),
+    0 14px 34px rgba(80, 115, 220, 0.14);
+  --tm-btn-3d-primary-active:
+    inset 0 2px 5px rgba(30, 50, 120, 0.14),
+    inset 0 1px 1px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(55, 85, 190, 0.1);
+
+  --tm-btn-secondary-fill: linear-gradient(182deg, #ffffff 0%, #f7f9fd 46%, #eef2fa 100%);
+  --tm-btn-secondary-fill-hover: linear-gradient(182deg, #ffffff 0%, #fbfcff 46%, #f4f7fc 100%);
+  --tm-btn-3d-secondary:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(95, 118, 165, 0.09),
+    0 1px 2px rgba(25, 50, 100, 0.04),
+    0 3px 10px rgba(40, 65, 130, 0.07),
+    0 8px 22px rgba(35, 58, 115, 0.06);
+  --tm-btn-3d-secondary-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 1px rgba(95, 118, 165, 0.11),
+    0 2px 4px rgba(25, 50, 100, 0.05),
+    0 5px 14px rgba(45, 70, 140, 0.09),
+    0 10px 26px rgba(40, 65, 130, 0.07);
+
+  --tm-btn-3d-dark:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.16),
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.16);
+  --tm-btn-dark-fill: linear-gradient(178deg, rgba(78, 96, 148, 0.96) 0%, rgba(42, 58, 108, 0.98) 100%);
+
+  --tm-btn-3d-success:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 1px rgba(0, 85, 55, 0.1),
+    0 2px 5px rgba(0, 130, 85, 0.1),
+    0 7px 18px rgba(25, 150, 100, 0.16);
+  --tm-btn-success-fill: linear-gradient(168deg, #7aecb8 0%, #58dfa0 38%, #3cc88a 100%);
+
+  --tm-btn-3d-warn:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 1px rgba(150, 75, 0, 0.09),
+    0 2px 5px rgba(200, 105, 35, 0.1),
+    0 7px 18px rgba(230, 130, 55, 0.13);
+  --tm-btn-warn-fill: linear-gradient(168deg, #ffd9b5 0%, #ffc994 36%, #ffb86b 100%);
+
+  --tm-btn-3d-muted:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -1px 1px rgba(120, 95, 75, 0.06),
+    0 1px 2px rgba(85, 65, 50, 0.05),
+    0 4px 12px rgba(100, 78, 58, 0.06);
+  --tm-btn-muted-fill: linear-gradient(182deg, #fcfaf7 0%, #f3ebe3 100%);
+
+  --tm-btn-3d-danger-soft:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    inset 0 -1px 1px rgba(175, 55, 55, 0.07),
+    0 1px 2px rgba(185, 70, 70, 0.05),
+    0 4px 12px rgba(195, 85, 85, 0.07);
 }
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --tm-blur-xl: blur(8px) saturate(1.08);
+    --tm-blur-lg: blur(6px) saturate(1.05);
+    --tm-blur-md: blur(4px) saturate(1.05);
+    --tm-blur-sm: blur(2px) saturate(1.02);
+    --tm-glass-bg: rgba(255, 255, 255, 0.88);
+    --tm-glass-bg-strong: rgba(255, 255, 255, 0.94);
+  }
+}
+
 
 *,
 *::before,
@@ -19,6 +156,11 @@ body {
   touch-action: none;
   -ms-touch-action: none;
 }
+
+/*
+ * Chromium：毛玻璃依赖 GPU 合图层；若整机关掉「动画/视觉效果」可能导致 blur 极弱。
+ * 宠物窗体透明时，backdrop-filter 会糊化桌面内容，质感最明显。
+ */
 
 #root {
   width: 100%;

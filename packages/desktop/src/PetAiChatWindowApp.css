@@ -10,27 +10,38 @@
 }
 
 .pet-ai-chat-window-root--bg-default {
-  background: #f4f7fc;
+  background-color: #c8d4e6;
+  background-image: var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
 }
 
 .pet-ai-chat-window-root--bg-preset-mist_blue {
-  background: linear-gradient(165deg, #eef5ff 0%, #dce8fb 52%, #cfdff8 100%);
+  background-image:
+    radial-gradient(ellipse 90% 70% at 12% 8%, rgba(160, 195, 255, 0.55), transparent 52%),
+    linear-gradient(165deg, #e8f0ff 0%, #d4e4fb 52%, #c8daf5 100%);
 }
 
 .pet-ai-chat-window-root--bg-preset-lavender_mist {
-  background: linear-gradient(160deg, #f3f0ff 0%, #e6e0fb 50%, #dcd4f5 100%);
+  background-image:
+    radial-gradient(ellipse 85% 65% at 88% 12%, rgba(210, 190, 255, 0.45), transparent 48%),
+    linear-gradient(160deg, #f2edff 0%, #e4daf8 50%, #d8cef2 100%);
 }
 
 .pet-ai-chat-window-root--bg-preset-warm_paper {
-  background: linear-gradient(180deg, #fdf9f2 0%, #f5ecdc 55%, #ebe0cf 100%);
+  background-image:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(255, 245, 220, 0.7), transparent 50%),
+    linear-gradient(180deg, #fdf9f2 0%, #f0e6d4 55%, #e5dcc8 100%);
 }
 
 .pet-ai-chat-window-root--bg-preset-dark_navy {
-  background: linear-gradient(165deg, #1e2a44 0%, #152238 45%, #0f1729 100%);
+  background-image:
+    radial-gradient(ellipse 100% 80% at 20% 0%, rgba(80, 120, 200, 0.35), transparent 55%),
+    linear-gradient(165deg, #1e2a44 0%, #152238 45%, #0f1729 100%);
 }
 
 .pet-ai-chat-window-root--bg-preset-mint_soft {
-  background: linear-gradient(175deg, #eefaf6 0%, #d8f2ea 50%, #c5e8dd 100%);
+  background-image:
+    radial-gradient(ellipse 75% 55% at 80% 15%, rgba(160, 235, 210, 0.4), transparent 50%),
+    linear-gradient(175deg, #eaf8f3 0%, #d4efe4 50%, #c0e6d6 100%);
 }
 
 .pet-ai-chat-window-root--bg-image {
@@ -60,7 +71,9 @@
 
 /* 技能页：轻遮罩，尽量透出窗口级背景 */
 .pet-ai-chat-window-skills .pet-ai-skills-page {
-  background: rgba(250, 252, 255, 0.42);
+  background: rgba(255, 255, 255, 0.32);
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
 }
 
 .pet-ai-chat-window-fallback {

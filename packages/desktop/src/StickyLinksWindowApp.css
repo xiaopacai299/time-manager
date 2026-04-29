@@ -4,9 +4,10 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  color: #1a2332;
-  background: linear-gradient(165deg, #f0f4fc 0%, #e8eef8 45%, #dfe8f4 100%);
+  font-family: var(--tm-font);
+  color: var(--tm-text);
+  background-color: #c8d4e6;
+  background-image: var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -18,11 +19,18 @@
   width: 168px;
   flex-shrink: 0;
   padding: 16px 12px;
-  background: rgba(255, 255, 255, 0.55);
-  border-right: 1px solid rgba(100, 120, 160, 0.18);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 80px 80px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-xl);
+  backdrop-filter: var(--tm-blur-xl);
+  isolation: isolate;
+  border-right: 1px solid var(--tm-glass-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.35);
 }
 
 .sticky-sidebar__title {
@@ -56,9 +64,11 @@
 }
 
 .sticky-cat--active {
-  background: linear-gradient(135deg, #ffffff 0%, #f3f6ff 100%);
-  border-color: rgba(80, 110, 200, 0.28);
-  box-shadow: 0 2px 10px rgba(40, 70, 140, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
+  border-color: rgba(80, 110, 200, 0.35);
+  box-shadow: var(--tm-glass-inset), 0 4px 14px rgba(40, 70, 140, 0.08);
   font-weight: 600;
 }
 
@@ -116,10 +126,16 @@
   gap: 10px;
   align-items: flex-end;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(120, 140, 180, 0.2);
-  border-radius: 14px;
-  box-shadow: 0 4px 20px rgba(25, 45, 90, 0.06);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-xl);
+  backdrop-filter: var(--tm-blur-xl);
+  isolation: isolate;
+  border: 1px solid var(--tm-glass-border-light);
+  border-radius: 16px;
+  box-shadow: var(--tm-glass-shadow), var(--tm-glass-inset);
 }
 
 .sticky-field {
@@ -161,30 +177,52 @@
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: var(--tm-btn-radius);
   border: none;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
+  transition: var(--tm-btn-ease);
 }
 
 .sticky-btn:active {
-  transform: scale(0.98);
+  transform: var(--tm-btn-press);
 }
 
 .sticky-btn--primary {
-  background: linear-gradient(135deg, #5f7ae8 0%, #4d63d4 100%);
+  background: var(--tm-btn-primary-fill);
   color: #fff;
-  box-shadow: 0 2px 10px rgba(79, 105, 220, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: var(--tm-btn-3d-primary);
 }
 
 .sticky-btn--primary:hover {
-  box-shadow: 0 4px 14px rgba(79, 105, 220, 0.45);
+  background: var(--tm-btn-primary-fill-hover);
+  box-shadow: var(--tm-btn-3d-primary-hover);
+  transform: var(--tm-btn-lift);
+}
+
+.sticky-btn--primary:active {
+  box-shadow: var(--tm-btn-3d-primary-active);
+  transform: var(--tm-btn-press);
 }
 
 .sticky-btn--ghost {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--tm-btn-secondary-fill);
   color: #3d5290;
-  border: 1px solid rgba(100, 120, 180, 0.3);
+  border: 1px solid rgba(100, 125, 180, 0.42);
+  box-shadow: var(--tm-btn-3d-secondary);
+}
+
+.sticky-btn--ghost:hover {
+  background: var(--tm-btn-secondary-fill-hover);
+  box-shadow: var(--tm-btn-3d-secondary-hover);
+  transform: var(--tm-btn-lift);
+}
+
+.sticky-btn--ghost:active {
+  transform: var(--tm-btn-press);
+  box-shadow:
+    inset 0 2px 5px rgba(90, 115, 170, 0.12),
+    0 1px 2px rgba(120, 145, 190, 0.1);
 }
 
 .sticky-msg {
@@ -220,16 +258,22 @@
   align-items: stretch;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(120, 140, 180, 0.18);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(20, 40, 80, 0.04);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 72px 72px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-lg);
+  backdrop-filter: var(--tm-blur-lg);
+  isolation: isolate;
+  border: 1px solid var(--tm-glass-border-light);
+  border-radius: 14px;
+  box-shadow: var(--tm-glass-inset), 0 2px 12px rgba(20, 40, 80, 0.06);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .sticky-card:hover {
-  border-color: rgba(95, 122, 232, 0.35);
-  box-shadow: 0 4px 14px rgba(40, 70, 140, 0.08);
+  border-color: rgba(95, 122, 232, 0.4);
+  box-shadow: var(--tm-glass-inset), 0 6px 20px rgba(40, 70, 140, 0.1);
 }
 
 .sticky-card__body {
@@ -279,7 +323,9 @@
 .sticky-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(20, 35, 60, 0.35);
+  background: rgba(12, 22, 42, 0.42);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,9 +335,16 @@
 .sticky-modal {
   width: min(360px, 92vw);
   padding: 20px;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 16px 48px rgba(20, 40, 80, 0.2);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-xl);
+  backdrop-filter: var(--tm-blur-xl);
+  isolation: isolate;
+  border: 1px solid var(--tm-glass-border-light);
+  border-radius: 18px;
+  box-shadow: var(--tm-glass-shadow), 0 24px 64px rgba(20, 40, 80, 0.18);
 }
 
 .sticky-modal h2 {
