@@ -12,6 +12,7 @@ import ReaderWindowApp from './ReaderWindowApp.jsx'
 import PetAiChatWindowApp from './PetAiChatWindowApp.jsx'
 import DiaryWindowApp from './DiaryWindowApp.jsx'
 import WorklistExportApp from './WorklistExportApp.jsx'
+import StickyLinksWindowApp from './StickyLinksWindowApp.jsx'
 import { SyncProvider } from './sync/SyncProvider.jsx'
 
 const root = document.getElementById('root')
@@ -28,6 +29,7 @@ const petAiHash = typeof window !== 'undefined' ? window.location.hash : ''
 const isPetAiChatWindow =
   petAiHash === '#pet-ai-chat' || petAiHash === '#pet-ai-chat/skills'
 const isDiaryWindow = typeof window !== 'undefined' && window.location.hash === '#diary'
+const isStickyLinksWindow = typeof window !== 'undefined' && window.location.hash === '#sticky-links'
 
 if (typeof document !== 'undefined') {
   if (isStatsWindow) {
@@ -50,6 +52,8 @@ if (typeof document !== 'undefined') {
     document.title = petAiHash === '#pet-ai-chat/skills' ? 'AI 技能' : 'AI 对话'
   } else if (isDiaryWindow) {
     document.title = '写日记'
+  } else if (isStickyLinksWindow) {
+    document.title = '便签'
   } else {
     document.title = '桌面宠物'
   }
@@ -78,6 +82,8 @@ createRoot(root).render(
         <PetAiChatWindowApp />
       ) : isDiaryWindow ? (
         <DiaryWindowApp />
+      ) : isStickyLinksWindow ? (
+        <StickyLinksWindowApp />
       ) : (
         <App />
       )}

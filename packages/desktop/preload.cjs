@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const { fileURLToPath } = require('url');
 
 // contextBridge：把 API 安全地挂到页面 window
 // ipcRenderer：渲染进程发消息/收消息
@@ -7,14 +8,56 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 function normalizeDropPath(raw) {
   const text = String(raw || '').trim();
   if (!text) return '';
-  if (text.startsWith('file:///')) {
+  if (text.startsWith('file:')) {
     try {
-      return decodeURIComponent(text.replace('file:///', '')).replace(/\//g, '\\');
+      return fileURLToPath(text);
     } catch {
-      return text.replace('file:///', '').replace(/\//g, '\\');
+      /* fall through */
+    }
+    if (text.startsWith('file:///')) {
+      try {
+        return decodeURIComponent(text.replace('file:///', '')).replace(/\//g, '\\');
+      } catch {
+        return text.replace('file:///', '').replace(/\//g, '\\');
+      }
+    }
+    return '';
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(text) || /^\\\\/u.test(text)) return text;
+  return '';
+}
+
+/** Electron 下拖入/选择得到的 File 常有 .path；否则用 webUtils */
+function pathFromWebFile(file) {
+  if (!file) return '';
+  try {
+    if (typeof file.path === 'string' && file.path.trim()) return file.path.trim();
+  } catch {
+    /* ignore */
+  }
+  try {
+    const p = webUtils.getPathForFile(file);
+    if (typeof p === 'string' && p.trim()) return p.trim();
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
+
+function collectPathsFromFilesAndUriText(files, uriExtraText) {
+  const list = [];
+  for (const file of Array.from(files || [])) {
+    const p = pathFromWebFile(file);
+    if (p) list.push(p);
+  }
+  const uriLines = [];
+  if (typeof uriExtraText === 'string' && uriExtraText.trim()) {
+    for (const line of uriExtraText.split(/\r?\n/)) {
+      const n = normalizeDropPath(line.trim());
+      if (n) uriLines.push(n);
     }
   }
-  return text;
+  return [...new Set([...list, ...uriLines])];
 }
 
 // 核心：将主进程能力封装为 window.timeManagerAPI，供前端安全调用。
@@ -132,6 +175,20 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<string>}
    */
   getFavoriteIcon: (path) => ipcRenderer.invoke('favorites:get-icon', { path }),
+
+  /** 便签：获取分类与链接 */
+  getStickyLinksState: () => ipcRenderer.invoke('sticky-links:get-state'),
+  stickyLinksAddItem: (payload) => ipcRenderer.invoke('sticky-links:add-item', payload),
+  stickyLinksRemoveItem: (payload) => ipcRenderer.invoke('sticky-links:remove-item', payload),
+  stickyLinksAddCategory: (payload) => ipcRenderer.invoke('sticky-links:add-category', payload),
+  stickyLinksRenameCategory: (payload) => ipcRenderer.invoke('sticky-links:rename-category', payload),
+  stickyLinksRemoveCategory: (payload) => ipcRenderer.invoke('sticky-links:remove-category', payload),
+  stickyLinksOpen: (payload) => ipcRenderer.invoke('sticky-links:open', payload),
+  onStickyLinksUpdated: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('sticky-links:updated', handler);
+    return () => ipcRenderer.removeListener('sticky-links:updated', handler);
+  },
 
   /**
    * 获取工作清单列表。
@@ -285,24 +342,21 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @param {string} uriListText
    * @returns {string[]}
    */
-  resolveDropPaths: (files, uriListText) => {
-    const list = [];
-    for (const file of Array.from(files || [])) {
-      try {
-        const p = webUtils.getPathForFile(file);
-        if (p) list.push(p);
-      } catch {
-        // ignore invalid drop item
-      }
+  resolveDropPaths: (files, uriListText) => collectPathsFromFilesAndUriText(files, uriListText),
+
+  /**
+   * 渲染进程排障：转发到主进程 debugLog（与 DEBUG_LOG 时写入 app.log 一致）。
+   * @param {string} label
+   * @param {unknown} [detail]
+   */
+  debugBugFromRenderer: (label, detail) => {
+    try {
+      ipcRenderer.send('app:debug-bug-from-renderer', { label, detail });
+    } catch {
+      /* ignore */
     }
-    if (list.length === 0 && typeof uriListText === 'string' && uriListText.trim()) {
-      return uriListText
-        .split(/\r?\n/)
-        .map((line) => normalizeDropPath(line))
-        .filter(Boolean);
-    }
-    return list;
   },
+
   /**
    * 打开宠物右键菜单。
    * 主进程通道：`pet:open-context-menu`（invoke/handle）

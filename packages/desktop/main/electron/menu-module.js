@@ -18,6 +18,7 @@ export function createMenuModule({
   onOpenLogin,
   onOpenStatsWindow,
   onOpenDiary,
+  onOpenStickyLinks,
   // onEmitPetAction,
   onToggleAutoLaunch,
 }) {
@@ -47,6 +48,10 @@ export function createMenuModule({
       {
         label: '收藏夹',
         click: () => onOpenFavorites(),
+      },
+      {
+        label: '便签',
+        click: () => onOpenStickyLinks?.(),
       },
       {
         label: '工作清单',
@@ -116,6 +121,10 @@ export function createMenuModule({
       {
         label: '收藏夹',
         click: () => onOpenFavorites(),
+      },
+      {
+        label: '便签',
+        click: () => onOpenStickyLinks?.(),
       },
       {
         label: '工作清单',

@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -21,6 +22,11 @@ import os from 'os';
 import { TimeMonitorService } from './main/time-monitor-service.js';
 import { createWorklistModule } from './main/electron/worklist-module.js';
 import { createFavoritesModule } from './main/electron/favorites-module.js';
+import {
+  createQuickLinksModule,
+  defaultStickyLinks,
+  normalizeStickyLinks,
+} from './main/electron/quick-links-module.js';
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
 import { debugLog } from './main/debug-log.js';
@@ -346,6 +352,8 @@ const petState = {
   followMouse: false,
   /** 桌面随机乱跑；不写入状态文件 */
   chaosCat: false,
+  /** 便签：分类 + 链接列表，随 pet-window-state.json 持久化 */
+  stickyLinks: defaultStickyLinks(),
   favorites: [],
   /** @type {Array<Record<string, unknown>>} */
   worklist: [],
@@ -1146,6 +1154,10 @@ function loadPetState() {
       petState.compactMode = Boolean(parsed.compactMode);
       petState.followMouse = Boolean(parsed.followMouse);
       petState.favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
+      petState.stickyLinks =
+        parsed.stickyLinks && typeof parsed.stickyLinks === 'object'
+          ? normalizeStickyLinks(parsed.stickyLinks)
+          : defaultStickyLinks();
       petState.worklist = Array.isArray(parsed.worklist) ? parsed.worklist : [];
       petState.diaries = Array.isArray(parsed.diaries) ? parsed.diaries : [];
       petState.diaryPasswordHash = parsed.diaryPasswordHash || null;
@@ -1439,6 +1451,17 @@ const favoritesModule = createFavoritesModule({
   loadPetRenderer,
 });
 
+const quickLinksModule = createQuickLinksModule({
+  petState,
+  persistPetState,
+  BrowserWindow,
+  shell,
+  path,
+  iconPath: APP_ICON_PATH,
+  __dirname,
+  loadPetRenderer,
+});
+
 // 菜单模块：托盘菜单与宠物右键菜单统一从这里创建。
 const menuModule = createMenuModule({
   Menu,
@@ -1454,6 +1477,7 @@ const menuModule = createMenuModule({
   onToggleFollowMouse: () => toggleFollowMouse(),
   onToggleChaosCat: () => toggleChaosCat(),
   onOpenFavorites: () => favoritesModule.openWindow(),
+  onOpenStickyLinks: () => quickLinksModule.openWindow(),
   onOpenWorklist: () => worklistModule.openWindow(),
   onOpenWorklistExport: () => worklistModule.openExportWindow(),
   onOpenReader: () => openReaderWindow(),
@@ -1905,6 +1929,9 @@ function closePetAiChatWindow() {
 
 function setupIpc() {
   // IPC 注册统一放在这里，按模块分组便于维护与定位。
+  ipcMain.on('app:debug-bug-from-renderer', (_event, payload) => {
+    debugLog('debug-bug', `[renderer] ${String(payload?.label || '')}`, payload?.detail ?? '');
+  });
   // 1) 宠物基础状态与模式切换
   ipcMain.handle('time-stats:get-snapshot', () => monitor.getSnapshot());
   ipcMain.handle('pet:get-state', () => ({
@@ -2423,6 +2450,7 @@ function setupIpc() {
 
   // 2) 收藏夹模块
   favoritesModule.registerIpc(ipcMain);
+  quickLinksModule.registerIpc(ipcMain);
 
   // 3) 工作清单模块（已拆分至独立文件）
   worklistModule.registerIpc(ipcMain);
@@ -2517,6 +2545,7 @@ app.on('before-quit', () => {
   }
   menuModule.teardown();
   favoritesModule.teardown();
+  quickLinksModule.teardown();
   worklistModule.teardown();
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.close();

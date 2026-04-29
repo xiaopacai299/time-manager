@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { dropPathsFromDataTransfer } from './dropPathsFromDataTransfer.js'
 import './FavoritesWindowApp.css'
 
 function fallbackIcon() {
@@ -54,9 +55,10 @@ export default function FavoritesWindowApp() {
   async function onDrop(event) {
     event.preventDefault()
     setIsDragover(false)
-    const files = Array.from(event.dataTransfer?.files || [])
     const uriList = event.dataTransfer?.getData('text/uri-list') || ''
-    const paths = window.timeManagerAPI?.resolveDropPaths?.(files, uriList) || []
+    const paths = await dropPathsFromDataTransfer(event.dataTransfer, (f, u) =>
+      window.timeManagerAPI?.resolveDropPaths?.(f, u),
+    )
     if (!paths.length) return
     const result = await window.timeManagerAPI?.addFavoritesPaths?.(paths, true)
     setItems(Array.isArray(result?.list) ? result.list : [])

@@ -1,0 +1,312 @@
+/* 子窗口内 #root 为 height:100% + overflow:hidden；勿用 100vh，否则 vh 按屏高算、内容被裁在视窗外，列表像「添加无效」 */
+.sticky-page {
+  margin: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #1a2332;
+  background: linear-gradient(165deg, #f0f4fc 0%, #e8eef8 45%, #dfe8f4 100%);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.sticky-sidebar {
+  width: 168px;
+  flex-shrink: 0;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.55);
+  border-right: 1px solid rgba(100, 120, 160, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sticky-sidebar__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7c9a;
+  margin: 0 0 4px 4px;
+}
+
+.sticky-cat {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  color: #2c3d55;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sticky-cat:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.sticky-cat--active {
+  background: linear-gradient(135deg, #ffffff 0%, #f3f6ff 100%);
+  border-color: rgba(80, 110, 200, 0.28);
+  box-shadow: 0 2px 10px rgba(40, 70, 140, 0.08);
+  font-weight: 600;
+}
+
+.sticky-cat__count {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8899b8;
+}
+
+.sticky-sidebar__btn {
+  margin-top: 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(80, 110, 200, 0.35);
+  background: rgba(255, 255, 255, 0.5);
+  color: #4a63a8;
+  cursor: pointer;
+}
+
+.sticky-sidebar__btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-style: solid;
+}
+
+.sticky-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 20px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sticky-main__head h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #142032;
+}
+
+.sticky-main__sub {
+  margin: 0;
+  font-size: 12px;
+  color: #5c6d88;
+  line-height: 1.45;
+}
+
+.sticky-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(120, 140, 180, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(25, 45, 90, 0.06);
+}
+
+.sticky-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.sticky-field span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a6b82;
+}
+
+.sticky-field input {
+  border: 1px solid rgba(120, 140, 180, 0.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #fff;
+  color: #1a2332;
+}
+
+.sticky-field input:focus {
+  outline: none;
+  border-color: #5f7ae8;
+  box-shadow: 0 0 0 2px rgba(95, 122, 232, 0.2);
+}
+
+.sticky-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sticky-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.sticky-btn:active {
+  transform: scale(0.98);
+}
+
+.sticky-btn--primary {
+  background: linear-gradient(135deg, #5f7ae8 0%, #4d63d4 100%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(79, 105, 220, 0.35);
+}
+
+.sticky-btn--primary:hover {
+  box-shadow: 0 4px 14px rgba(79, 105, 220, 0.45);
+}
+
+.sticky-btn--ghost {
+  background: rgba(255, 255, 255, 0.9);
+  color: #3d5290;
+  border: 1px solid rgba(100, 120, 180, 0.3);
+}
+
+.sticky-msg {
+  min-height: 18px;
+  font-size: 12px;
+  color: #c43d3d;
+  margin: 0;
+}
+
+.sticky-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sticky-empty {
+  padding: 36px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #7a8aa5;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 12px;
+  border: 1px dashed rgba(120, 140, 180, 0.25);
+}
+
+.sticky-card {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(120, 140, 180, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(20, 40, 80, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sticky-card:hover {
+  border-color: rgba(95, 122, 232, 0.35);
+  box-shadow: 0 4px 14px rgba(40, 70, 140, 0.08);
+}
+
+.sticky-card__body {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+}
+
+.sticky-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a2332;
+  margin: 0 0 4px;
+}
+
+.sticky-card__url {
+  font-size: 11px;
+  color: #5f7ae8;
+  word-break: break-all;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.sticky-card__del {
+  flex-shrink: 0;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(220, 80, 80, 0.1);
+  color: #b83232;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sticky-card__del:hover {
+  background: rgba(220, 80, 80, 0.2);
+}
+
+.sticky-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 35, 60, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.sticky-modal {
+  width: min(360px, 92vw);
+  padding: 20px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(20, 40, 80, 0.2);
+}
+
+.sticky-modal h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.sticky-modal input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 14px;
+}
+
+.sticky-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
