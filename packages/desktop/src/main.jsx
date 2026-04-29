@@ -15,6 +15,12 @@ import WorklistExportApp from './WorklistExportApp.jsx'
 import StickyLinksWindowApp from './StickyLinksWindowApp.jsx'
 import { SyncProvider } from './sync/SyncProvider.jsx'
 
+function resolveDefaultWindowBgByTime() {
+  const hour = new Date().getHours()
+  const isDaytime = hour >= 7 && hour <= 18
+  return isDaytime ? '/window-bg.png' : '/window-night-bg.png'
+}
+
 function applyWindowBackgroundCssVar(imageUrl) {
   if (typeof document === 'undefined') return
   const rootEl = document.documentElement
@@ -22,17 +28,27 @@ function applyWindowBackgroundCssVar(imageUrl) {
   if (nextUrl) {
     rootEl.style.setProperty('--tm-window-bg-image', `url("${nextUrl}")`)
   } else {
-    rootEl.style.setProperty('--tm-window-bg-image', "url('/window-bg.png')")
+    rootEl.style.setProperty('--tm-window-bg-image', `url("${resolveDefaultWindowBgByTime()}")`)
   }
 }
 
 if (typeof window !== 'undefined' && window.timeManagerAPI) {
+  let latestCustomWindowBgUrl = ''
+  const applyCurrent = () => applyWindowBackgroundCssVar(latestCustomWindowBgUrl)
+
   window.timeManagerAPI.getPetSettings?.().then((settings) => {
-    applyWindowBackgroundCssVar(settings?.windowBgImageUrl)
+    latestCustomWindowBgUrl = String(settings?.windowBgImageUrl || '').trim()
+    applyCurrent()
   })
   window.timeManagerAPI.onPetStateChanged?.((state) => {
-    applyWindowBackgroundCssVar(state?.petSettings?.windowBgImageUrl)
+    latestCustomWindowBgUrl = String(state?.petSettings?.windowBgImageUrl || '').trim()
+    applyCurrent()
   })
+  // 即使窗口长期不重启，也能在 07:00 / 18:00 跨时段后自动切换默认背景。
+  window.setInterval(() => {
+    if (latestCustomWindowBgUrl) return
+    applyCurrent()
+  }, 60 * 1000)
 }
 
 const root = document.getElementById('root')
