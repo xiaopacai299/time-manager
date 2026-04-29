@@ -159,3 +159,12 @@ model AiSkill {
 
   @@index([userId, updatedAt])
 }
+
+model WorkQuote {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  author    String?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

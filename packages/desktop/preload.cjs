@@ -107,6 +107,16 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
   closePetAiChatWindow: () => ipcRenderer.invoke('pet:close-ai-chat-window'),
 
   /**
+   * 切换“启动名言”展示区：开启时让宠物窗口高度临时增加，便于显示一条名言；
+   * 关闭后恢复原高度。
+   * 主进程通道：`pet:set-startup-quote-area`
+   * @param {boolean} active
+   * @returns {Promise<{ ok: boolean, active: boolean }>}
+   */
+  setStartupQuoteArea: (active) =>
+    ipcRenderer.invoke('pet:set-startup-quote-area', { active: Boolean(active) }),
+
+  /**
    * 打开摸鱼阅读窗口。
    * 主进程通道：`reader:open-window`（invoke/handle）
    * @returns {Promise<boolean>}

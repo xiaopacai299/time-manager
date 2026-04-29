@@ -1,4 +1,4 @@
-﻿/* 独立统计窗口（#stats） */
+/* 独立统计窗口（#stats） */
 .stats-window-shell {
   flex: 1 1 auto;
   min-width: 0;
@@ -100,6 +100,41 @@
   flex-shrink: 0;
   /* width: 100%;
   max-width: 100%; */
+}
+
+.pet-startup-quote {
+  width: 100%;
+  margin-top: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--tm-glass-border-light);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
+  box-shadow: var(--tm-glass-inset), 0 8px 20px rgba(34, 58, 108, 0.08);
+  color: var(--tm-text);
+  transition: opacity 10s ease;
+  opacity: 1;
+}
+
+.pet-startup-quote--fading {
+  opacity: 0;
+}
+
+.pet-startup-quote__content {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pet-startup-quote__author {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--tm-text-muted);
+  text-align: right;
 }
 
 /* 统计区吃掉剩余高度，内部滚动，避免整窗出现横向/底部滚动条 */

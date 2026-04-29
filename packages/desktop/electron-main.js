@@ -1690,10 +1690,30 @@ function createMainWindow() {
   });
 }
 
+/**
+ * 启动名言展示时，临时为宠物窗口预留的额外高度。
+ * 不持久化，仅运行时生效，名言消失后自动还原。
+ */
+const PET_STARTUP_QUOTE_EXTRA_HEIGHT = 110;
+let petStartupQuoteAreaActive = false;
+
 function getTargetSize() {
-  if (petState.compactMode) return [PET_COMPACT_WIDTH, PET_COMPACT_HEIGHT];
-  if (!petState.showStatsPanel) return [PET_NO_STATS_WIDTH, PET_NO_STATS_HEIGHT];
-  return [PET_WINDOW_WIDTH, PET_WINDOW_HEIGHT];
+  let baseW;
+  let baseH;
+  if (petState.compactMode) {
+    baseW = PET_COMPACT_WIDTH;
+    baseH = PET_COMPACT_HEIGHT;
+  } else if (!petState.showStatsPanel) {
+    baseW = PET_NO_STATS_WIDTH;
+    baseH = PET_NO_STATS_HEIGHT;
+  } else {
+    baseW = PET_WINDOW_WIDTH;
+    baseH = PET_WINDOW_HEIGHT;
+  }
+  if (petStartupQuoteAreaActive) {
+    baseH += PET_STARTUP_QUOTE_EXTRA_HEIGHT;
+  }
+  return [baseW, baseH];
 }
 
 function applyWindowMode() {
@@ -2005,6 +2025,13 @@ function setupIpc() {
   ipcMain.handle('pet:close-ai-chat-window', () => {
     closePetAiChatWindow();
     return true;
+  });
+  ipcMain.handle('pet:set-startup-quote-area', (_event, payload) => {
+    const next = Boolean(payload && payload.active);
+    if (petStartupQuoteAreaActive === next) return { ok: true, active: next };
+    petStartupQuoteAreaActive = next;
+    applyWindowMode();
+    return { ok: true, active: next };
   });
   ipcMain.handle('reader:open-window', () => {
     openReaderWindow();

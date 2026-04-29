@@ -6,6 +6,7 @@
   "scripts": {
     "desktop:dev": "pnpm --filter @time-manger/desktop electron-start",
     "desktop:dev:debug": "pnpm --filter @time-manger/desktop electron-start-debug-log",
+    "desktop:devtool":"pnpm --filter @time-manger/desktop react-start --open",
     "desktop:build": "pnpm --filter @time-manger/desktop electron-build",
     "server:dev": "pnpm --filter @time-manger/server dev",
     "server:dev:clean": "powershell -ExecutionPolicy Bypass -File ./scripts/server-dev-clean.ps1",

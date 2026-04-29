@@ -7,11 +7,30 @@ import type { ServerEnv } from './config/env.js';
 import { sendApiError } from './lib/apiError.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { mountAuthRoutes } from './routes/auth.js';
+import { mountQuoteRoutes } from './routes/quotes.js';
 import { mountSyncRoutes } from './routes/sync.js';
 
 export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   const app = express();
   app.disable('x-powered-by');
+
+  // 本地开发：允许桌面端 Vite 页面（http://localhost:4567）直连 server API。
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && /^https?:\/\/localhost(?::\d+)?$/i.test(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Device-Id');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
+
   app.use(express.json({ limit: '2mb' }));
 
   const globalLimiter = rateLimit({
@@ -30,6 +49,7 @@ export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   });
 
   mountAuthRoutes(app, prisma, env);
+  mountQuoteRoutes(app, prisma);
   mountSyncRoutes(app, prisma, env);
 
   app.use(errorHandler);
