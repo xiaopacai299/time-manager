@@ -243,9 +243,9 @@ export function createQuickLinksModule({
     }
 
     stickyWindow = new BrowserWindow({
-      width: 520,
+      width: 640,
       height: 640,
-      minWidth: 420,
+      minWidth: 480,
       minHeight: 480,
       show: false,
       title: '便签',
