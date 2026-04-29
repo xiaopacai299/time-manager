@@ -27,6 +27,8 @@ const DEFAULT_PET_STATE = {
     petAiChatBgPreset: 'mist_blue',
     petAiChatBgImageRel: '',
     petAiChatBgImageUrl: '',
+    windowBgImageRel: '',
+    windowBgImageUrl: '',
   },
 }
 

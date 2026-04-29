@@ -15,6 +15,26 @@ import WorklistExportApp from './WorklistExportApp.jsx'
 import StickyLinksWindowApp from './StickyLinksWindowApp.jsx'
 import { SyncProvider } from './sync/SyncProvider.jsx'
 
+function applyWindowBackgroundCssVar(imageUrl) {
+  if (typeof document === 'undefined') return
+  const rootEl = document.documentElement
+  const nextUrl = String(imageUrl || '').trim()
+  if (nextUrl) {
+    rootEl.style.setProperty('--tm-window-bg-image', `url("${nextUrl}")`)
+  } else {
+    rootEl.style.setProperty('--tm-window-bg-image', "url('/window-bg.png')")
+  }
+}
+
+if (typeof window !== 'undefined' && window.timeManagerAPI) {
+  window.timeManagerAPI.getPetSettings?.().then((settings) => {
+    applyWindowBackgroundCssVar(settings?.windowBgImageUrl)
+  })
+  window.timeManagerAPI.onPetStateChanged?.((state) => {
+    applyWindowBackgroundCssVar(state?.petSettings?.windowBgImageUrl)
+  })
+}
+
 const root = document.getElementById('root')
 const isStatsWindow = typeof window !== 'undefined' && window.location.hash === '#stats'
 const isFavoritesWindow = typeof window !== 'undefined' && window.location.hash === '#favorites'

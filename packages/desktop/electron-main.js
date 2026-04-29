@@ -389,6 +389,8 @@ const petState = {
     petAiChatBgPreset: 'mist_blue',
     /** 仅文件名，位于 userData/pet-ai-chat-bg/ */
     petAiChatBgImageRel: '',
+    /** 全局窗口背景图文件名（位于 userData/window-bg/） */
+    windowBgImageRel: '',
   },
   /** AI 对话历史：最多保留 10 条会话，每会话最多 10 条消息 */
   chatHistories: [],
@@ -408,9 +410,15 @@ const PET_AI_CHAT_BG_KINDS = new Set(['default', 'preset', 'image', 'image-fill'
 const PET_AI_CHAT_BG_PRESETS = new Set(['mist_blue', 'lavender_mist', 'warm_paper', 'dark_navy', 'mint_soft']);
 const PET_AI_CHAT_BG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 const PET_AI_CHAT_BG_MAX_BYTES = 12 * 1024 * 1024;
+const WINDOW_BG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
+const WINDOW_BG_MAX_BYTES = 12 * 1024 * 1024;
 
 function getPetAiChatBgStoreDir() {
   return path.join(app.getPath('userData'), 'pet-ai-chat-bg');
+}
+
+function getWindowBgStoreDir() {
+  return path.join(app.getPath('userData'), 'window-bg');
 }
 
 /** @param {string} rel 仅允许单层文件名 */
@@ -437,8 +445,42 @@ function petAiChatBgImageUrlForClient(rel) {
   }
 }
 
+/** @param {string} rel 仅允许单层文件名 */
+function safeResolveWindowBgImagePath(rel) {
+  const base = path.resolve(getWindowBgStoreDir());
+  const name = path.basename(String(rel || '').trim());
+  if (!name || name !== String(rel || '').trim().replace(/\\/g, '/')) return null;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/i.test(name)) return null;
+  const ext = path.extname(name).toLowerCase();
+  if (!WINDOW_BG_EXT.has(ext)) return null;
+  const full = path.resolve(path.join(base, name));
+  const relToStore = path.relative(base, full);
+  if (relToStore.startsWith('..') || path.isAbsolute(relToStore)) return null;
+  return fs.existsSync(full) ? full : null;
+}
+
+function windowBgImageUrlForClient(rel) {
+  const abs = safeResolveWindowBgImagePath(rel);
+  if (!abs) return '';
+  try {
+    return pathToFileURL(abs).href;
+  } catch {
+    return '';
+  }
+}
+
 function tryUnlinkPetAiChatBgImage(rel) {
   const abs = safeResolvePetAiChatBgImagePath(rel);
+  if (!abs) return;
+  try {
+    fs.unlinkSync(abs);
+  } catch {
+    // ignore
+  }
+}
+
+function tryUnlinkWindowBgImage(rel) {
+  const abs = safeResolveWindowBgImagePath(rel);
   if (!abs) return;
   try {
     fs.unlinkSync(abs);
@@ -1226,9 +1268,16 @@ function loadPetState() {
           petAiChatBgImageRel: String(parsed.petSettings.petAiChatBgImageRel || '')
             .trim()
             .slice(0, 240),
+          windowBgImageRel: String(parsed.petSettings.windowBgImageRel || '')
+            .trim()
+            .slice(0, 240),
         };
         const bgMerged = mergePetAiChatBgSettings({}, petState.petSettings);
-        petState.petSettings = { ...petState.petSettings, ...bgMerged };
+        let windowBgImageRel = String(petState.petSettings.windowBgImageRel || '').trim().slice(0, 240);
+        if (windowBgImageRel && !safeResolveWindowBgImagePath(windowBgImageRel)) {
+          windowBgImageRel = '';
+        }
+        petState.petSettings = { ...petState.petSettings, ...bgMerged, windowBgImageRel };
       }
       // 加载 AI 对话历史（最多保留 10 条会话）
       if (Array.isArray(parsed.chatHistories)) {
@@ -1250,10 +1299,12 @@ function sanitizePetSettingsForClient(raw) {
   if (!raw || typeof raw !== 'object') return raw;
   const { openAiApiKey: _secret, ...rest } = raw;
   const imageUrl = petAiChatBgImageUrlForClient(rest.petAiChatBgImageRel);
+  const windowBgImageUrl = windowBgImageUrlForClient(rest.windowBgImageRel);
   return {
     ...rest,
     hasOpenAiKey: Boolean(String(_secret || '').trim()),
     petAiChatBgImageUrl: imageUrl,
+    windowBgImageUrl,
     // 下发硬编码的配置给前端显示
     llmChatUrl: HARDCODED_LLM_CHAT_URL,
     llmModel: HARDCODED_LLM_MODEL,
@@ -2016,7 +2067,23 @@ function setupIpc() {
       llmModel,
       llmSkills,
       ...petAiChatBg,
+      windowBgImageRel:
+        input.clearWindowBgImage === true
+          ? ''
+          : String(prevPs.windowBgImageRel || '')
+              .trim()
+              .slice(0, 240),
     };
+    if (input.clearWindowBgImage === true) {
+      const prevWindowBgRel = String(prevPs.windowBgImageRel || '').trim();
+      if (prevWindowBgRel) tryUnlinkWindowBgImage(prevWindowBgRel);
+    }
+    if (
+      petState.petSettings.windowBgImageRel &&
+      !safeResolveWindowBgImagePath(petState.petSettings.windowBgImageRel)
+    ) {
+      petState.petSettings.windowBgImageRel = '';
+    }
     persistPetState();
     broadcastPetStateChanged();
     return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };
@@ -2104,6 +2171,56 @@ function setupIpc() {
       { ...petState.petSettings, petAiChatBgImageRel: base },
     );
     petState.petSettings = { ...petState.petSettings, ...petAiChatBg };
+    persistPetState();
+    broadcastPetStateChanged();
+    return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };
+  });
+
+  ipcMain.handle('window-bg:choose-image', async (event) => {
+    const win =
+      BrowserWindow.fromWebContents(event.sender) ||
+      (settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null) ||
+      (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win || undefined, {
+      title: '选择窗口背景图',
+      properties: ['openFile'],
+      filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+    });
+    if (canceled || !filePaths?.[0]) {
+      return { ok: false, error: 'CANCELLED' };
+    }
+    const src = filePaths[0];
+    const ext = path.extname(src).toLowerCase();
+    if (!WINDOW_BG_EXT.has(ext)) {
+      return { ok: false, error: '不支持的图片格式（请使用 png / jpg / webp / gif）' };
+    }
+    let st;
+    try {
+      st = fs.statSync(src);
+    } catch {
+      return { ok: false, error: '无法读取所选文件' };
+    }
+    if (st.size > WINDOW_BG_MAX_BYTES) {
+      return { ok: false, error: '图片过大（最大约 12MB）' };
+    }
+    const dir = getWindowBgStoreDir();
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {
+      return { ok: false, error: '无法在应用数据目录创建背景文件夹' };
+    }
+    const base = `window-bg-${Date.now()}-${Math.random().toString(16).slice(2, 10)}${ext}`;
+    const dest = path.join(dir, base);
+    try {
+      fs.copyFileSync(src, dest);
+    } catch {
+      return { ok: false, error: '保存图片失败' };
+    }
+    const prevRel = String(petState.petSettings?.windowBgImageRel || '').trim();
+    if (prevRel && prevRel !== base) {
+      tryUnlinkWindowBgImage(prevRel);
+    }
+    petState.petSettings = { ...petState.petSettings, windowBgImageRel: base };
     persistPetState();
     broadcastPetStateChanged();
     return { ok: true, petSettings: sanitizePetSettingsForClient(petState.petSettings) };

@@ -51,6 +51,8 @@ export default function SettingsWindowApp() {
   const [petAiChatBgPreset, setPetAiChatBgPreset] = useState('mist_blue')
   const [petAiChatBgImageUrl, setPetAiChatBgImageUrl] = useState('')
   const [petAiChatBgImageRel, setPetAiChatBgImageRel] = useState('')
+  const [windowBgImageUrl, setWindowBgImageUrl] = useState('')
+  const [windowBgImageRel, setWindowBgImageRel] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -83,6 +85,8 @@ export default function SettingsWindowApp() {
       setPetAiChatBgPreset(presetIds.has(pr) ? pr : 'mist_blue')
       setPetAiChatBgImageUrl(String(data.petAiChatBgImageUrl || ''))
       setPetAiChatBgImageRel(String(data.petAiChatBgImageRel || ''))
+      setWindowBgImageUrl(String(data.windowBgImageUrl || ''))
+      setWindowBgImageRel(String(data.windowBgImageRel || ''))
     })
     return () => {
       mounted = false
@@ -134,6 +138,8 @@ export default function SettingsWindowApp() {
         setPetAiChatBgPreset(presetIds.has(npr) ? npr : 'mist_blue')
         setPetAiChatBgImageUrl(String(ps.petAiChatBgImageUrl || ''))
         setPetAiChatBgImageRel(String(ps.petAiChatBgImageRel || ''))
+        setWindowBgImageUrl(String(ps.windowBgImageUrl || ''))
+        setWindowBgImageRel(String(ps.windowBgImageRel || ''))
       }
       setMsg('设置已保存')
     } catch {
@@ -194,6 +200,49 @@ export default function SettingsWindowApp() {
     }
   }
 
+  async function onPickWindowBgImage() {
+    setMsg('')
+    try {
+      const r = await window.timeManagerAPI?.chooseWindowBackgroundImage?.()
+      if (!r?.ok) {
+        if (r?.error && r.error !== 'CANCELLED') setMsg(r.error)
+        return
+      }
+      const ps = r.petSettings
+      if (ps) {
+        setWindowBgImageUrl(String(ps.windowBgImageUrl || ''))
+        setWindowBgImageRel(String(ps.windowBgImageRel || ''))
+        setMsg('已设置全局窗口背景图')
+      }
+    } catch (e) {
+      setMsg(e?.message || '选择图片失败')
+    }
+  }
+
+  async function onClearWindowBgImage() {
+    setMsg('')
+    try {
+      const r = await window.timeManagerAPI?.updatePetSettings?.({
+        clearWindowBgImage: true,
+      })
+      if (!r?.ok) {
+        setMsg(r?.error || '清除失败')
+        return
+      }
+      const ps = r.petSettings
+      if (ps) {
+        setWindowBgImageUrl(String(ps.windowBgImageUrl || ''))
+        setWindowBgImageRel(String(ps.windowBgImageRel || ''))
+      } else {
+        setWindowBgImageUrl('')
+        setWindowBgImageRel('')
+      }
+      setMsg('已恢复默认窗口背景')
+    } catch (e) {
+      setMsg(e?.message || '清除失败')
+    }
+  }
+
   return (
     <main className="settings-page">
       <section className="settings-card">
@@ -219,6 +268,35 @@ export default function SettingsWindowApp() {
               <span className="settings-pet-name">{pet.name}</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-title">全局窗口背景</h2>
+        <p className="settings-sub">
+          用于除宠物主窗外的大部分页面背景（设置、收藏夹、工作清单、日记、AI 对话等）。
+        </p>
+        <div className="settings-form">
+          <div className="settings-field">
+            <span>背景图片</span>
+            <div className="settings-ai-bg-actions">
+              <button type="button" className="settings-secondary" onClick={() => void onPickWindowBgImage()}>
+                选择本地图片…
+              </button>
+              {windowBgImageRel ? (
+                <button type="button" className="settings-secondary" onClick={() => void onClearWindowBgImage()}>
+                  恢复默认背景
+                </button>
+              ) : null}
+            </div>
+            {windowBgImageUrl ? (
+              <img className="settings-ai-bg-preview" src={windowBgImageUrl} alt="全局窗口背景预览" />
+            ) : (
+              <p className="settings-sub" style={{ marginTop: 8, marginBottom: 0 }}>
+                未设置时默认使用内置背景图（window-bg.png）。
+              </p>
+            )}
+          </div>
         </div>
       </section>
 

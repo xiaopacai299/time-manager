@@ -290,6 +290,7 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * @returns {Promise<{ ok: boolean, petSettings?: object, error?: string }>}
    */
   choosePetAiChatBackgroundImage: () => ipcRenderer.invoke('pet-ai-chat-bg:choose-image'),
+  chooseWindowBackgroundImage: () => ipcRenderer.invoke('window-bg:choose-image'),
 
   /**
    * 发送 AI 对话消息（主进程转发 OpenAI Chat Completions；默认请求流式，主进程通过 `onAiChatStreamChunk` 推送增量）。

@@ -423,25 +423,52 @@
   box-shadow: none;
   /* 独立窗口：根容器透明，让 PetAiChatWindowApp 上的渐变/图片背景透出 */
   background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-image: none;
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__head {
-  background: linear-gradient(180deg, rgba(238, 243, 255, 0.55) 0%, rgba(228, 236, 251, 0.42) 100%);
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: none;
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__messages {
-  background: rgba(255, 255, 255, 0.22);
+  background: transparent;
+}
+
+.pet-ai-panel.pet-ai-panel--window .pet-ai-panel__msg--assistant {
+  background: transparent;
+  background-image: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__foot {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  background: rgba(250, 252, 255, 0.45);
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__skills {
-  background: rgba(248, 250, 255, 0.48);
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
+  border-top: 1px solid var(--tm-glass-border);
+  border-bottom: 1px solid var(--tm-glass-border);
+  isolation: isolate;
 }
 
 .pet-ai-panel.pet-ai-panel--window .pet-ai-panel__input {
@@ -461,7 +488,15 @@
 }
 
 .pet-ai-panel--window .pet-ai-panel__history {
-  background: rgba(248, 250, 255, 0.48);
+  margin-top: 10px;
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
+  border-top: 1px solid var(--tm-glass-border);
+  isolation: isolate;
 }
 
 .pet-ai-panel__history-toggle {

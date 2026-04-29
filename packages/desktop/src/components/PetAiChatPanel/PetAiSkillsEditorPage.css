@@ -104,11 +104,18 @@
 }
 
 .pet-ai-skills-page__card {
-  background: #fff;
-  border: 1px solid #d5e0f5;
+  background-color: transparent;
+  background-image: var(--tm-glass-stack);
+  background-size: 92px 92px, auto;
+  background-repeat: repeat, no-repeat;
+  -webkit-backdrop-filter: var(--tm-blur-sm);
+  backdrop-filter: var(--tm-blur-sm);
+  border: 1px solid var(--tm-glass-border-light);
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 10px;
+  box-shadow: var(--tm-glass-inset), 0 10px 26px rgba(30, 52, 98, 0.1);
+  isolation: isolate;
 }
 
 .pet-ai-skills-page__card-head {
@@ -165,16 +172,25 @@
 
 .pet-ai-skills-page__remove {
   margin-left: auto;
-  border: 0;
-  background: transparent;
-  color: #b42318;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--tm-btn-radius);
+  background: var(--tm-btn-muted-fill);
+  box-shadow: var(--tm-btn-3d-danger-soft);
+  color: #8a1a12;
   font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
   cursor: pointer;
-  text-decoration: underline;
+  transition: var(--tm-btn-ease);
 }
 
 .pet-ai-skills-page__remove:hover {
-  color: #8a1a12;
+  transform: var(--tm-btn-lift);
+  filter: brightness(1.02);
+}
+
+.pet-ai-skills-page__remove:active {
+  transform: var(--tm-btn-press);
 }
 
 .pet-ai-skills-page__sep {
@@ -193,14 +209,26 @@
 }
 
 .pet-ai-skills-page__secondary {
-  border: 1px solid #cdd9f5;
-  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: var(--tm-btn-secondary-fill);
+  box-shadow: var(--tm-btn-3d-secondary);
   color: #2a3f63;
   font-size: 12px;
   font-weight: 600;
   padding: 7px 14px;
   border-radius: 8px;
   cursor: pointer;
+  transition: var(--tm-btn-ease);
+}
+
+.pet-ai-skills-page__secondary:hover:not(:disabled) {
+  background: var(--tm-btn-secondary-fill-hover);
+  box-shadow: var(--tm-btn-3d-secondary-hover);
+  transform: var(--tm-btn-lift);
+}
+
+.pet-ai-skills-page__secondary:active:not(:disabled) {
+  transform: var(--tm-btn-press);
 }
 
 .pet-ai-skills-page__secondary:disabled {
@@ -209,14 +237,27 @@
 }
 
 .pet-ai-skills-page__save {
-  border: 0;
-  background: #5f87ff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--tm-btn-primary-fill);
+  box-shadow: var(--tm-btn-3d-primary);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
   padding: 7px 16px;
   border-radius: 8px;
   cursor: pointer;
+  transition: var(--tm-btn-ease);
+}
+
+.pet-ai-skills-page__save:hover:not(:disabled) {
+  background: var(--tm-btn-primary-fill-hover);
+  box-shadow: var(--tm-btn-3d-primary-hover);
+  transform: var(--tm-btn-lift);
+}
+
+.pet-ai-skills-page__save:active:not(:disabled) {
+  box-shadow: var(--tm-btn-3d-primary-active);
+  transform: var(--tm-btn-press);
 }
 
 .pet-ai-skills-page__save:disabled {
