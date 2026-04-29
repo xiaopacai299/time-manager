@@ -126,14 +126,36 @@
 
 .pet-startup-quote__content {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.45;
+  font-family: "STXingkai", "华文行楷", "HanziPen SC", "KaiTi", "STKaiti", "FZShuTi", cursive;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #253f9f;
+  background: linear-gradient(90deg, #0f40d1 0%, #211bc6 52%, #6a17e0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 0 1px rgba(160, 182, 255, 0.9),
+    0 0 6px rgba(117, 129, 255, 0.55),
+    0 0 12px rgba(135, 87, 231, 0.35);
 }
 
 .pet-startup-quote__author {
   margin: 6px 0 0;
-  font-size: 11px;
-  color: var(--tm-text-muted);
+  font-size: 13px;
+  font-family: "STXingkai", "华文行楷", "HanziPen SC", "KaiTi", "STKaiti", "FZShuTi", cursive;
+  font-weight: 500;
+  color: #2a46aa;
+  background: linear-gradient(90deg, #2b54cb 0%, #4a41bf 56%, #6c35b4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 0 1px rgba(176, 192, 255, 0.85),
+    0 0 5px rgba(133, 148, 255, 0.5),
+    0 0 10px rgba(147, 95, 238, 0.32);
   text-align: right;
 }
 
