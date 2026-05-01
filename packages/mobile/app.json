@@ -2,6 +2,15 @@
   "expo": {
     "name": "time-manger-mobile",
     "slug": "time-manger-mobile",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "platforms": ["android", "ios", "web"],
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.timemanger.mobile"
+    },
+    "ios": {
+      "bundleIdentifier": "com.timemanger.mobile"
+    }
   }
 }

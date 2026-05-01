@@ -3,3 +3,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+
+# 不再使用本地原生构建（改用 Expo Go）。若以后需要做 dev-client/原生编译，
+# 用 `npx expo prebuild` 重新生成 android/ 与 ios/，这两个目录无需进版本库。
+android/
+ios/

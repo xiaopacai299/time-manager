@@ -4,12 +4,11 @@
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
+    "start": "expo start --tunnel",
+    "start:lan": "expo start",
     "typecheck": "tsc -p . --noEmit",
     "lint": "echo \"(mobile uses tsc for lint)\"",
-    "test": "echo \"(Phase 2 add jest)\"",
-    "ios": "expo run:ios"
+    "test": "echo \"(Phase 2 add jest)\""
   },
   "dependencies": {
     "@react-navigation/native": "^7.2.2",
