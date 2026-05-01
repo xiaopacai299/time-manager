@@ -4,11 +4,14 @@ import { SyncEngine, type ApiClient, type LocalStore } from './engine.js';
 
 test('SyncEngine keeps original since while paging', async () => {
   const pulls: Array<{ since: string | null; cursor: string | null }> = [];
+  let lastSetSince: string | null = null;
   const store: LocalStore = {
     async getLastSyncAt() {
       return '2026-04-25T00:00:00.000Z';
     },
-    async setLastSyncAt() {},
+    async setLastSyncAt(_resource, serverTime) {
+      lastSetSince = serverTime;
+    },
     async getDirtyRecords() {
       return [];
     },
@@ -22,7 +25,9 @@ test('SyncEngine keeps original since while paging', async () => {
         return {
           resource: 'diaries',
           serverTime: '2026-04-25T12:00:00.000Z',
-          records: [{ id: '1' }],
+          records: [
+            { id: '1', updatedAt: '2026-04-25T10:00:00.000Z' },
+          ],
           hasMore: true,
           nextCursor: 'next-page',
         };
@@ -30,7 +35,9 @@ test('SyncEngine keeps original since while paging', async () => {
       return {
         resource: 'diaries',
         serverTime: '2026-04-25T12:00:01.000Z',
-        records: [{ id: '2' }],
+        records: [
+          { id: '2', updatedAt: '2026-04-25T11:00:00.000Z' },
+        ],
         hasMore: false,
         nextCursor: null,
       };
@@ -48,4 +55,41 @@ test('SyncEngine keeps original since while paging', async () => {
     { since: '2026-04-25T00:00:00.000Z', cursor: 'next-page' },
   ]);
   assert.equal(result.pulled, 2);
+  assert.equal(lastSetSince, '2026-04-25T11:00:00.000Z');
+});
+
+test('SyncEngine does not advance since on empty pull', async () => {
+  let setCalls = 0;
+  const store: LocalStore = {
+    async getLastSyncAt() {
+      return '2026-04-25T00:00:00.000Z';
+    },
+    async setLastSyncAt() {
+      setCalls += 1;
+    },
+    async getDirtyRecords() {
+      return [];
+    },
+    async upsertRemote() {
+      throw new Error('upsert should not run');
+    },
+    async markClean() {},
+  };
+  const api: ApiClient = {
+    async pull() {
+      return {
+        resource: 'worklist-items',
+        serverTime: '2026-04-25T23:59:59.999Z',
+        records: [],
+        hasMore: false,
+        nextCursor: null,
+      };
+    },
+    async push() {
+      throw new Error('push should not run');
+    },
+  };
+
+  await new SyncEngine(store, api, 'device').syncResource('worklist-items');
+  assert.equal(setCalls, 0);
 });

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../hooks/useAuth";
+import { useTopInset } from "../hooks/useScreenInsets";
 
 const DEFAULT_API_BASE = "http://10.0.2.2:3000";
 
@@ -38,9 +39,12 @@ export function LoginScreen() {
     }
   };
 
+  const topInset = useTopInset();
+
   return (
+    <View style={[styles.flex, { paddingTop: topInset }]}>
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={styles.flexInner}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -98,11 +102,13 @@ export function LoginScreen() {
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: "#f5f5f5" },
+  flexInner: { flex: 1 },
   container: {
     flexGrow: 1,
     justifyContent: "center",

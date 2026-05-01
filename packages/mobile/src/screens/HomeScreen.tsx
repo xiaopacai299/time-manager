@@ -7,10 +7,10 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   Alert,
 } from "react-native";
 import { useAuth } from "../hooks/useAuth";
+import { useTopInset } from "../hooks/useScreenInsets";
 import { useSync } from "../sync/SyncProvider";
 import { fetchTodayRecords } from "../storage/timeRecordQueries";
 import type { TimeRecordPayload } from "@time-manger/shared";
@@ -76,9 +76,10 @@ export function HomeScreen({ navigation }: Props) {
   const user = auth.status === "authenticated" ? auth.user : null;
   const total = records.reduce((sum, r) => sum + r.durationMs, 0);
   const syncing = status === "syncing";
+  const topInset = useTopInset();
 
   return (
-    <SafeAreaView style={styles.flex}>
+    <View style={[styles.flex, { paddingTop: topInset }]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>今日统计</Text>
@@ -172,7 +173,7 @@ export function HomeScreen({ navigation }: Props) {
           )}
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

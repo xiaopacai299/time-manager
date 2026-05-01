@@ -4,13 +4,13 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTopInset } from "../hooks/useScreenInsets";
 import type { DiaryPayload } from "@time-manger/shared";
 import { useSync } from "../sync/SyncProvider";
 import { deleteDiary, fetchDiaries, saveDiary } from "../storage/diaryQueries";
@@ -77,8 +77,10 @@ export function DiaryScreen({ navigation }: Props) {
 
   const refreshing = loading || status === "syncing";
 
+  const topInset = useTopInset();
+
   return (
-    <SafeAreaView style={styles.flex}>
+    <View style={[styles.flex, { paddingTop: topInset }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={navigation.goBack}>
           <Text style={styles.back}>返回</Text>
@@ -146,7 +148,7 @@ export function DiaryScreen({ navigation }: Props) {
           </View>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

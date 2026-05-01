@@ -4,13 +4,13 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTopInset } from "../hooks/useScreenInsets";
 import type { WorklistItemPayload } from "@time-manger/shared";
 import { useSync } from "../sync/SyncProvider";
 import {
@@ -106,8 +106,10 @@ export function WorklistScreen({ navigation }: Props) {
 
   const refreshing = loading || status === "syncing";
 
+  const topInset = useTopInset();
+
   return (
-    <SafeAreaView style={styles.flex}>
+    <View style={[styles.flex, { paddingTop: topInset }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={navigation.goBack}>
           <Text style={styles.back}>返回</Text>
@@ -188,7 +190,7 @@ export function WorklistScreen({ navigation }: Props) {
           );
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
