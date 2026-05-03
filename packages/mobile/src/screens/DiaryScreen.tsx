@@ -11,52 +11,68 @@ import {
   View,
 } from "react-native";
 import { useTopInset } from "../hooks/useScreenInsets";
+import { useAuth } from "../hooks/useAuth";
 import type { DiaryPayload } from "@time-manger/shared";
-import { useSync } from "../sync/SyncProvider";
-import { deleteDiary, fetchDiaries, saveDiary } from "../storage/diaryQueries";
 
 type Props = {
   navigation: { goBack: () => void };
 };
 
 export function DiaryScreen({ navigation }: Props) {
-  const { triggerSync, status, syncTick } = useSync();
+  const { auth } = useAuth();
   const [items, setItems] = useState<DiaryPayload[]>([]);
   const [content, setContent] = useState("");
   const [editing, setEditing] = useState<DiaryPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
     setLoading(true);
+    setError(null);
     try {
-      setItems(await fetchDiaries());
+      const { diaries } = await auth.client.listDiaries();
+      setItems(diaries);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "加载失败");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
     void load();
-  }, [load, syncTick]);
+  }, [load]);
 
   const handleSave = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
     const trimmed = content.trim();
     if (!trimmed) return;
     const date = new Date().toISOString().slice(0, 10);
-    await saveDiary({
-      id: editing?.id,
-      date: editing?.date ?? date,
-      content: trimmed,
-      createdAt: editing?.createdAt,
-    });
-    setContent("");
-    setEditing(null);
-    await triggerSync();
-    await load();
-  }, [content, editing, load, triggerSync]);
+    setLoading(true);
+    setError(null);
+    try {
+      if (editing) {
+        await auth.client.updateDiary(editing.id, {
+          date: editing.date,
+          content: trimmed,
+        });
+      } else {
+        await auth.client.createDiary({ date, content: trimmed });
+      }
+      setContent("");
+      setEditing(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, content, editing, load]);
 
   const handleDelete = useCallback(
     (item: DiaryPayload) => {
+      if (auth.status !== "authenticated") return;
       Alert.alert("删除日记", "确定删除这条日记吗？", [
         { text: "取消", style: "cancel" },
         {
@@ -64,19 +80,29 @@ export function DiaryScreen({ navigation }: Props) {
           style: "destructive",
           onPress: () => {
             void (async () => {
-              await deleteDiary(item.id);
-              await triggerSync();
-              await load();
+              setLoading(true);
+              setError(null);
+              try {
+                await auth.client.deleteDiary(item.id);
+                if (editing?.id === item.id) {
+                  setEditing(null);
+                  setContent("");
+                }
+                await load();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "删除失败");
+              } finally {
+                setLoading(false);
+              }
             })();
           },
         },
       ]);
     },
-    [load, triggerSync]
+    [auth, editing, load]
   );
 
-  const refreshing = loading || status === "syncing";
-
+  const refreshing = loading;
   const topInset = useTopInset();
 
   return (
@@ -89,6 +115,12 @@ export function DiaryScreen({ navigation }: Props) {
         <View style={styles.headerSpacer} />
       </View>
 
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.editor}>
         <TextInput
           style={styles.input}
@@ -98,7 +130,7 @@ export function DiaryScreen({ navigation }: Props) {
           placeholderTextColor="#aaa"
           multiline
         />
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSave}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => void handleSave()}>
           <Text style={styles.primaryButtonText}>{editing ? "保存修改" : "新增日记"}</Text>
         </TouchableOpacity>
         {editing ? (
@@ -118,7 +150,9 @@ export function DiaryScreen({ navigation }: Props) {
         data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void triggerSync()} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void load()} />
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             {refreshing ? (
@@ -167,6 +201,14 @@ const styles = StyleSheet.create({
   back: { color: "#4f46e5", fontWeight: "700" },
   title: { fontSize: 18, fontWeight: "800", color: "#1a1a1a" },
   headerSpacer: { width: 32 },
+  errorBanner: {
+    backgroundColor: "#fff5f5",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#feb2b2",
+  },
+  errorText: { color: "#c53030", fontSize: 13 },
   editor: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#eee" },
   input: {
     minHeight: 96,

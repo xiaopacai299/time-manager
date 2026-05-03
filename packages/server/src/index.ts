@@ -12,9 +12,10 @@ function main() {
   const env = loadServerEnv();
   const app = createApp(prisma, env);
   const port = env.PORT;
-  app.listen(port, () => {
+  /** 绑定 0.0.0.0，便于手机/局域网设备通过本机 IP 访问（仅绑定 localhost 时外机无法连接）。 */
+  app.listen(port, '0.0.0.0', () => {
     console.log('服务已经启动了，真费劲啊');
-    console.log(`[server] listening on http://localhost:${port}`);
+    console.log(`[server] listening on http://0.0.0.0:${port} (use your LAN IP from phone, e.g. http://192.168.x.x:${port})`);
   });
 }
 

@@ -353,3 +353,72 @@ test(
     await prisma.user.deleteMany({ where: { email: email.toLowerCase() } });
   },
 );
+
+test(
+  'mobile REST: diaries list/create/patch/delete returns full list',
+  { skip: !hasDb },
+  async () => {
+    const app = createApp(prisma, env());
+    const deviceId = '10000000-0000-4000-8000-000000000099';
+    const email = `it-mrest-${Date.now()}@example.com`;
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .set('X-Device-Id', deviceId)
+      .send({ email, password: 'password-ok-1' });
+    assert.equal(reg.status, 201, JSON.stringify(reg.body));
+    const { accessToken } = reg.body as { accessToken: string };
+
+    const list0 = await request(app)
+      .get('/api/v1/diaries')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId);
+    assert.equal(list0.status, 200);
+    assert.equal(list0.body.diaries.length, 0);
+
+    const create = await request(app)
+      .post('/api/v1/diaries')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .send({ date: '2026-05-01', content: 'hello' });
+    assert.equal(create.status, 201, JSON.stringify(create.body));
+    const diaryId = create.body.diary.id as string;
+
+    const list1 = await request(app)
+      .get('/api/v1/diaries')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId);
+    assert.equal(list1.status, 200);
+    assert.equal(list1.body.diaries.length, 1);
+    assert.equal(list1.body.diaries[0].content, 'hello');
+
+    const patch = await request(app)
+      .patch(`/api/v1/diaries/${diaryId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .send({ content: 'updated' });
+    assert.equal(patch.status, 200);
+    assert.equal(patch.body.diary.content, 'updated');
+
+    const del = await request(app)
+      .delete(`/api/v1/diaries/${diaryId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId);
+    assert.equal(del.status, 204);
+
+    const list2 = await request(app)
+      .get('/api/v1/diaries')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId);
+    assert.equal(list2.body.diaries.length, 0);
+
+    const tr = await request(app)
+      .get('/api/v1/time-records')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('X-Device-Id', deviceId)
+      .query({ date: '2026-05-03' });
+    assert.equal(tr.status, 200);
+    assert.ok(Array.isArray(tr.body.records));
+
+    await prisma.user.deleteMany({ where: { email: email.toLowerCase() } });
+  },
+);

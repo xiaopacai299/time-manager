@@ -93,3 +93,41 @@ test('SyncEngine does not advance since on empty pull', async () => {
   await new SyncEngine(store, api, 'device').syncResource('worklist-items');
   assert.equal(setCalls, 0);
 });
+
+test('SyncEngine pushFirst runs push before pull', async () => {
+  const order: string[] = [];
+  const store: LocalStore = {
+    async getLastSyncAt() {
+      return null;
+    },
+    async setLastSyncAt() {},
+    async getDirtyRecords() {
+      return [{ id: 'x', updatedAt: '2026-01-01T00:00:00.000Z' }];
+    },
+    async upsertRemote() {},
+    async markClean() {},
+  };
+  const api: ApiClient = {
+    async pull() {
+      order.push('pull');
+      return {
+        resource: 'diaries',
+        serverTime: '2026-01-02T00:00:00.000Z',
+        records: [],
+        hasMore: false,
+        nextCursor: null,
+      };
+    },
+    async push() {
+      order.push('push');
+      return {
+        accepted: [{ id: 'x', updatedAt: '2026-01-01T00:00:00.000Z' }],
+        rejected: [],
+        serverTime: '2026-01-02T00:00:01.000Z',
+      };
+    },
+  };
+
+  await new SyncEngine(store, api, 'device').syncResource('diaries', { pushFirst: true });
+  assert.deepEqual(order, ['push', 'pull']);
+});

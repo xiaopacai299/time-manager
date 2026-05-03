@@ -11,38 +11,39 @@ import {
   View,
 } from "react-native";
 import { useTopInset } from "../hooks/useScreenInsets";
+import { useAuth } from "../hooks/useAuth";
 import type { WorklistItemPayload } from "@time-manger/shared";
-import { useSync } from "../sync/SyncProvider";
-import {
-  deleteWorklistItem,
-  fetchWorklistItems,
-  saveWorklistItem,
-} from "../storage/worklistQueries";
 
 type Props = {
   navigation: { goBack: () => void };
 };
 
 export function WorklistScreen({ navigation }: Props) {
-  const { triggerSync, status, syncTick } = useSync();
+  const { auth } = useAuth();
   const [items, setItems] = useState<WorklistItemPayload[]>([]);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [editing, setEditing] = useState<WorklistItemPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
     setLoading(true);
+    setError(null);
     try {
-      setItems(await fetchWorklistItems());
+      const { items: rows } = await auth.client.listWorklistItems();
+      setItems(rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "加载失败");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
     void load();
-  }, [load, syncTick]);
+  }, [load]);
 
   const resetForm = () => {
     setName("");
@@ -51,41 +52,62 @@ export function WorklistScreen({ navigation }: Props) {
   };
 
   const handleSave = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
     const trimmed = name.trim();
     if (!trimmed) return;
-    await saveWorklistItem({
-      id: editing?.id,
-      name: trimmed,
-      icon: editing?.icon ?? "📋",
-      note: note.trim(),
-      reminderAt: editing?.reminderAt,
-      estimateDoneAt: editing?.estimateDoneAt,
-      createdAt: editing?.createdAt,
-      reminderNotified: editing?.reminderNotified,
-      completionResult: editing?.completionResult,
-      confirmSnoozeUntil: editing?.confirmSnoozeUntil,
-    });
-    resetForm();
-    await triggerSync();
-    await load();
-  }, [editing, load, name, note, triggerSync]);
+    setLoading(true);
+    setError(null);
+    try {
+      if (editing) {
+        await auth.client.updateWorklistItem(editing.id, {
+          name: trimmed,
+          note: note.trim(),
+          icon: editing.icon,
+          reminderAt: editing.reminderAt,
+          estimateDoneAt: editing.estimateDoneAt,
+          reminderNotified: editing.reminderNotified,
+          completionResult: editing.completionResult,
+          confirmSnoozeUntil: editing.confirmSnoozeUntil,
+        });
+      } else {
+        await auth.client.createWorklistItem({
+          name: trimmed,
+          note: note.trim(),
+        });
+      }
+      resetForm();
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, editing, load, name, note]);
 
   const toggleDone = useCallback(
     async (item: WorklistItemPayload) => {
+      if (auth.status !== "authenticated") return;
       const done = item.completionResult === "completed";
-      await saveWorklistItem({
-        ...item,
-        completionResult: done ? "" : "completed",
-        confirmSnoozeUntil: new Date().toISOString(),
-      });
-      await triggerSync();
-      await load();
+      setLoading(true);
+      setError(null);
+      try {
+        await auth.client.updateWorklistItem(item.id, {
+          completionResult: done ? "" : "completed",
+          confirmSnoozeUntil: new Date().toISOString(),
+        });
+        await load();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "更新失败");
+      } finally {
+        setLoading(false);
+      }
     },
-    [load, triggerSync]
+    [auth, load]
   );
 
   const handleDelete = useCallback(
     (item: WorklistItemPayload) => {
+      if (auth.status !== "authenticated") return;
       Alert.alert("删除工作清单", "确定删除这个任务吗？", [
         { text: "取消", style: "cancel" },
         {
@@ -93,19 +115,26 @@ export function WorklistScreen({ navigation }: Props) {
           style: "destructive",
           onPress: () => {
             void (async () => {
-              await deleteWorklistItem(item.id);
-              await triggerSync();
-              await load();
+              setLoading(true);
+              setError(null);
+              try {
+                await auth.client.deleteWorklistItem(item.id);
+                if (editing?.id === item.id) resetForm();
+                await load();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "删除失败");
+              } finally {
+                setLoading(false);
+              }
             })();
           },
         },
       ]);
     },
-    [load, triggerSync]
+    [auth, editing, load]
   );
 
-  const refreshing = loading || status === "syncing";
-
+  const refreshing = loading;
   const topInset = useTopInset();
 
   return (
@@ -117,6 +146,12 @@ export function WorklistScreen({ navigation }: Props) {
         <Text style={styles.title}>工作清单</Text>
         <View style={styles.headerSpacer} />
       </View>
+
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.editor}>
         <TextInput
@@ -134,7 +169,7 @@ export function WorklistScreen({ navigation }: Props) {
           placeholderTextColor="#aaa"
           multiline
         />
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSave}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => void handleSave()}>
           <Text style={styles.primaryButtonText}>{editing ? "保存修改" : "新增任务"}</Text>
         </TouchableOpacity>
         {editing ? (
@@ -148,7 +183,9 @@ export function WorklistScreen({ navigation }: Props) {
         data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void triggerSync()} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void load()} />
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             {refreshing ? (
@@ -209,6 +246,14 @@ const styles = StyleSheet.create({
   back: { color: "#4f46e5", fontWeight: "700" },
   title: { fontSize: 18, fontWeight: "800", color: "#1a1a1a" },
   headerSpacer: { width: 32 },
+  errorBanner: {
+    backgroundColor: "#fff5f5",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#feb2b2",
+  },
+  errorText: { color: "#c53030", fontSize: 13 },
   editor: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#eee" },
   input: {
     borderWidth: 1,

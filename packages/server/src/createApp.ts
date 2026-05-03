@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { mountAuthRoutes } from './routes/auth.js';
 import { mountQuoteRoutes } from './routes/quotes.js';
 import { mountSyncRoutes } from './routes/sync.js';
+import { mountMobileRestRoutes } from './routes/mobileRest.js';
 
 export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   const app = express();
@@ -51,6 +52,7 @@ export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   mountAuthRoutes(app, prisma, env);
   mountQuoteRoutes(app, prisma);
   mountSyncRoutes(app, prisma, env);
+  mountMobileRestRoutes(app, prisma, env);
 
   app.use(errorHandler);
   return app;

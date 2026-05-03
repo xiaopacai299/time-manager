@@ -11,8 +11,6 @@ import {
 } from "react-native";
 import { useAuth } from "../hooks/useAuth";
 import { useTopInset } from "../hooks/useScreenInsets";
-import { useSync } from "../sync/SyncProvider";
-import { fetchTodayRecords } from "../storage/timeRecordQueries";
 import type { TimeRecordPayload } from "@time-manger/shared";
 
 type Props = {
@@ -37,30 +35,30 @@ function todayDate(): string {
 
 export function HomeScreen({ navigation }: Props) {
   const { auth, logout } = useAuth();
-  const { triggerSync, status, lastSyncAt, error: syncError, syncTick } =
-    useSync();
   const [records, setRecords] = useState<TimeRecordPayload[]>([]);
-  const [loadingDb, setLoadingDb] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
 
-  const reloadFromLocal = useCallback(async () => {
-    setLoadingDb(true);
+  const load = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
+    setLoading(true);
+    setError(null);
     try {
       const today = todayDate();
-      const rows = await fetchTodayRecords(today);
+      const { records: rows } = await auth.client.listTimeRecordsByDate(today);
       setRecords(rows);
+      setLastFetchedAt(new Date().toLocaleTimeString("zh-CN"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "加载失败");
     } finally {
-      setLoadingDb(false);
+      setLoading(false);
     }
-  }, []);
+  }, [auth]);
 
   useEffect(() => {
-    void reloadFromLocal();
-  }, [reloadFromLocal, syncTick]);
-
-  const handleSync = useCallback(async () => {
-    await triggerSync();
-    await reloadFromLocal();
-  }, [triggerSync, reloadFromLocal]);
+    void load();
+  }, [load]);
 
   const handleLogout = useCallback(() => {
     Alert.alert("登出", "确定要退出登录吗？", [
@@ -75,7 +73,6 @@ export function HomeScreen({ navigation }: Props) {
 
   const user = auth.status === "authenticated" ? auth.user : null;
   const total = records.reduce((sum, r) => sum + r.durationMs, 0);
-  const syncing = status === "syncing";
   const topInset = useTopInset();
 
   return (
@@ -105,14 +102,14 @@ export function HomeScreen({ navigation }: Props) {
           onPress={() => navigation.navigate("Diaries")}
         >
           <Text style={styles.shortcutTitle}>日记</Text>
-          <Text style={styles.shortcutSub}>查看和编辑同步日记</Text>
+          <Text style={styles.shortcutSub}>从服务端加载</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.shortcutCard}
           onPress={() => navigation.navigate("Worklist")}
         >
           <Text style={styles.shortcutTitle}>工作清单</Text>
-          <Text style={styles.shortcutSub}>管理同步任务</Text>
+          <Text style={styles.shortcutSub}>从服务端加载</Text>
         </TouchableOpacity>
       </View>
 
@@ -121,21 +118,16 @@ export function HomeScreen({ navigation }: Props) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl
-            refreshing={syncing || loadingDb}
-            onRefresh={() => void handleSync()}
-          />
+          <RefreshControl refreshing={loading} onRefresh={() => void load()} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            {syncing || loadingDb ? (
+            {loading ? (
               <ActivityIndicator size="large" color="#4f46e5" />
             ) : (
               <>
                 <Text style={styles.emptyText}>暂无今日数据</Text>
-                <Text style={styles.emptyHint}>
-                  下拉刷新或点击「立即同步」（与桌面端共用 SyncEngine）
-                </Text>
+                <Text style={styles.emptyHint}>下拉刷新从服务端获取今日时间记录</Text>
               </>
             )}
           </View>
@@ -151,25 +143,25 @@ export function HomeScreen({ navigation }: Props) {
         )}
       />
 
-      {syncError ? (
+      {error ? (
         <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{syncError}</Text>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
       <View style={styles.footer}>
-        {lastSyncAt && (
-          <Text style={styles.syncTime}>上次同步：{lastSyncAt}</Text>
+        {lastFetchedAt && (
+          <Text style={styles.syncTime}>上次刷新：{lastFetchedAt}</Text>
         )}
         <TouchableOpacity
-          style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
-          onPress={() => void handleSync()}
-          disabled={syncing}
+          style={[styles.syncButton, loading && styles.syncButtonDisabled]}
+          onPress={() => void load()}
+          disabled={loading}
         >
-          {syncing ? (
+          {loading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.syncButtonText}>立即同步</Text>
+            <Text style={styles.syncButtonText}>刷新</Text>
           )}
         </TouchableOpacity>
       </View>

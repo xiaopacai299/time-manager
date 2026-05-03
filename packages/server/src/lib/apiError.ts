@@ -4,6 +4,7 @@ export type ApiErrorCode =
   | 'VALIDATION_FAILED'
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
+  | 'NOT_FOUND'
   | 'CONFLICT'
   | 'RATE_LIMITED'
   | 'INTERNAL';

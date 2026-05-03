@@ -64,6 +64,11 @@ export function LoginScreen() {
           placeholder="http://10.0.2.2:3000"
           placeholderTextColor="#aaa"
         />
+        <Text style={styles.hint}>
+          填 Node 后端地址（默认端口 3000，如 http://192.168.1.16:3000）。不要填 8081——那是 Expo
+          Metro，会报 JSON 解析错误。真机用电脑局域网 IP、同一 Wi-Fi；模拟器可用 10.0.2.2；不要用
+          localhost。
+        </Text>
 
         <Text style={styles.label}>邮箱</Text>
         <TextInput
@@ -133,6 +138,12 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 6,
     marginTop: 12,
+  },
+  hint: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 8,
+    lineHeight: 18,
   },
   input: {
     backgroundColor: "#fff",

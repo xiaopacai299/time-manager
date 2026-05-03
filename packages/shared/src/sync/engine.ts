@@ -33,6 +33,14 @@ export type SyncResult = {
   serverTime: string | null;
 };
 
+export type SyncResourceOptions = {
+  /**
+   * 默认 false：先 pull 再 push（离线优先）。
+   * true：先 push 再 pull，适合「服务端为准」的客户端，避免 pull 用服务端版本覆盖尚未上传的脏数据。
+   */
+  pushFirst?: boolean;
+};
+
 function parseIsoMs(iso: string | null | undefined): number | null {
   if (iso == null || iso === '') return null;
   const t = Date.parse(iso);
@@ -62,7 +70,7 @@ function maxUpdatedAtFromRecords(records: unknown[]): string | null {
 }
 
 /**
- * 离线优先同步引擎骨架：先 pull 全部分页，再 push 脏数据。
+ * 同步引擎：pull 全部分页，再 push 脏数据（或 pushFirst 时顺序相反）。
  * 具体资源的序列化/反序列化由 LocalStore / ApiClient 实现侧保证。
  */
 export class SyncEngine {
@@ -72,7 +80,10 @@ export class SyncEngine {
     private readonly deviceId: string,
   ) {}
 
-  async syncResource(resource: string): Promise<SyncResult> {
+  private async runPullPhase(resource: string): Promise<{
+    pulled: number;
+    lastServerTime: string | null;
+  }> {
     const since = await this.store.getLastSyncAt(resource);
     let cursor: string | null = null;
     let pulled = 0;
@@ -105,9 +116,18 @@ export class SyncEngine {
       await this.store.setLastSyncAt(resource, maxIsoString(since, maxPulledUpdatedAt)!);
     }
 
+    return { pulled, lastServerTime };
+  }
+
+  private async runPushPhase(resource: string): Promise<{
+    pushedAccepted: number;
+    pushedRejected: number;
+    lastServerTime: string | null;
+  }> {
     const dirty = await this.store.getDirtyRecords(resource);
     let pushedAccepted = 0;
     let pushedRejected = 0;
+    let lastServerTime: string | null = null;
     if (dirty.length) {
       const pushRes = await this.api.push(resource, this.deviceId, dirty);
       pushedAccepted = pushRes.accepted.length;
@@ -130,20 +150,47 @@ export class SyncEngine {
       lastServerTime = pushRes.serverTime;
     }
 
+    return { pushedAccepted, pushedRejected, lastServerTime };
+  }
+
+  async syncResource(resource: string, options?: SyncResourceOptions): Promise<SyncResult> {
+    const pushFirst = options?.pushFirst ?? false;
+    let pulled = 0;
+    let pushedAccepted = 0;
+    let pushedRejected = 0;
+    let serverTime: string | null = null;
+
+    if (pushFirst) {
+      const pushR = await this.runPushPhase(resource);
+      pushedAccepted = pushR.pushedAccepted;
+      pushedRejected = pushR.pushedRejected;
+      serverTime = pushR.lastServerTime;
+      const pullR = await this.runPullPhase(resource);
+      pulled = pullR.pulled;
+      serverTime = pullR.lastServerTime ?? serverTime;
+    } else {
+      const pullR = await this.runPullPhase(resource);
+      pulled = pullR.pulled;
+      serverTime = pullR.lastServerTime;
+      const pushR = await this.runPushPhase(resource);
+      pushedAccepted = pushR.pushedAccepted;
+      pushedRejected = pushR.pushedRejected;
+      serverTime = pushR.lastServerTime ?? serverTime;
+    }
+
     return {
       resource,
       pulled,
       pushedAccepted,
       pushedRejected,
-      serverTime: lastServerTime,
+      serverTime,
     };
   }
 
-  /** Phase 1 仅 time-records；预留多资源顺序同步。 */
-  async syncAll(resources: string[]): Promise<SyncResult[]> {
+  async syncAll(resources: string[], options?: SyncResourceOptions): Promise<SyncResult[]> {
     const out: SyncResult[] = [];
     for (const r of resources) {
-      out.push(await this.syncResource(r));
+      out.push(await this.syncResource(r, options));
     }
     return out;
   }
