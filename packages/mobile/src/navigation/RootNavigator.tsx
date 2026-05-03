@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from "react-native";
 import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { DiaryScreen } from "../screens/DiaryScreen";
+import { DiaryComposeScreen } from "../screens/DiaryComposeScreen";
 import { WorklistScreen } from "../screens/WorklistScreen";
 import { AppStatsScreen } from "../screens/AppStatsScreen";
 import { MemoScreen } from "../screens/MemoScreen";
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   Diaries: undefined;
+  DiaryCompose: { diaryId?: string; initialDate?: string; initialContent?: string };
   Worklist: undefined;
   AppStats: undefined;
   Memos: undefined;
@@ -41,6 +43,7 @@ export function RootNavigator() {
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Diaries" component={DiaryScreen} />
+            <Stack.Screen name="DiaryCompose" component={DiaryComposeScreen} />
             <Stack.Screen name="Worklist" component={WorklistScreen} />
             <Stack.Screen name="AppStats" component={AppStatsScreen} />
             <Stack.Screen name="Memos" component={MemoScreen} />

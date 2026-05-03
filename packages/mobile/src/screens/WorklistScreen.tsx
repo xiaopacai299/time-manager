@@ -20,12 +20,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTopInset } from "../hooks/useScreenInsets";
 import { useAuth } from "../hooks/useAuth";
 import type { WorklistItemPayload } from "@time-manger/shared";
+import { SwipeableDeleteRow } from "../components/SwipeableDeleteRow";
 
 type Props = {
   navigation: { goBack: () => void };
 };
 
 const ACCENT = "#6B5B95";
+/** 列表卡片固定高度（标题/备注各两行 + 元信息 + 内边距） */
+const LIST_CARD_HEIGHT = 132;
 
 /** 任务图标库（Emoji，存库仍为字符串，与桌面同步协议一致） */
 const TASK_ICON_CHOICES = [
@@ -213,14 +216,15 @@ export function WorklistScreen({ navigation }: Props) {
   ]);
 
   const handleDelete = useCallback(
-    (item: WorklistItemPayload) => {
+    (item: WorklistItemPayload, closeSwipe?: () => void) => {
       if (auth.status !== "authenticated") return;
       Alert.alert("删除工作清单", "确定删除这个任务吗？", [
-        { text: "取消", style: "cancel" },
+        { text: "取消", style: "cancel", onPress: () => closeSwipe?.() },
         {
           text: "删除",
           style: "destructive",
           onPress: () => {
+            closeSwipe?.();
             void (async () => {
               setLoading(true);
               setError(null);
@@ -278,58 +282,65 @@ export function WorklistScreen({ navigation }: Props) {
         renderItem={({ item }) => {
           const { label, variant } = completionUi(item);
           return (
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => openEdit(item)}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.itemIcon}>{item.icon || "📋"}</Text>
-                <View style={styles.itemBody}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
-                  {item.reminderAt ? (
-                    <Text style={styles.meta}>提醒 {formatScheduleLabel(new Date(item.reminderAt))}</Text>
-                  ) : null}
-                  {item.estimateDoneAt ? (
-                    <Text style={styles.meta}>预计完成 {formatScheduleLabel(new Date(item.estimateDoneAt))}</Text>
-                  ) : null}
-                </View>
-                <View
-                  style={[
-                    styles.statusPill,
-                    variant === "done" && styles.statusPillDone,
-                    variant === "todo" && styles.statusPillTodo,
-                    variant === "incomplete" && styles.statusPillIncomplete,
-                  ]}
+            <SwipeableDeleteRow onDeleteRequest={(closeSwipe) => handleDelete(item, closeSwipe)}>
+              <View style={styles.card}>
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => openEdit(item)}
+                  activeOpacity={0.75}
                 >
+                  <Text style={styles.itemIcon}>{item.icon || "📋"}</Text>
+                  <View style={styles.itemBody}>
+                    <Text style={styles.itemName} numberOfLines={2} ellipsizeMode="tail">
+                      {item.name}
+                    </Text>
+                    {item.note ? (
+                      <Text style={styles.note} numberOfLines={2} ellipsizeMode="tail">
+                        {item.note}
+                      </Text>
+                    ) : null}
+                    {item.reminderAt ? (
+                      <Text style={styles.meta} numberOfLines={1} ellipsizeMode="tail">
+                        提醒 {formatScheduleLabel(new Date(item.reminderAt))}
+                      </Text>
+                    ) : null}
+                    {item.estimateDoneAt ? (
+                      <Text style={styles.meta} numberOfLines={1} ellipsizeMode="tail">
+                        预计完成 {formatScheduleLabel(new Date(item.estimateDoneAt))}
+                      </Text>
+                    ) : null}
+                  </View>
                   <View
                     style={[
-                      styles.statusDot,
-                      variant === "done" && styles.statusDotDone,
-                      variant === "todo" && styles.statusDotTodo,
-                      variant === "incomplete" && styles.statusDotIncomplete,
+                      styles.statusPill,
+                      variant === "done" && styles.statusPillDone,
+                      variant === "todo" && styles.statusPillTodo,
+                      variant === "incomplete" && styles.statusPillIncomplete,
                     ]}
-                  />
-                  <Text
-                    style={[
-                      styles.statusPillText,
-                      variant === "done" && styles.statusPillTextDone,
-                      variant === "todo" && styles.statusPillTextTodo,
-                      variant === "incomplete" && styles.statusPillTextIncomplete,
-                    ]}
-                    numberOfLines={1}
                   >
-                    {label}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-              <View style={styles.actions}>
-                <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={8}>
-                  <Text style={styles.deleteText}>删除</Text>
+                    <View
+                      style={[
+                        styles.statusDot,
+                        variant === "done" && styles.statusDotDone,
+                        variant === "todo" && styles.statusDotTodo,
+                        variant === "incomplete" && styles.statusDotIncomplete,
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        variant === "done" && styles.statusPillTextDone,
+                        variant === "todo" && styles.statusPillTextTodo,
+                        variant === "incomplete" && styles.statusPillTextIncomplete,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {label}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               </View>
-            </View>
+            </SwipeableDeleteRow>
           );
         }}
       />
@@ -518,18 +529,15 @@ const styles = StyleSheet.create({
   empty: { padding: 40, alignItems: "center" },
   emptyText: { color: "#888" },
   card: {
+    height: LIST_CARD_HEIGHT,
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
+    overflow: "hidden",
   },
-  row: { flexDirection: "row", alignItems: "flex-start" },
+  row: { flex: 1, flexDirection: "row", alignItems: "flex-start", minHeight: 0 },
   itemIcon: { fontSize: 22, marginRight: 10 },
-  itemBody: { flex: 1, paddingRight: 6 },
+  itemBody: { flex: 1, minWidth: 0, paddingRight: 6 },
   itemName: { fontSize: 16, fontWeight: "800", color: "#2D3436" },
   note: { color: "#636E72", marginTop: 4, fontSize: 14 },
   meta: { color: "#95A5A6", fontSize: 12, marginTop: 4 },
@@ -567,15 +575,6 @@ const styles = StyleSheet.create({
   statusPillTextTodo: { color: ACCENT },
   statusPillTextDone: { color: "#15803d" },
   statusPillTextIncomplete: { color: "#C2410C" },
-  actions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#EEE",
-  },
-  deleteText: { color: "#e53e3e", fontWeight: "700", fontSize: 14 },
   selectedIconRow: {
     flexDirection: "row",
     alignItems: "center",
