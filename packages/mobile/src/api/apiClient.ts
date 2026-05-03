@@ -1,4 +1,9 @@
-import type { DiaryPayload, TimeRecordPayload, WorklistItemPayload } from "@time-manger/shared";
+import type {
+  DiaryPayload,
+  MemoItemPayload,
+  TimeRecordPayload,
+  WorklistItemPayload,
+} from "@time-manger/shared";
 import {
   getAccessToken,
   getOrCreateDeviceId,
@@ -115,6 +120,13 @@ export class ApiClient {
     return this.request("/api/v1/auth/me");
   }
 
+  /** 与桌面端相同：`GET /api/v1/quotes/featured`（无需登录，仍会附带 Token 若已登录）。 */
+  async getFeaturedQuote(): Promise<{
+    quote: { id: string; content: string; author: string } | null;
+  }> {
+    return this.request("/api/v1/quotes/featured");
+  }
+
   async logout(refreshToken: string): Promise<void> {
     const deviceId = await getOrCreateDeviceId();
     await this.request("/api/v1/auth/logout", {
@@ -159,6 +171,8 @@ export class ApiClient {
     name: string;
     icon?: string;
     note?: string;
+    reminderAt?: string | null;
+    estimateDoneAt?: string | null;
   }): Promise<{ item: WorklistItemPayload }> {
     return this.request("/api/v1/worklist-items", {
       method: "POST",
@@ -194,5 +208,42 @@ export class ApiClient {
   async listTimeRecordsByDate(date: string): Promise<{ records: TimeRecordPayload[] }> {
     const q = new URLSearchParams({ date });
     return this.request(`/api/v1/time-records?${q.toString()}`);
+  }
+
+  async listMemoItems(): Promise<{ items: MemoItemPayload[] }> {
+    return this.request("/api/v1/memo-items");
+  }
+
+  async createMemoItem(body: {
+    name: string;
+    icon?: string;
+    content?: string;
+  }): Promise<{ item: MemoItemPayload }> {
+    return this.request("/api/v1/memo-items", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async updateMemoItem(
+    id: string,
+    body: Partial<{
+      name: string;
+      icon: string;
+      content: string;
+      reminderAt: string | null;
+      reminderNotified: boolean;
+    }>
+  ): Promise<{ item: MemoItemPayload }> {
+    return this.request(`/api/v1/memo-items/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async deleteMemoItem(id: string): Promise<void> {
+    await this.request<void>(`/api/v1/memo-items/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
   }
 }

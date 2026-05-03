@@ -2,273 +2,364 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Dimensions,
 } from "react-native";
 import { useAuth } from "../hooks/useAuth";
 import { useTopInset } from "../hooks/useScreenInsets";
-import type { TimeRecordPayload } from "@time-manger/shared";
 
-type Props = {
-  navigation: { navigate: (screen: "Diaries" | "Worklist") => void };
+const { width: SCREEN_W } = Dimensions.get("window");
+const GRID_PAD = 20;
+const GAP = 12;
+const CARD_W = (SCREEN_W - GRID_PAD * 2 - GAP) / 2;
+
+type Nav = {
+  navigate: (screen: "Diaries" | "Worklist" | "AppStats" | "Memos") => void;
 };
 
-function formatMs(ms: number): string {
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m`;
-  return "<1m";
-}
+type Props = {
+  navigation: Nav;
+};
 
-function todayDate(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+type QuoteState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ok"; content: string; author: string }
+  | { status: "empty" }
+  | { status: "error"; message: string };
+
+const THEME = {
+  bg: "#F5F0E8",
+  paper: "#FDFCF9",
+  ink: "#2C3E50",
+  inkMuted: "#7F8C8D",
+  accent: "#6B5B95",
+  accentSoft: "rgba(107, 91, 149, 0.12)",
+  quoteBg: "#3D4F5F",
+  quoteText: "#F5F0E8",
+  gold: "#C9A227",
+  cardShadow: "#2D3436",
+};
+
+function FeatureCard({
+  icon,
+  title,
+  subtitle,
+  tint,
+  onPress,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  tint: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.featureCard, { width: CARD_W }]}
+      onPress={onPress}
+      activeOpacity={0.88}
+    >
+      <View style={[styles.iconRing, { backgroundColor: `${tint}18` }]}>
+        <Text style={styles.cardIcon}>{icon}</Text>
+      </View>
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardSub} numberOfLines={2}>
+        {subtitle}
+      </Text>
+    </TouchableOpacity>
+  );
 }
 
 export function HomeScreen({ navigation }: Props) {
   const { auth, logout } = useAuth();
-  const [records, setRecords] = useState<TimeRecordPayload[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+  const [quote, setQuote] = useState<QuoteState>({ status: "idle" });
+  const [refreshing, setRefreshing] = useState(false);
+  const topInset = useTopInset();
 
-  const load = useCallback(async () => {
+  const loadQuote = useCallback(async () => {
     if (auth.status !== "authenticated") return;
-    setLoading(true);
-    setError(null);
+    setQuote((q) => (q.status === "loading" ? q : { status: "loading" }));
     try {
-      const today = todayDate();
-      const { records: rows } = await auth.client.listTimeRecordsByDate(today);
-      setRecords(rows);
-      setLastFetchedAt(new Date().toLocaleTimeString("zh-CN"));
+      const { quote: q } = await auth.client.getFeaturedQuote();
+      if (q?.content?.trim()) {
+        setQuote({
+          status: "ok",
+          content: q.content.trim(),
+          author: (q.author || "").trim(),
+        });
+      } else {
+        setQuote({ status: "empty" });
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
-    } finally {
-      setLoading(false);
+      setQuote({
+        status: "error",
+        message: e instanceof Error ? e.message : "加载失败",
+      });
     }
   }, [auth]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadQuote();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadQuote]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadQuote();
+  }, [loadQuote]);
 
   const handleLogout = useCallback(() => {
     Alert.alert("登出", "确定要退出登录吗？", [
       { text: "取消", style: "cancel" },
-      {
-        text: "登出",
-        style: "destructive",
-        onPress: () => void logout(),
-      },
+      { text: "登出", style: "destructive", onPress: () => void logout() },
     ]);
   }, [logout]);
 
   const user = auth.status === "authenticated" ? auth.user : null;
-  const total = records.reduce((sum, r) => sum + r.durationMs, 0);
-  const topInset = useTopInset();
 
   return (
-    <View style={[styles.flex, { paddingTop: topInset }]}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>今日统计</Text>
-          {user && (
-            <Text style={styles.headerSub}>{user.email}</Text>
-          )}
-        </View>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>登出</Text>
-        </TouchableOpacity>
-      </View>
-
-      {records.length > 0 && (
-        <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>今日总时长</Text>
-          <Text style={styles.totalValue}>{formatMs(total)}</Text>
-        </View>
-      )}
-
-      <View style={styles.shortcuts}>
-        <TouchableOpacity
-          style={styles.shortcutCard}
-          onPress={() => navigation.navigate("Diaries")}
-        >
-          <Text style={styles.shortcutTitle}>日记</Text>
-          <Text style={styles.shortcutSub}>从服务端加载</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.shortcutCard}
-          onPress={() => navigation.navigate("Worklist")}
-        >
-          <Text style={styles.shortcutTitle}>工作清单</Text>
-          <Text style={styles.shortcutSub}>从服务端加载</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={records}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+    <View style={[styles.root, { paddingTop: topInset }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={() => void load()} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={THEME.accent}
+            colors={[THEME.accent]}
+          />
         }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#4f46e5" />
-            ) : (
+      >
+        {/* 第一行：用户 + 登出 */}
+        <View style={styles.userRow}>
+          <View style={styles.userTextWrap}>
+            <Text style={styles.greeting}>欢迎回来</Text>
+            <Text style={styles.email} numberOfLines={1} ellipsizeMode="middle">
+              {user?.email ?? "—"}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.logoutPill} onPress={handleLogout} activeOpacity={0.85}>
+            <Text style={styles.logoutPillText}>退出</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 第二行：名言（与桌面同源 /api/v1/quotes/featured） */}
+        <View style={styles.quoteSection}>
+          <View style={styles.quoteLabelRow}>
+            <View style={styles.quoteLabelDot} />
+            <Text style={styles.quoteLabel}>今日一言</Text>
+          </View>
+          <View style={styles.quoteCard}>
+            {quote.status === "loading" || quote.status === "idle" ? (
+              <View style={styles.quoteLoading}>
+                <ActivityIndicator color={THEME.quoteText} size="small" />
+                <Text style={[styles.quoteLoadingText, { marginLeft: 10 }]}>采撷一句智慧…</Text>
+              </View>
+            ) : quote.status === "ok" ? (
               <>
-                <Text style={styles.emptyText}>暂无今日数据</Text>
-                <Text style={styles.emptyHint}>下拉刷新从服务端获取今日时间记录</Text>
+                <Text style={styles.quoteMark}>“</Text>
+                <Text style={styles.quoteContent}>{quote.content}</Text>
+                {quote.author ? (
+                  <Text style={styles.quoteAuthor}>— {quote.author}</Text>
+                ) : null}
               </>
+            ) : quote.status === "empty" ? (
+              <Text style={styles.quoteEmpty}>暂无可用的名言，请稍后在服务端配置工作名言库。</Text>
+            ) : (
+              <Text style={styles.quoteError}>{quote.message}</Text>
             )}
           </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Text style={styles.appName}>{item.appName}</Text>
-              <Text style={styles.appKey}>{item.appKey}</Text>
-            </View>
-            <Text style={styles.duration}>{formatMs(item.durationMs)}</Text>
-          </View>
-        )}
-      />
-
-      {error ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : null}
 
-      <View style={styles.footer}>
-        {lastFetchedAt && (
-          <Text style={styles.syncTime}>上次刷新：{lastFetchedAt}</Text>
-        )}
-        <TouchableOpacity
-          style={[styles.syncButton, loading && styles.syncButtonDisabled]}
-          onPress={() => void load()}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.syncButtonText}>刷新</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        {/* 第三行起：功能网格 */}
+        <Text style={styles.gridSectionTitle}>功能</Text>
+        <View style={styles.grid}>
+          <FeatureCard
+            icon="📋"
+            title="工作清单"
+            subtitle="任务与待办"
+            tint={THEME.accent}
+            onPress={() => navigation.navigate("Worklist")}
+          />
+          <FeatureCard
+            icon="📊"
+            title="应用统计"
+            subtitle="今日各应用时长"
+            tint="#2980B9"
+            onPress={() => navigation.navigate("AppStats")}
+          />
+          <FeatureCard
+            icon="✍️"
+            title="写日记"
+            subtitle="记录心情与思考"
+            tint="#E17055"
+            onPress={() => navigation.navigate("Diaries")}
+          />
+          <FeatureCard
+            icon="🗒️"
+            title="便签"
+            subtitle="快速随手记"
+            tint={THEME.gold}
+            onPress={() => navigation.navigate("Memos")}
+          />
+        </View>
+
+        <View style={styles.footerSpacer} />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: "#f5f5f5" },
-  header: {
+  root: { flex: 1, backgroundColor: THEME.bg },
+  scrollContent: { paddingBottom: 32 },
+  userRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1a1a1a" },
-  headerSub: { fontSize: 12, color: "#888", marginTop: 2 },
-  logoutText: { fontSize: 14, color: "#e53e3e", paddingTop: 4 },
-  totalCard: {
-    backgroundColor: "#4f46e5",
-    margin: 16,
-    borderRadius: 14,
-    padding: 20,
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: GRID_PAD,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
-  totalLabel: { fontSize: 14, color: "rgba(255,255,255,0.8)" },
-  totalValue: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#fff",
+  userTextWrap: { flex: 1, marginRight: 12 },
+  greeting: {
+    fontSize: 12,
+    color: THEME.inkMuted,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  email: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: THEME.ink,
     marginTop: 4,
   },
-  shortcuts: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  shortcutCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  shortcutTitle: { fontSize: 16, fontWeight: "800", color: "#1a1a1a" },
-  shortcutSub: { fontSize: 12, color: "#888", marginTop: 4 },
-  list: { paddingHorizontal: 16, paddingBottom: 100 },
-  empty: {
-    paddingVertical: 60,
-    alignItems: "center",
-  },
-  emptyText: { fontSize: 16, color: "#888", marginBottom: 6 },
-  emptyHint: { fontSize: 13, color: "#bbb", textAlign: "center", paddingHorizontal: 24 },
-  row: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  rowLeft: { flex: 1, marginRight: 12 },
-  appName: { fontSize: 15, fontWeight: "600", color: "#1a1a1a" },
-  appKey: { fontSize: 12, color: "#999", marginTop: 2 },
-  duration: { fontSize: 15, fontWeight: "700", color: "#4f46e5" },
-  errorBanner: {
-    backgroundColor: "#fff5f5",
-    borderTopWidth: 1,
-    borderTopColor: "#feb2b2",
-    padding: 12,
-  },
-  errorText: { color: "#c53030", fontSize: 13, textAlign: "center" },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    padding: 16,
-    paddingBottom: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  syncTime: { fontSize: 12, color: "#999", flex: 1 },
-  syncButton: {
-    backgroundColor: "#4f46e5",
-    paddingHorizontal: 20,
+  logoutPill: {
+    paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 8,
-    minWidth: 90,
-    alignItems: "center",
+    borderRadius: 999,
+    backgroundColor: THEME.paper,
+    borderWidth: 1,
+    borderColor: "#E0D8CD",
+    shadowColor: THEME.cardShadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  syncButtonDisabled: { opacity: 0.6 },
-  syncButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  logoutPillText: { color: "#C0392B", fontWeight: "800", fontSize: 14 },
+  quoteSection: { paddingHorizontal: GRID_PAD, marginBottom: 8 },
+  quoteLabelRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  quoteLabelDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.gold,
+    marginRight: 8,
+  },
+  quoteLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: THEME.inkMuted,
+    letterSpacing: 2,
+  },
+  quoteCard: {
+    backgroundColor: THEME.quoteBg,
+    borderRadius: 20,
+    padding: 22,
+    minHeight: 120,
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  quoteMark: {
+    position: "absolute",
+    top: 12,
+    left: 16,
+    fontSize: 48,
+    color: "rgba(255,255,255,0.12)",
+    fontWeight: "300",
+    lineHeight: 48,
+  },
+  quoteContent: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: THEME.quoteText,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+  },
+  quoteAuthor: {
+    marginTop: 14,
+    fontSize: 13,
+    color: "rgba(245,240,232,0.7)",
+    textAlign: "right",
+    fontStyle: "italic",
+  },
+  quoteLoading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  quoteLoadingText: { color: "rgba(245,240,232,0.7)", fontSize: 14 },
+  quoteEmpty: { color: "rgba(245,240,232,0.75)", fontSize: 14, lineHeight: 22 },
+  quoteError: { color: "#F8C4C4", fontSize: 14, lineHeight: 20 },
+  gridSectionTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: THEME.ink,
+    paddingHorizontal: GRID_PAD,
+    marginTop: 20,
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: GRID_PAD,
+    justifyContent: "space-between",
+  },
+  featureCard: {
+    backgroundColor: THEME.paper,
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 14,
+    marginBottom: GAP,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
+    shadowColor: THEME.cardShadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  iconRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  cardIcon: { fontSize: 24 },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: THEME.ink,
+    marginBottom: 6,
+  },
+  cardSub: {
+    fontSize: 12,
+    color: THEME.inkMuted,
+    lineHeight: 17,
+  },
+  footerSpacer: { height: 24 },
 });

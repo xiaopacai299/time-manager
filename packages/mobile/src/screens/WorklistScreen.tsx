@@ -9,7 +9,14 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  Pressable,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTopInset } from "../hooks/useScreenInsets";
 import { useAuth } from "../hooks/useAuth";
 import type { WorklistItemPayload } from "@time-manger/shared";
@@ -18,14 +25,97 @@ type Props = {
   navigation: { goBack: () => void };
 };
 
+const ACCENT = "#6B5B95";
+
+/** 任务图标库（Emoji，存库仍为字符串，与桌面同步协议一致） */
+const TASK_ICON_CHOICES = [
+  "📋",
+  "✅",
+  "📌",
+  "🎯",
+  "💼",
+  "📚",
+  "🏃",
+  "💡",
+  "⭐",
+  "🔔",
+  "📝",
+  "📅",
+  "⏰",
+  "🗓️",
+  "✏️",
+  "🎨",
+  "💻",
+  "☎️",
+  "🏠",
+  "⚡",
+  "🔥",
+  "🌟",
+  "📎",
+  "🛠️",
+  "📊",
+  "💬",
+  "🎓",
+  "✈️",
+  "🛒",
+  "🏋️",
+] as const;
+
+/** 仅调整时分秒，保留基准日期的年月日（新建用今天，编辑保留原记录日期）。 */
+function applyPickerTime(baseDay: Date | null, picked: Date): Date {
+  const target = baseDay ? new Date(baseDay) : new Date();
+  target.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
+  return target;
+}
+
+function formatScheduleLabel(d: Date | null): string {
+  if (!d) return "";
+  try {
+    const today = new Date();
+    const sameDay =
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate();
+    const timeStr = d.toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    if (sameDay) return `今日 ${timeStr}`;
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${timeStr}`;
+  } catch {
+    return d.toISOString();
+  }
+}
+
+function completionUi(item: WorklistItemPayload): {
+  label: string;
+  variant: "todo" | "done" | "incomplete";
+} {
+  if (item.completionResult === "completed") {
+    return { label: "已完成", variant: "done" };
+  }
+  if (item.completionResult === "incomplete") {
+    return { label: "未完成", variant: "incomplete" };
+  }
+  return { label: "待办", variant: "todo" };
+}
+
 export function WorklistScreen({ navigation }: Props) {
   const { auth } = useAuth();
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<WorklistItemPayload[]>([]);
-  const [name, setName] = useState("");
-  const [note, setNote] = useState("");
-  const [editing, setEditing] = useState<WorklistItemPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<WorklistItemPayload | null>(null);
+  const [icon, setIcon] = useState("📋");
+  const [name, setName] = useState("");
+  const [note, setNote] = useState("");
+  const [reminderAt, setReminderAt] = useState<Date | null>(null);
+  const [estimateDoneAt, setEstimateDoneAt] = useState<Date | null>(null);
+  const [picker, setPicker] = useState<"none" | "reminder" | "estimate">("none");
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (auth.status !== "authenticated") return;
@@ -46,64 +136,81 @@ export function WorklistScreen({ navigation }: Props) {
   }, [load]);
 
   const resetForm = () => {
+    setEditing(null);
+    setIcon("📋");
     setName("");
     setNote("");
-    setEditing(null);
+    setReminderAt(null);
+    setEstimateDoneAt(null);
+    setPicker("none");
   };
 
-  const handleSave = useCallback(async () => {
+  const openNew = () => {
+    resetForm();
+    setModalOpen(true);
+  };
+
+  const openEdit = (item: WorklistItemPayload) => {
+    setEditing(item);
+    setIcon(item.icon || "📋");
+    setName(item.name);
+    setNote(item.note ?? "");
+    setReminderAt(item.reminderAt ? new Date(item.reminderAt) : null);
+    setEstimateDoneAt(item.estimateDoneAt ? new Date(item.estimateDoneAt) : null);
+    setPicker("none");
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setPicker("none");
+  };
+
+  const handleSaveModal = useCallback(async () => {
     if (auth.status !== "authenticated") return;
     const trimmed = name.trim();
-    if (!trimmed) return;
-    setLoading(true);
+    if (!trimmed) {
+      Alert.alert("提示", "请填写清单名称");
+      return;
+    }
+    setSaving(true);
     setError(null);
     try {
+      const payload = {
+        name: trimmed,
+        icon: icon.trim() || "📋",
+        note: note.trim(),
+        reminderAt: reminderAt ? reminderAt.toISOString() : null,
+        estimateDoneAt: estimateDoneAt ? estimateDoneAt.toISOString() : null,
+      };
       if (editing) {
         await auth.client.updateWorklistItem(editing.id, {
-          name: trimmed,
-          note: note.trim(),
-          icon: editing.icon,
-          reminderAt: editing.reminderAt,
-          estimateDoneAt: editing.estimateDoneAt,
+          ...payload,
           reminderNotified: editing.reminderNotified,
           completionResult: editing.completionResult,
           confirmSnoozeUntil: editing.confirmSnoozeUntil,
         });
       } else {
-        await auth.client.createWorklistItem({
-          name: trimmed,
-          note: note.trim(),
-        });
+        await auth.client.createWorklistItem(payload);
       }
+      closeModal();
       resetForm();
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  }, [auth, editing, load, name, note]);
-
-  const toggleDone = useCallback(
-    async (item: WorklistItemPayload) => {
-      if (auth.status !== "authenticated") return;
-      const done = item.completionResult === "completed";
-      setLoading(true);
-      setError(null);
-      try {
-        await auth.client.updateWorklistItem(item.id, {
-          completionResult: done ? "" : "completed",
-          confirmSnoozeUntil: new Date().toISOString(),
-        });
-        await load();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "更新失败");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [auth, load]
-  );
+  }, [
+    auth,
+    editing,
+    estimateDoneAt,
+    icon,
+    load,
+    name,
+    note,
+    reminderAt,
+  ]);
 
   const handleDelete = useCallback(
     (item: WorklistItemPayload) => {
@@ -119,7 +226,6 @@ export function WorklistScreen({ navigation }: Props) {
               setError(null);
               try {
                 await auth.client.deleteWorklistItem(item.id);
-                if (editing?.id === item.id) resetForm();
                 await load();
               } catch (e) {
                 setError(e instanceof Error ? e.message : "删除失败");
@@ -131,7 +237,7 @@ export function WorklistScreen({ navigation }: Props) {
         },
       ]);
     },
-    [auth, editing, load]
+    [auth, load]
   );
 
   const refreshing = loading;
@@ -140,7 +246,7 @@ export function WorklistScreen({ navigation }: Props) {
   return (
     <View style={[styles.flex, { paddingTop: topInset }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={navigation.goBack}>
+        <TouchableOpacity onPress={navigation.goBack} hitSlop={10}>
           <Text style={styles.back}>返回</Text>
         </TouchableOpacity>
         <Text style={styles.title}>工作清单</Text>
@@ -153,73 +259,73 @@ export function WorklistScreen({ navigation }: Props) {
         </View>
       ) : null}
 
-      <View style={styles.editor}>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="任务名称"
-          placeholderTextColor="#aaa"
-        />
-        <TextInput
-          style={[styles.input, styles.noteInput]}
-          value={note}
-          onChangeText={setNote}
-          placeholder="备注"
-          placeholderTextColor="#aaa"
-          multiline
-        />
-        <TouchableOpacity style={styles.primaryButton} onPress={() => void handleSave()}>
-          <Text style={styles.primaryButtonText}>{editing ? "保存修改" : "新增任务"}</Text>
-        </TouchableOpacity>
-        {editing ? (
-          <TouchableOpacity style={styles.secondaryButton} onPress={resetForm}>
-            <Text style={styles.secondaryButtonText}>取消编辑</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 100 + insets.bottom }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void load()} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
             {refreshing ? (
-              <ActivityIndicator color="#4f46e5" />
+              <ActivityIndicator color={ACCENT} />
             ) : (
               <Text style={styles.emptyText}>暂无工作清单</Text>
             )}
           </View>
         }
         renderItem={({ item }) => {
-          const done = item.completionResult === "completed";
+          const { label, variant } = completionUi(item);
           return (
             <View style={styles.card}>
-              <TouchableOpacity onPress={() => void toggleDone(item)} style={styles.row}>
-                <Text style={styles.icon}>{item.icon || "📋"}</Text>
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => openEdit(item)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.itemIcon}>{item.icon || "📋"}</Text>
                 <View style={styles.itemBody}>
-                  <Text style={[styles.itemName, done && styles.doneText]}>{item.name}</Text>
+                  <Text style={styles.itemName}>{item.name}</Text>
                   {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
+                  {item.reminderAt ? (
+                    <Text style={styles.meta}>提醒 {formatScheduleLabel(new Date(item.reminderAt))}</Text>
+                  ) : null}
+                  {item.estimateDoneAt ? (
+                    <Text style={styles.meta}>预计完成 {formatScheduleLabel(new Date(item.estimateDoneAt))}</Text>
+                  ) : null}
                 </View>
-                <Text style={done ? styles.doneBadge : styles.todoBadge}>
-                  {done ? "已完成" : "待办"}
-                </Text>
+                <View
+                  style={[
+                    styles.statusPill,
+                    variant === "done" && styles.statusPillDone,
+                    variant === "todo" && styles.statusPillTodo,
+                    variant === "incomplete" && styles.statusPillIncomplete,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.statusDot,
+                      variant === "done" && styles.statusDotDone,
+                      variant === "todo" && styles.statusDotTodo,
+                      variant === "incomplete" && styles.statusDotIncomplete,
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      variant === "done" && styles.statusPillTextDone,
+                      variant === "todo" && styles.statusPillTextTodo,
+                      variant === "incomplete" && styles.statusPillTextIncomplete,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </View>
               </TouchableOpacity>
               <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setEditing(item);
-                    setName(item.name);
-                    setNote(item.note);
-                  }}
-                >
-                  <Text style={styles.actionText}>编辑</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item)}>
+                <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={8}>
                   <Text style={styles.deleteText}>删除</Text>
                 </TouchableOpacity>
               </View>
@@ -227,60 +333,370 @@ export function WorklistScreen({ navigation }: Props) {
           );
         }}
       />
+
+      <TouchableOpacity
+        style={[styles.fab, { bottom: 54 + insets.bottom, right: 20 }]}
+        onPress={openNew}
+        activeOpacity={0.9}
+        accessibilityLabel="新增任务"
+      >
+        <Text style={styles.fabPlus}>+</Text>
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.modalBackdrop} onPress={closeModal} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.modalKb}
+            pointerEvents="box-none"
+          >
+            <View style={[styles.modalSheet, { paddingBottom: 16 + insets.bottom }]}>
+            <Text style={styles.modalTitle}>{editing ? "编辑任务" : "新增任务"}</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.fieldLabel}>图标</Text>
+              <View style={styles.selectedIconRow}>
+                <Text style={styles.selectedIconPreview}>{icon || "📋"}</Text>
+                <Text style={styles.selectedIconHint}>点选下方图标</Text>
+              </View>
+              <View style={styles.iconGrid}>
+                {TASK_ICON_CHOICES.map((em) => (
+                  <TouchableOpacity
+                    key={em}
+                    style={[styles.iconCell, icon === em && styles.iconCellSelected]}
+                    onPress={() => setIcon(em)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.iconCellText}>{em}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>清单名称</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="必填"
+                placeholderTextColor="#aaa"
+              />
+
+              <Text style={styles.fieldLabel}>提醒时间（仅时刻）</Text>
+              <TouchableOpacity
+                style={styles.timeRow}
+                onPress={() => setPicker(picker === "reminder" ? "none" : "reminder")}
+              >
+                <Text style={styles.timeRowText}>
+                  {reminderAt ? formatScheduleLabel(reminderAt) : "点击选择时间（可选）"}
+                </Text>
+              </TouchableOpacity>
+              {picker === "reminder" ? (
+                <View style={styles.pickerWrap}>
+                  <DateTimePicker
+                    value={reminderAt ?? new Date()}
+                    mode="time"
+                    is24Hour
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onValueChange={(_e, d) => {
+                      if (!d) return;
+                      setReminderAt(applyPickerTime(reminderAt, d));
+                      if (Platform.OS === "android") setPicker("none");
+                    }}
+                    onDismiss={() => setPicker("none")}
+                  />
+                  {Platform.OS === "ios" ? (
+                    <TouchableOpacity style={styles.pickerDone} onPress={() => setPicker("none")}>
+                      <Text style={styles.pickerDoneText}>完成</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
+              <TouchableOpacity onPress={() => setReminderAt(null)} style={styles.clearLink}>
+                <Text style={styles.clearLinkText}>清除提醒时间</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.fieldLabel}>估计完成时间（仅时刻）</Text>
+              <TouchableOpacity
+                style={styles.timeRow}
+                onPress={() => setPicker(picker === "estimate" ? "none" : "estimate")}
+              >
+                <Text style={styles.timeRowText}>
+                  {estimateDoneAt ? formatScheduleLabel(estimateDoneAt) : "点击选择时间（可选）"}
+                </Text>
+              </TouchableOpacity>
+              {picker === "estimate" ? (
+                <View style={styles.pickerWrap}>
+                  <DateTimePicker
+                    value={estimateDoneAt ?? new Date()}
+                    mode="time"
+                    is24Hour
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onValueChange={(_e, d) => {
+                      if (!d) return;
+                      setEstimateDoneAt(applyPickerTime(estimateDoneAt, d));
+                      if (Platform.OS === "android") setPicker("none");
+                    }}
+                    onDismiss={() => setPicker("none")}
+                  />
+                  {Platform.OS === "ios" ? (
+                    <TouchableOpacity style={styles.pickerDone} onPress={() => setPicker("none")}>
+                      <Text style={styles.pickerDoneText}>完成</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
+              <TouchableOpacity onPress={() => setEstimateDoneAt(null)} style={styles.clearLink}>
+                <Text style={styles.clearLinkText}>清除预计完成时间</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.fieldLabel}>备注</Text>
+              <TextInput
+                style={[styles.input, styles.noteInput]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="可选"
+                placeholderTextColor="#aaa"
+                multiline
+              />
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              onPress={() => void handleSaveModal()}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveBtnText}>保存</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
+              <Text style={styles.cancelBtnText}>取消</Text>
+            </TouchableOpacity>
+          </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: "#f5f5f5" },
+  flex: { flex: 1, backgroundColor: "#FAF8F5" },
   header: {
     height: 56,
     paddingHorizontal: 16,
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E8E4DE",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  back: { color: "#4f46e5", fontWeight: "700" },
-  title: { fontSize: 18, fontWeight: "800", color: "#1a1a1a" },
+  back: { color: ACCENT, fontWeight: "700" },
+  title: { fontSize: 18, fontWeight: "800", color: "#2D3436" },
   headerSpacer: { width: 32 },
   errorBanner: {
     backgroundColor: "#fff5f5",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#feb2b2",
   },
   errorText: { color: "#c53030", fontSize: 13 },
-  editor: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#eee" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    padding: 12,
-    color: "#1a1a1a",
-    marginBottom: 10,
-  },
-  noteInput: { minHeight: 72, textAlignVertical: "top" },
-  primaryButton: { backgroundColor: "#4f46e5", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  primaryButtonText: { color: "#fff", fontWeight: "800" },
-  secondaryButton: { marginTop: 8, alignItems: "center" },
-  secondaryButtonText: { color: "#666", fontWeight: "700" },
-  list: { padding: 16, paddingBottom: 32 },
+  list: { padding: 16 },
   empty: { padding: 40, alignItems: "center" },
   emptyText: { color: "#888" },
-  card: { backgroundColor: "#fff", borderRadius: 12, padding: 14, marginBottom: 10 },
-  row: { flexDirection: "row", alignItems: "center" },
-  icon: { fontSize: 22, marginRight: 10 },
-  itemBody: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: "800", color: "#1a1a1a" },
-  doneText: { color: "#999", textDecorationLine: "line-through" },
-  note: { color: "#777", marginTop: 4 },
-  todoBadge: { color: "#4f46e5", fontWeight: "800" },
-  doneBadge: { color: "#16a34a", fontWeight: "800" },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: 18, marginTop: 12 },
-  actionText: { color: "#4f46e5", fontWeight: "700" },
-  deleteText: { color: "#e53e3e", fontWeight: "700" },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  row: { flexDirection: "row", alignItems: "flex-start" },
+  itemIcon: { fontSize: 22, marginRight: 10 },
+  itemBody: { flex: 1, paddingRight: 6 },
+  itemName: { fontSize: 16, fontWeight: "800", color: "#2D3436" },
+  note: { color: "#636E72", marginTop: 4, fontSize: 14 },
+  meta: { color: "#95A5A6", fontSize: 12, marginTop: 4 },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    maxWidth: 100,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  statusDotTodo: { backgroundColor: ACCENT },
+  statusDotDone: { backgroundColor: "#16a34a" },
+  statusDotIncomplete: { backgroundColor: "#E17055" },
+  statusPillTodo: {
+    backgroundColor: "rgba(107, 91, 149, 0.08)",
+    borderColor: "rgba(107, 91, 149, 0.35)",
+  },
+  statusPillDone: {
+    backgroundColor: "rgba(22, 163, 74, 0.1)",
+    borderColor: "rgba(22, 163, 74, 0.4)",
+  },
+  statusPillIncomplete: {
+    backgroundColor: "rgba(225, 112, 85, 0.1)",
+    borderColor: "rgba(225, 112, 85, 0.45)",
+  },
+  statusPillText: { fontSize: 12, fontWeight: "800" },
+  statusPillTextTodo: { color: ACCENT },
+  statusPillTextDone: { color: "#15803d" },
+  statusPillTextIncomplete: { color: "#C2410C" },
+  actions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#EEE",
+  },
+  deleteText: { color: "#e53e3e", fontWeight: "700", fontSize: 14 },
+  selectedIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  selectedIconPreview: { fontSize: 36, marginRight: 12 },
+  selectedIconHint: { fontSize: 13, color: "#95A5A6" },
+  iconGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
+  iconCell: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0D8CF",
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCellSelected: {
+    borderColor: ACCENT,
+    borderWidth: 2,
+    backgroundColor: "rgba(107, 91, 149, 0.08)",
+  },
+  iconCellText: { fontSize: 22 },
+  fab: {
+    position: "absolute",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  fabPlus: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "300",
+    marginTop: -2,
+  },
+  modalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalKb: {
+    justifyContent: "flex-end",
+    maxHeight: "100%",
+  },
+  modalSheet: {
+    backgroundColor: "#FDFCF9",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    maxHeight: "88%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#2D3436",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalScroll: { maxHeight: 420 },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#636E72",
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#DFD8CF",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    color: "#2D3436",
+    backgroundColor: "#fff",
+  },
+  noteInput: { minHeight: 88, textAlignVertical: "top" },
+  timeRow: {
+    borderWidth: 1,
+    borderColor: "#DFD8CF",
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: "#fff",
+  },
+  timeRowText: { fontSize: 15, color: "#2D3436" },
+  pickerWrap: { marginTop: 8, alignItems: "stretch" },
+  pickerDone: {
+    alignSelf: "center",
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+  },
+  pickerDoneText: { color: ACCENT, fontWeight: "800", fontSize: 16 },
+  clearLink: { marginTop: 6, marginBottom: 4 },
+  clearLinkText: { fontSize: 13, color: "#95A5A6" },
+  saveBtn: {
+    marginTop: 16,
+    backgroundColor: ACCENT,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  saveBtnDisabled: { opacity: 0.7 },
+  saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  cancelBtn: { marginTop: 10, paddingVertical: 10, alignItems: "center" },
+  cancelBtnText: { color: "#636E72", fontSize: 15, fontWeight: "600" },
 });

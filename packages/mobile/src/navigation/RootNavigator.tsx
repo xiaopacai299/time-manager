@@ -6,6 +6,8 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { DiaryScreen } from "../screens/DiaryScreen";
 import { WorklistScreen } from "../screens/WorklistScreen";
+import { AppStatsScreen } from "../screens/AppStatsScreen";
+import { MemoScreen } from "../screens/MemoScreen";
 import { useAuth } from "../hooks/useAuth";
 
 export type RootStackParamList = {
@@ -13,6 +15,8 @@ export type RootStackParamList = {
   Home: undefined;
   Diaries: undefined;
   Worklist: undefined;
+  AppStats: undefined;
+  Memos: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +42,8 @@ export function RootNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Diaries" component={DiaryScreen} />
             <Stack.Screen name="Worklist" component={WorklistScreen} />
+            <Stack.Screen name="AppStats" component={AppStatsScreen} />
+            <Stack.Screen name="Memos" component={MemoScreen} />
           </>
         )}
       </Stack.Navigator>

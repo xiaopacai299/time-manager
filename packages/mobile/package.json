@@ -11,6 +11,7 @@
     "test": "echo \"(Phase 2 add jest)\""
   },
   "dependencies": {
+    "@react-native-community/datetimepicker": "^9.1.0",
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.11",
     "@time-manger/shared": "workspace:*",

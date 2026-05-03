@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { DiaryPayload, WorklistItemPayload } from '@time-manger/shared';
+import type { DiaryPayload, MemoItemPayload, WorklistItemPayload } from '@time-manger/shared';
 import { z } from 'zod';
 import type { ServerEnv } from '../config/env.js';
 import { timeRecordToDto } from '../lib/timeRecordDto.js';
@@ -85,7 +85,51 @@ const PostWorklistBody = z.object({
   name: z.string().min(1),
   icon: z.string().optional(),
   note: z.string().optional(),
+  reminderAt: z.string().datetime().nullable().optional(),
+  estimateDoneAt: z.string().datetime().nullable().optional(),
 });
+
+function memoToPayload(row: {
+  id: string;
+  name: string;
+  icon: string;
+  content: string;
+  reminderAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  reminderNotified: boolean;
+  clientDeviceId: string;
+}): MemoItemPayload {
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon,
+    content: row.content,
+    reminderAt: row.reminderAt ? row.reminderAt.toISOString() : null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    reminderNotified: row.reminderNotified,
+    clientDeviceId: row.clientDeviceId,
+  };
+}
+
+const PostMemoBody = z.object({
+  name: z.string().min(1),
+  icon: z.string().optional(),
+  content: z.string().optional(),
+});
+
+const PatchMemoBody = z
+  .object({
+    name: z.string().min(1).optional(),
+    icon: z.string().optional(),
+    content: z.string().optional(),
+    reminderAt: z.string().datetime().nullable().optional(),
+    reminderNotified: z.boolean().optional(),
+  })
+  .refine((b) => Object.keys(b).length > 0, { message: 'Empty patch' });
 
 const PatchWorklistBody = z
   .object({
@@ -233,6 +277,8 @@ export function mountMobileRestRoutes(
       const userId = req.userId!;
       const deviceId = req.deviceId!;
       const now = new Date();
+      const rAt = parsed.data.reminderAt;
+      const eAt = parsed.data.estimateDoneAt;
       const row = await prisma.worklistItem.create({
         data: {
           id: randomUUID(),
@@ -240,8 +286,8 @@ export function mountMobileRestRoutes(
           name: parsed.data.name,
           icon: parsed.data.icon ?? '📋',
           note: parsed.data.note ?? '',
-          reminderAt: null,
-          estimateDoneAt: null,
+          reminderAt: rAt === undefined || rAt === null ? null : new Date(rAt),
+          estimateDoneAt: eAt === undefined || eAt === null ? null : new Date(eAt),
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
@@ -316,6 +362,112 @@ export function mountMobileRestRoutes(
       }
       const now = new Date();
       await prisma.worklistItem.update({
+        where: { id },
+        data: { deletedAt: now, updatedAt: now },
+      });
+      res.status(204).end();
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get('/api/v1/memo-items', ...chain, async (req, res, next) => {
+    try {
+      const userId = req.userId!;
+      const rows = await prisma.memoItem.findMany({
+        where: { userId, deletedAt: null },
+        orderBy: { updatedAt: 'desc' },
+      });
+      res.json({ items: rows.map(memoToPayload) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post('/api/v1/memo-items', ...chain, async (req, res, next) => {
+    try {
+      const parsed = PostMemoBody.safeParse(req.body);
+      if (!parsed.success) {
+        sendApiError(res, 400, 'VALIDATION_FAILED', 'Invalid body', {
+          issues: parsed.error.flatten(),
+        });
+        return;
+      }
+      const userId = req.userId!;
+      const deviceId = req.deviceId!;
+      const now = new Date();
+      const row = await prisma.memoItem.create({
+        data: {
+          id: randomUUID(),
+          userId,
+          name: parsed.data.name,
+          icon: parsed.data.icon ?? '📝',
+          content: parsed.data.content ?? '',
+          reminderAt: null,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+          reminderNotified: false,
+          clientDeviceId: deviceId,
+        },
+      });
+      res.status(201).json({ item: memoToPayload(row) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch('/api/v1/memo-items/:id', ...chain, async (req, res, next) => {
+    try {
+      const id = String(req.params.id);
+      const parsed = PatchMemoBody.safeParse(req.body);
+      if (!parsed.success) {
+        sendApiError(res, 400, 'VALIDATION_FAILED', 'Invalid body', {
+          issues: parsed.error.flatten(),
+        });
+        return;
+      }
+      const userId = req.userId!;
+      const existing = await prisma.memoItem.findFirst({
+        where: { id, userId, deletedAt: null },
+      });
+      if (!existing) {
+        sendApiError(res, 404, 'NOT_FOUND', 'Memo item not found', { id });
+        return;
+      }
+      const b = parsed.data;
+      const now = new Date();
+      const data: Prisma.MemoItemUpdateInput = { updatedAt: now };
+      if (b.name !== undefined) data.name = b.name;
+      if (b.icon !== undefined) data.icon = b.icon;
+      if (b.content !== undefined) data.content = b.content;
+      if (b.reminderNotified !== undefined) data.reminderNotified = b.reminderNotified;
+      if (b.reminderAt !== undefined) {
+        data.reminderAt = b.reminderAt === null ? null : new Date(b.reminderAt);
+      }
+      const row = await prisma.memoItem.update({
+        where: { id },
+        data,
+      });
+      res.json({ item: memoToPayload(row) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.delete('/api/v1/memo-items/:id', ...chain, async (req, res, next) => {
+    try {
+      const id = String(req.params.id);
+      const userId = req.userId!;
+      const existing = await prisma.memoItem.findFirst({
+        where: { id, userId, deletedAt: null },
+      });
+      if (!existing) {
+        sendApiError(res, 404, 'NOT_FOUND', 'Memo item not found', { id });
+        return;
+      }
+      const now = new Date();
+      await prisma.memoItem.update({
         where: { id },
         data: { deletedAt: now, updatedAt: now },
       });
