@@ -335,7 +335,7 @@ export function WorklistScreen({ navigation }: Props) {
       />
 
       <TouchableOpacity
-        style={[styles.fab, { bottom: 54 + insets.bottom, right: 20 }]}
+        style={[styles.fab, { bottom: 94 + insets.bottom, right: 20 }]}
         onPress={openNew}
         activeOpacity={0.9}
         accessibilityLabel="新增任务"
