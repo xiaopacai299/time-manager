@@ -119,6 +119,8 @@ export function WorklistScreen({ navigation }: Props) {
   const [estimateDoneAt, setEstimateDoneAt] = useState<Date | null>(null);
   const [picker, setPicker] = useState<"none" | "reminder" | "estimate">("none");
   const [saving, setSaving] = useState(false);
+  /** 图标库仅在点击当前图标后展开 */
+  const [iconPickerVisible, setIconPickerVisible] = useState(false);
 
   const load = useCallback(async () => {
     if (auth.status !== "authenticated") return;
@@ -146,6 +148,7 @@ export function WorklistScreen({ navigation }: Props) {
     setReminderAt(null);
     setEstimateDoneAt(null);
     setPicker("none");
+    setIconPickerVisible(false);
   };
 
   const openNew = () => {
@@ -161,12 +164,14 @@ export function WorklistScreen({ navigation }: Props) {
     setReminderAt(item.reminderAt ? new Date(item.reminderAt) : null);
     setEstimateDoneAt(item.estimateDoneAt ? new Date(item.estimateDoneAt) : null);
     setPicker("none");
+    setIconPickerVisible(false);
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
     setPicker("none");
+    setIconPickerVisible(false);
   };
 
   const handleSaveModal = useCallback(async () => {
@@ -375,22 +380,38 @@ export function WorklistScreen({ navigation }: Props) {
               showsVerticalScrollIndicator={false}
             >
               <Text style={styles.fieldLabel}>图标</Text>
-              <View style={styles.selectedIconRow}>
-                <Text style={styles.selectedIconPreview}>{icon || "📋"}</Text>
-                <Text style={styles.selectedIconHint}>点选下方图标</Text>
-              </View>
-              <View style={styles.iconGrid}>
-                {TASK_ICON_CHOICES.map((em) => (
-                  <TouchableOpacity
-                    key={em}
-                    style={[styles.iconCell, icon === em && styles.iconCellSelected]}
-                    onPress={() => setIcon(em)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.iconCellText}>{em}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TouchableOpacity
+                style={[styles.selectedIconRow, styles.selectedIconPressable]}
+                onPress={() => setIconPickerVisible((v) => !v)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={iconPickerVisible ? "收起图标库" : "展开图标库"}
+              >
+                <View style={[styles.iconCell, styles.selectedIconCell]}>
+                  <Text style={styles.iconCellText}>{icon || "📋"}</Text>
+                </View>
+                <Text style={styles.selectedIconHint}>
+                  {iconPickerVisible ? "再次点击收起图标库" : "点击图标展开库"}
+                </Text>
+                <Text style={styles.iconChevron}>{iconPickerVisible ? "▲" : "▼"}</Text>
+              </TouchableOpacity>
+              {iconPickerVisible ? (
+                <View style={styles.iconGrid}>
+                  {TASK_ICON_CHOICES.map((em) => (
+                    <TouchableOpacity
+                      key={em}
+                      style={[styles.iconCell, icon === em && styles.iconCellSelected]}
+                      onPress={() => {
+                        setIcon(em);
+                        setIconPickerVisible(false);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.iconCellText}>{em}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
 
               <Text style={styles.fieldLabel}>清单名称</Text>
               <TextInput
@@ -404,7 +425,10 @@ export function WorklistScreen({ navigation }: Props) {
               <Text style={styles.fieldLabel}>提醒时间（仅时刻）</Text>
               <TouchableOpacity
                 style={styles.timeRow}
-                onPress={() => setPicker(picker === "reminder" ? "none" : "reminder")}
+                onPress={() => {
+                  setIconPickerVisible(false);
+                  setPicker(picker === "reminder" ? "none" : "reminder");
+                }}
               >
                 <Text style={styles.timeRowText}>
                   {reminderAt ? formatScheduleLabel(reminderAt) : "点击选择时间（可选）"}
@@ -438,7 +462,10 @@ export function WorklistScreen({ navigation }: Props) {
               <Text style={styles.fieldLabel}>估计完成时间（仅时刻）</Text>
               <TouchableOpacity
                 style={styles.timeRow}
-                onPress={() => setPicker(picker === "estimate" ? "none" : "estimate")}
+                onPress={() => {
+                  setIconPickerVisible(false);
+                  setPicker(picker === "estimate" ? "none" : "estimate");
+                }}
               >
                 <Text style={styles.timeRowText}>
                   {estimateDoneAt ? formatScheduleLabel(estimateDoneAt) : "点击选择时间（可选）"}
@@ -580,8 +607,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  selectedIconPreview: { fontSize: 36, marginRight: 12 },
-  selectedIconHint: { fontSize: 13, color: "#95A5A6" },
+  selectedIconPressable: {
+    borderWidth: 1,
+    borderColor: "#E0D8CF",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+  },
+  /** 与 iconCell 同尺寸，保证选中图标与库内图标等大 */
+  selectedIconCell: { marginRight: 12 },
+  selectedIconHint: { flex: 1, fontSize: 13, color: "#95A5A6", paddingRight: 8 },
+  iconChevron: {
+    fontSize: 12,
+    color: ACCENT,
+    fontWeight: "800",
+  },
   iconGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
