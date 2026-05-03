@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "2d662ad3-a483-4285-835e-d375462034b2"
+      }
+    },
+    "android": {
+      "package": "com.todayitrain.timemangermonorepo"
+    }
+  }
+}

@@ -3,7 +3,11 @@
     "name": "time-manger-mobile",
     "slug": "time-manger-mobile",
     "version": "1.0.0",
-    "platforms": ["android", "ios", "web"],
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
@@ -11,7 +15,17 @@
       "usesCleartextTraffic": true
     },
     "ios": {
-      "bundleIdentifier": "com.timemanger.mobile"
+      "bundleIdentifier": "com.timemanger.mobile",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "619fecaa-eea2-417a-ae70-e1f2a1ef15e7"
+      }
     }
   }
 }
