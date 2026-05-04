@@ -8,6 +8,7 @@ import { usePetTempInteractive } from './hooks/usePetTempInteractive'
 import { useTimeManagerPetBridge } from './hooks/useTimeManagerPetBridge'
 import { getAuthState } from './sync/authStore.js'
 import { normalizeApiBase } from './sync/ApiClient.js'
+import { getViteDefaultApiBase } from './config/publicApiBase.js'
 import { getSnapshotDurationStats } from './utils/snapshotDurationStats'
 import { topAppsFromPerAppToday } from './utils/topAppsFromPerAppToday'
 
@@ -19,10 +20,11 @@ async function fetchStartupQuoteOnce() {
   if (startupQuoteFetchPromise) return startupQuoteFetchPromise
   startupQuoteFetchPromise = (async () => {
     const auth = await getAuthState().catch(() => null)
-    const preferredApiBase = normalizeApiBase(auth?.apiBase || 'http://localhost:3000')
+    const fallback = getViteDefaultApiBase()
+    const preferredApiBase = normalizeApiBase(auth?.apiBase || fallback)
     const candidates = [preferredApiBase]
-    if (preferredApiBase !== 'http://localhost:3000') {
-      candidates.push('http://localhost:3000')
+    if (preferredApiBase !== fallback) {
+      candidates.push(fallback)
     }
     console.info('[startup-quote] candidates:', candidates)
     for (const apiBase of candidates) {

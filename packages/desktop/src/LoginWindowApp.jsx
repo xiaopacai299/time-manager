@@ -4,12 +4,13 @@ import './LoginWindowApp.css'
 import { useSyncContext } from './sync/SyncProvider.jsx'
 import { clearAuthState, initDeviceId, saveAuthState } from './sync/authStore.js'
 import { ApiClient, normalizeApiBase } from './sync/ApiClient.js'
+import { getViteDefaultApiBase } from './config/publicApiBase.js'
 
 export default function LoginWindowApp() {
   const { authState, setAuthState, triggerSync, status, lastSyncAt, error } = useSyncContext()
   /** 未登录时：登录表单 | 注册表单（无顶部分栏，用链接切换） */
   const [mode, setMode] = useState('login')
-  const [apiBase, setApiBase] = useState('http://localhost:3000')
+  const [apiBase, setApiBase] = useState(() => getViteDefaultApiBase())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -25,7 +26,7 @@ export default function LoginWindowApp() {
   }
 
   function resetFormData() {
-    setApiBase('http://localhost:3000')
+    setApiBase(getViteDefaultApiBase())
     setEmail('')
     setPassword('')
     setMsg('')

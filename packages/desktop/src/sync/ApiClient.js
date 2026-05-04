@@ -1,4 +1,5 @@
 // packages/desktop/src/sync/ApiClient.js
+import { getViteDefaultApiBase } from '../config/publicApiBase.js';
 
 export class ApiClient {
   /**
@@ -121,7 +122,9 @@ export class ApiClient {
 
 export function normalizeApiBase(raw) {
   let value = String(raw || '').trim().replace(/：/g, ':');
-  if (!value) return 'http://localhost:3000';
+  if (!value) {
+    return getViteDefaultApiBase().replace(/\/+$/, '');
+  }
   if (!/^https?:\/\//i.test(value)) {
     value = `http://${value}`;
   }

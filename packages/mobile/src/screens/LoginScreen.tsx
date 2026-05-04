@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -14,8 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../hooks/useAuth";
 import { useTopInset } from "../hooks/useScreenInsets";
-
-const DEFAULT_API_BASE = "http://10.0.2.2:3000";
+import { DEFAULT_PUBLIC_API_BASE } from "../config/publicApiBase";
 const { width: W } = Dimensions.get("window");
 
 const ACCENT = "#6B5B95";
@@ -28,7 +27,7 @@ const GOLD = "#C9A227";
 export function LoginScreen() {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
-  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
+  const [apiBase, setApiBase] = useState(DEFAULT_PUBLIC_API_BASE);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,7 +89,7 @@ export function LoginScreen() {
               onChangeText={setApiBase}
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="http://10.0.2.2:3000"
+              placeholder={DEFAULT_PUBLIC_API_BASE}
               placeholderTextColor="#B2A99A"
             />
             <View style={styles.hintBox}>
