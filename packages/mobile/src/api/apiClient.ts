@@ -11,7 +11,8 @@ import {
   saveAccessToken,
 } from "../storage/authStore";
 
-function normalizeApiBase(raw: string): string {
+/** 登录页输入与持久化统一用该规范化结果，避免存盘与请求用的 base 不一致。 */
+export function normalizeApiBase(raw: string): string {
   let b = raw.trim().replace(/\/+$/, "");
   if (!/^https?:\/\//i.test(b)) b = `http://${b}`;
   return b;
@@ -46,7 +47,7 @@ export class ApiClient {
       });
     } catch (e) {
       const hint =
-        "无法连接服务器。请检查：①「服务器地址」在真机上须填电脑的局域网 IP（如 http://192.168.1.5:3000），不要用 localhost；Android 模拟器可用 http://10.0.2.2:3000；② 手机与电脑同一 Wi-Fi；③ 服务端已监听 0.0.0.0 且防火墙放行端口；④ 使用 HTTP 时 Android 需在 app.json 中开启 usesCleartextTraffic（已配置后请重新运行/构建应用）。";
+        "无法连接服务器。请检查：①开发环境修改 `packages/mobile/.env.development` 里的 EXPO_PUBLIC_API_BASE（真机连本机须用电脑局域网 IP，不要用 localhost；Android 模拟器可用 http://10.0.2.2:3000）；②生产包由 eas.json 注入地址，改后需重新 EAS Build；③ 手机与电脑同一 Wi-Fi；④ 服务端监听 0.0.0.0 且防火墙放行端口。";
       const inner = e instanceof Error ? e.message : String(e);
       throw new Error(`${hint}（${inner}）`);
     }
@@ -81,7 +82,7 @@ export class ApiClient {
         /8081/.test(this.baseUrl.split("?")[0] ?? "");
       const hint = wrongPort
         ? "你把地址填成了 8081：这是 Expo Metro（前端打包）端口，返回的是网页而不是 JSON。请改为后端 API 地址，例如 http://192.168.1.16:3000（端口以服务端 .env 的 PORT 为准，默认 3000）。"
-        : "服务器返回的不是合法 JSON（可能是 HTML 或纯文本）。请确认「服务器地址」指向本仓库的 Node/Express 接口，不要填 Vite/Metro/其它前端开发端口。";
+        : "服务器返回的不是合法 JSON（可能是 HTML 或纯文本）。请确认 EXPO_PUBLIC_API_BASE 指向本仓库的 Node/Express 接口（不要填 Metro 的 8081 等前端端口）。";
       throw new Error(`${hint} 响应开头：${preview}`);
     }
   }

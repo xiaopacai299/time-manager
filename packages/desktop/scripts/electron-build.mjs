@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
 if (!process.env.ELECTRON_BUILDER_BINARIES_MIRROR) {
   process.env.ELECTRON_BUILDER_BINARIES_MIRROR =
@@ -49,15 +50,21 @@ function prepareWindowsReleaseDir() {
 
 prepareWindowsReleaseDir()
 
-const ebCmd =
-  process.platform === 'win32'
-    ? path.join(root, 'node_modules', '.bin', 'electron-builder.cmd')
-    : path.join(root, 'node_modules', '.bin', 'electron-builder')
+// pnpm 常把可执行文件放在仓库根 node_modules/.bin，桌面包下可能没有 .cmd，直接 resolve cli 更稳
+const require = createRequire(import.meta.url)
+let ebCli
+try {
+  ebCli = require.resolve('electron-builder/cli.js')
+} catch {
+  console.error(
+    '[electron-build] 找不到 electron-builder。请在仓库根目录执行：pnpm install',
+  )
+  process.exit(1)
+}
 
-const result = spawnSync(ebCmd, process.argv.slice(2), {
+const result = spawnSync(process.execPath, [ebCli, ...process.argv.slice(2)], {
   cwd: root,
   stdio: 'inherit',
-  shell: process.platform === 'win32',
   env: process.env,
 })
 

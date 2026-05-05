@@ -14,7 +14,8 @@
   --tm-scroll-ring: rgba(255, 255, 255, 0.58);
   --tm-scroll-glow: 0 0 0 1px rgba(120, 154, 236, 0.16), 0 2px 9px rgba(90, 130, 220, 0.18);
   --tm-page-bg-base: #edf2ff;
-  --tm-window-bg-image: url('/window-bg.png');
+  /* 默认由 main.jsx 按 import.meta.env.BASE_URL 设置；勿用 /xxx，file:// 下会指向错误路径 */
+  --tm-window-bg-image: none;
   --tm-window-bg-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(240, 246, 255, 0.24));
 
   /*

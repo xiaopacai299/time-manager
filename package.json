@@ -15,10 +15,14 @@
     "db:prepare": "pnpm run db:up && pnpm run db:migrate && pnpm --filter @time-manger/server run prisma:generate",
     "shared:build": "pnpm --filter @time-manger/shared build",
     "mobile:start": "pnpm --filter @time-manger/mobile start",
+    "mobile:start:tunnel": "pnpm --filter @time-manger/mobile run start:tunnel",
+    "mobile:build:android": "pnpm --filter @time-manger/mobile run build:android",
+    "mobile:build:android:apk": "pnpm --filter @time-manger/mobile run build:android:apk",
+    "mobile:build:ios": "pnpm --filter @time-manger/mobile run build:ios",
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "prisma:studio": "pnpm dlx prisma@5.22.0 studio --schema packages/server/prisma/schema.prisma"
+    "prisma:studio": "pnpm --filter @time-manger/server run studio"
   },
   "devDependencies": {
     "typescript": "5.7.3"

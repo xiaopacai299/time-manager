@@ -16,7 +16,7 @@ import {
   type AuthUser,
 } from "../storage/authStore";
 import { clearSyncData } from "../storage/syncDb";
-import { ApiClient } from "../api/apiClient";
+import { ApiClient, normalizeApiBase } from "../api/apiClient";
 
 export type AuthState =
   | { status: "loading" }
@@ -58,12 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<void> => {
-    const client = new ApiClient(apiBase);
+    const base = normalizeApiBase(apiBase);
+    const client = new ApiClient(base);
     const data = await client.login(email, password);
     await Promise.all([
       saveTokens(data.accessToken, data.refreshToken),
       saveUser(data.user),
-      saveApiBase(apiBase),
+      saveApiBase(base),
     ]);
     setAuth({ status: "authenticated", user: data.user, client });
   };

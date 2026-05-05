@@ -14,11 +14,23 @@ import DiaryWindowApp from './DiaryWindowApp.jsx'
 import WorklistExportApp from './WorklistExportApp.jsx'
 import StickyLinksWindowApp from './StickyLinksWindowApp.jsx'
 import { SyncProvider } from './sync/SyncProvider.jsx'
+import dayWindowBgUrl from './assets/window-bg/window-bg.png?url'
+import nightWindowBgUrl from './assets/window-bg/window-night-bg.png?url'
 
+/**
+ * 勿用 new URL(`../${name}`, import.meta.url)：Rolldown 会改成「文件映射表」，漏掉 png 后回退成 ./name，
+ * 再经 var() 解析又会指向 dist/assets/ 下错误路径。静态 import ?url + 相对当前页面转成绝对 URL。
+ */
 function resolveDefaultWindowBgByTime() {
   const hour = new Date().getHours()
   const isDaytime = hour >= 7 && hour <= 18
-  return isDaytime ? '/window-bg.png' : '/window-night-bg.png'
+  const rel = isDaytime ? dayWindowBgUrl : nightWindowBgUrl
+  if (typeof window === 'undefined') return rel
+  try {
+    return new URL(rel, window.location.href).href
+  } catch {
+    return rel
+  }
 }
 
 function applyWindowBackgroundCssVar(imageUrl) {
@@ -49,6 +61,11 @@ if (typeof window !== 'undefined' && window.timeManagerAPI) {
     if (latestCustomWindowBgUrl) return
     applyCurrent()
   }, 60 * 1000)
+}
+
+/** 在其它 import 已注入 index.css 之后，用 file:// 可用的相对 URL 覆盖默认背景变量 */
+if (typeof document !== 'undefined') {
+  applyWindowBackgroundCssVar('')
 }
 
 const root = document.getElementById('root')

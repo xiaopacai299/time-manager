@@ -17,8 +17,10 @@
     "ios": {
       "bundleIdentifier": "com.timemanger.mobile",
       "infoPlist": {
+        "NSLocalNetworkUsageDescription": "用于连接您在登录页填写的后端地址（局域网或公网），以登录与同步数据。",
         "NSAppTransportSecurity": {
-          "NSAllowsLocalNetworking": true
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoads": true
         }
       }
     },

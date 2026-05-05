@@ -14,7 +14,8 @@
     "test": "tsx --test src/index.test.ts tests/integration.test.ts",
     "db:generate": "pnpm dlx prisma@5.22.0 generate --schema prisma/schema.prisma",
     "db:migrate": "pnpm dlx prisma@5.22.0 migrate dev --schema prisma/schema.prisma",
-    "db:migrate:deploy": "pnpm dlx prisma@5.22.0 migrate deploy --schema prisma/schema.prisma"
+    "db:migrate:deploy": "pnpm dlx prisma@5.22.0 migrate deploy --schema prisma/schema.prisma",
+    "studio": "pnpm exec prisma studio --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

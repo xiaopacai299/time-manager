@@ -1,4 +1,6 @@
-FROM node:20-alpine AS builder
+# 国内构建若拉不动 docker.io，可用：--build-arg NODE_IMAGE=docker.m.daocloud.io/library/node:20-alpine
+ARG NODE_IMAGE=node:20-alpine
+FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
 RUN npm install -g pnpm@9 typescript@5.7.3
@@ -16,7 +18,7 @@ RUN cd packages/shared && tsc -p .
 RUN pnpm --filter @time-manger/server exec prisma generate
 RUN cd packages/server && tsc -p .
 
-FROM node:20-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 RUN apk add --no-cache openssl
 RUN npm install -g pnpm@9

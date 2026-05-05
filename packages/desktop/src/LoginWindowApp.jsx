@@ -10,7 +10,6 @@ export default function LoginWindowApp() {
   const { authState, setAuthState, triggerSync, status, lastSyncAt, error } = useSyncContext()
   /** 未登录时：登录表单 | 注册表单（无顶部分栏，用链接切换） */
   const [mode, setMode] = useState('login')
-  const [apiBase, setApiBase] = useState(() => getViteDefaultApiBase())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,10 +25,14 @@ export default function LoginWindowApp() {
   }
 
   function resetFormData() {
-    setApiBase(getViteDefaultApiBase())
     setEmail('')
     setPassword('')
     setMsg('')
+  }
+
+  /** 开发 / 打包由 Vite 注入的 VITE_API_BASE，不在登录页填写 */
+  function resolvedApiBase() {
+    return normalizeApiBase(getViteDefaultApiBase())
   }
 
   async function handleLogin(e) {
@@ -38,7 +41,7 @@ export default function LoginWindowApp() {
     setMsg('')
     try {
       const deviceId = await initDeviceId()
-      const normalizedApiBase = normalizeApiBase(apiBase)
+      const normalizedApiBase = resolvedApiBase()
       const client = new ApiClient(normalizedApiBase, () => null, deviceId)
       const data = await client.login(email, password)
       await saveAuthState({
@@ -56,7 +59,6 @@ export default function LoginWindowApp() {
         apiBase: normalizedApiBase,
         deviceId,
       })
-      setApiBase(normalizedApiBase)
       setMsg('登录成功！')
       if (typeof window !== 'undefined' && typeof window.close === 'function') {
         setTimeout(() => {
@@ -77,7 +79,7 @@ export default function LoginWindowApp() {
     setMsg('')
     try {
       const deviceId = await initDeviceId()
-      const normalizedApiBase = normalizeApiBase(apiBase)
+      const normalizedApiBase = resolvedApiBase()
       const client = new ApiClient(normalizedApiBase, () => null, deviceId)
       await client.register(email, password)
       setPassword('')
@@ -135,16 +137,9 @@ export default function LoginWindowApp() {
         ) : mode === 'login' ? (
           <>
             <form onSubmit={(e) => void handleLogin(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label className="settings-field">
-                <span>服务器地址</span>
-                <input
-                  type="url"
-                  placeholder="如 https://api.example.com"
-                  value={apiBase}
-                  onChange={(e) => setApiBase(e.target.value)}
-                  required
-                />
-              </label>
+              <p className="settings-sub" style={{ marginTop: 0, marginBottom: 4, fontSize: 12, color: '#888' }}>
+                后端地址：{resolvedApiBase()}（开发用本地 .env.development，安装包用 .env.production）
+              </p>
               <label className="settings-field">
                 <span>邮箱</span>
                 <input
@@ -190,16 +185,9 @@ export default function LoginWindowApp() {
               注册新账号
             </p>
             <form onSubmit={(e) => void handleRegister(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label className="settings-field">
-                <span>服务器地址</span>
-                <input
-                  type="url"
-                  placeholder="如 https://api.example.com"
-                  value={apiBase}
-                  onChange={(e) => setApiBase(e.target.value)}
-                  required
-                />
-              </label>
+              <p className="settings-sub" style={{ marginTop: 0, marginBottom: 4, fontSize: 12, color: '#888' }}>
+                后端地址：{resolvedApiBase()}
+              </p>
               <label className="settings-field">
                 <span>邮箱</span>
                 <input

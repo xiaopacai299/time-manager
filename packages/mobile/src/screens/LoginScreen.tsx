@@ -27,7 +27,6 @@ const GOLD = "#C9A227";
 export function LoginScreen() {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
-  const [apiBase, setApiBase] = useState(DEFAULT_PUBLIC_API_BASE);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +40,7 @@ export function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      await login(apiBase.trim(), email.trim().toLowerCase(), password);
+      await login(DEFAULT_PUBLIC_API_BASE, email.trim().toLowerCase(), password);
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败");
     } finally {
@@ -81,25 +80,7 @@ export function LoginScreen() {
           </View>
 
           <View style={styles.paper}>
-            <Text style={styles.sectionEyebrow}>连接</Text>
-            <Text style={styles.label}>服务器地址</Text>
-            <TextInput
-              style={styles.input}
-              value={apiBase}
-              onChangeText={setApiBase}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder={DEFAULT_PUBLIC_API_BASE}
-              placeholderTextColor="#B2A99A"
-            />
-            <View style={styles.hintBox}>
-              <Text style={styles.hint}>
-                填 Node 后端地址（默认端口 3000）。不要填 8081——那是 Expo Metro。真机用电脑局域网 IP、同一
-                Wi-Fi；模拟器可用 10.0.2.2；不要用 localhost。
-              </Text>
-            </View>
-
-            <Text style={[styles.sectionEyebrow, styles.sectionEyebrowSpaced]}>账号</Text>
+            <Text style={styles.sectionEyebrow}>账号</Text>
             <Text style={styles.label}>邮箱</Text>
             <TextInput
               style={styles.input}
@@ -246,9 +227,6 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     marginBottom: 10,
   },
-  sectionEyebrowSpaced: {
-    marginTop: 8,
-  },
   label: {
     fontSize: 13,
     fontWeight: "700",
@@ -265,22 +243,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: INK,
-  },
-  hintBox: {
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: ACCENT,
-    backgroundColor: "rgba(107, 91, 149, 0.06)",
-    borderRadius: 0,
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 10,
-  },
-  hint: {
-    fontSize: 12,
-    color: INK_MUTED,
-    lineHeight: 18,
   },
   errorPill: {
     marginTop: 14,

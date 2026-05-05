@@ -9,12 +9,21 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "http://47.103.104.7:3000"
+      }
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
-        "EXPO_PUBLIC_API_BASE": "http://47.103.104.7:8080"
+        "EXPO_PUBLIC_API_BASE": "http://47.103.104.7:3000"
       }
     }
   },
