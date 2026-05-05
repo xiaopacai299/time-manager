@@ -174,15 +174,9 @@ export function createMenuModule({
   function createTray() {
     try {
       const trayPngPath = path.join(__dirname, 'assets', 'tray-icon.png');
-      const traySvgPath = path.join(__dirname, 'assets', 'tray-icon.svg');
       let image = nativeImage.createFromPath(trayPngPath);
       if (image.isEmpty()) {
-        const traySvgRaw = fs.readFileSync(traySvgPath, 'utf8');
-        const trayDataUrl = `data:image/svg+xml;base64,${Buffer.from(traySvgRaw).toString('base64')}`;
-        image = nativeImage.createFromDataURL(trayDataUrl);
-      }
-      if (image.isEmpty()) {
-        throw new Error('Tray icon image is empty for both PNG and SVG');
+        throw new Error(`Tray icon image is empty: ${trayPngPath}`);
       }
       image = image.resize({ width: 16, height: 16 });
       tray = new Tray(image);

@@ -25,26 +25,40 @@ function prepareWindowsReleaseDir() {
   } catch {
     return
   }
-  if (productName) {
-    spawnSync('taskkill', ['/F', '/IM', `${productName}.exe`, '/T'], {
+  /** 「work master」名字带空格，需要带空格的 IM 参数；同时尝试常见命名兜底。 */
+  const candidates = [
+    productName && `${productName}.exe`,
+    'work master.exe',
+    'work-master.exe',
+    'time-pet.exe',
+  ].filter(Boolean)
+  for (const name of candidates) {
+    spawnSync('taskkill', ['/F', '/IM', name, '/T'], {
       stdio: 'ignore',
       shell: true,
     })
   }
   const unpacked = path.join(root, 'release', 'win-unpacked')
-  try {
-    fs.rmSync(unpacked, {
-      recursive: true,
-      force: true,
-      maxRetries: 8,
-      retryDelay: 200,
-    })
-  } catch (err) {
-    console.error(
-      `[electron-build] 无法删除 ${unpacked}：${err?.message || err}\n` +
-        '请先退出正在运行的「work master」（或任务管理器结束进程），并关闭资源管理器中打开该文件夹的窗口，然后重试。',
-    )
-    process.exit(1)
+  if (!fs.existsSync(unpacked)) return
+  /** Windows 上句柄释放有延迟，给 ~10s 退避重试，足以覆盖资源管理器/防病毒短暂占用。 */
+  const attempts = 20
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      fs.rmSync(unpacked, { recursive: true, force: true, maxRetries: 4, retryDelay: 250 })
+      return
+    } catch (err) {
+      if (i === attempts - 1) {
+        console.error(
+          `[electron-build] 无法删除 ${unpacked}：${err?.message || err}\n` +
+            '原因通常是上一版「work master.exe」仍在运行，或 release/win-unpacked 目录被资源管理器/杀毒软件占用。\n' +
+            '请关闭桌面端（含托盘图标右键退出）与该文件夹后重试。',
+        )
+        process.exit(1)
+      }
+      const sleepMs = 500
+      const buf = new Int32Array(new SharedArrayBuffer(4))
+      Atomics.wait(buf, 0, 0, sleepMs)
+    }
   }
 }
 

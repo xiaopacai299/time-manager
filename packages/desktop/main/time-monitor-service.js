@@ -17,6 +17,28 @@ export class TimeMonitorService extends EventEmitter {
     this.engine = new ActivityEngine({ breakThresholdSeconds });
     this.timer = null;
     this.latestSnapshot = this.engine.getSnapshot();
+    this.lastEmitSignature = '';
+  }
+
+  buildEmitSignature(snapshot) {
+    return JSON.stringify({
+      dayKey: snapshot?.dayKey ?? '',
+      current: {
+        appId: snapshot?.current?.appId ?? '',
+        processName: snapshot?.current?.processName ?? '',
+        windowTitle: snapshot?.current?.windowTitle ?? '',
+        isOnBreak: Boolean(snapshot?.current?.isOnBreak),
+      },
+      perAppToday: Array.isArray(snapshot?.perAppToday)
+        ? snapshot.perAppToday.map((item) => ({
+            appId: item?.appId ?? '',
+            durationMs: item?.durationMs ?? 0,
+          }))
+        : [],
+      continuousUseMs: Number(snapshot?.continuousUseMs ?? 0),
+      breakCompletedMs: Number(snapshot?.breakCompletedMs ?? 0),
+      transitions: Array.isArray(snapshot?.transitions) ? snapshot.transitions.length : 0,
+    });
   }
 
   extractTitleAppName(windowTitle) {
@@ -94,6 +116,9 @@ export class TimeMonitorService extends EventEmitter {
     const sample = await this.collectSample();
     // 交给engine算时长，切换应用，然后更新快照
     this.latestSnapshot = this.engine.ingest(sample);
+    const nextSignature = this.buildEmitSignature(this.latestSnapshot);
+    if (nextSignature === this.lastEmitSignature) return;
+    this.lastEmitSignature = nextSignature;
     this.emit('update', this.latestSnapshot);
   }
 

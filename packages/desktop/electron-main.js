@@ -339,7 +339,7 @@ function openDiaryWindow() {
   refreshTrayMenu();
 }
 // 监控前台
-const monitor = new TimeMonitorService({ sampleIntervalMs: 1000, breakThresholdSeconds: 600 });
+const monitor = new TimeMonitorService({ sampleIntervalMs: 2500, breakThresholdSeconds: 600 });
 /** 主状态对象：持久化与跨模块共享的单一事实来源。 */
 const petState = {
   clickThrough: false,

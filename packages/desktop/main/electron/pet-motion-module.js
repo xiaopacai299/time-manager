@@ -210,7 +210,7 @@ export function createPetMotionModule({
       } else {
         updateRambleMotion(win, tw, th);
       }
-    }, 16);
+    }, 33);
   }
 
   function startFollowMouse() {
@@ -245,7 +245,7 @@ export function createPetMotionModule({
         width: tw,
         height: th,
       });
-    }, 16);
+    }, 33);
   }
 
   function triggerFollowBurst() {
