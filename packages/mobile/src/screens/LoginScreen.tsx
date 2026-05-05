@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../hooks/useAuth";
 import { useTopInset } from "../hooks/useScreenInsets";
+import { normalizeApiBase } from "../api/apiClient";
 import { DEFAULT_PUBLIC_API_BASE } from "../config/publicApiBase";
 const { width: W } = Dimensions.get("window");
 
@@ -122,6 +123,10 @@ export function LoginScreen() {
               )}
             </TouchableOpacity>
           </View>
+
+          <Text style={styles.apiBaseHint} selectable>
+            当前接口：{normalizeApiBase(DEFAULT_PUBLIC_API_BASE)}
+          </Text>
 
           <Text style={styles.footerNote}>本地数据经加密存储 · 与桌面端同一套同步协议</Text>
         </ScrollView>
@@ -273,6 +278,14 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.65 },
   buttonText: { color: "#fff", fontWeight: "800", fontSize: 17, letterSpacing: 1 },
+  apiBaseHint: {
+    marginTop: 14,
+    textAlign: "center",
+    fontSize: 11,
+    color: INK_MUTED,
+    lineHeight: 16,
+    opacity: 0.9,
+  },
   footerNote: {
     marginTop: 22,
     textAlign: "center",
