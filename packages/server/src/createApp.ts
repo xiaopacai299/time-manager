@@ -15,6 +15,20 @@ export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   const app = express();
   app.disable('x-powered-by');
 
+  app.use((req, _res, next) => {
+    const fwd = req.headers["x-forwarded-for"];
+    const ip =
+      typeof fwd === "string"
+        ? fwd.split(",")[0]?.trim()
+        : Array.isArray(fwd)
+          ? fwd[0]
+          : req.socket.remoteAddress;
+    console.log(
+      `[http] ${new Date().toISOString()} ${ip ?? "-"} ${req.method} ${req.url}`
+    );
+    next();
+  });
+
   // 本地开发：允许桌面端 Vite 页面（http://localhost:4567）直连 server API。
   app.use((req, res, next) => {
     const origin = req.headers.origin;
