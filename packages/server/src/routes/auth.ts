@@ -44,7 +44,9 @@ export function mountAuthRoutes(
 
   const authMount = [authLimiter, requireDeviceId] as const;
 
-  app.post('/api/v1/auth/register', ...authMount, async (req, res) => {
+  // 1.注册路由：邮箱 + 密码；密码用 argon2 哈希
+  // 注册接口把用户自动登录了（auto sign-in after signup）
+  app.post('/api/v1/auth/register', ...authMount, async (req:any, res:any) => {
     const parsed = registerBody.safeParse(req.body);
     if (!parsed.success) {
       sendApiError(res, 400, 'VALIDATION_FAILED', 'Invalid request body', {
@@ -55,10 +57,13 @@ export function mountAuthRoutes(
     const { email, password, platform, deviceName } = parsed.data;
     const deviceId = req.deviceId!;
     try {
+      // 2.密码哈希
       const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+      // 3.创建用户，在user表中添加data，email和passwordHash字段必填
       const user = await prisma.user.create({
         data: { email: email.toLowerCase(), passwordHash },
       });
+      // 4.创建设备，在device表中添加data，userId和deviceId字段必填
       await prisma.device.upsert({
         where: { id: deviceId },
         create: {
@@ -73,10 +78,13 @@ export function mountAuthRoutes(
           name: deviceName ?? undefined,
         },
       });
+      // 4.创建 refresh token
       const refreshRaw = newOpaqueRefreshToken();
+      
       const expiresAt = new Date(
         Date.now() + env.JWT_REFRESH_TTL_DAYS * 86_400_000,
       );
+      // 5.将 refresh token 存入数据库
       await prisma.refreshToken.create({
         data: {
           userId: user.id,
@@ -84,6 +92,7 @@ export function mountAuthRoutes(
           expiresAt,
         },
       });
+      // 由JWT签发access token
       const accessToken = await signAccessToken(env, user.id);
       res.status(201).json({
         accessToken,
@@ -147,6 +156,7 @@ export function mountAuthRoutes(
       },
     });
     const accessToken = await signAccessToken(env, user.id);
+    // 6.返回access token和refresh token
     res.json({
       accessToken,
       refreshToken: refreshRaw,

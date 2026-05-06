@@ -5,6 +5,7 @@ export function accessSecretBytes(env: ServerEnv): Uint8Array {
   return new TextEncoder().encode(env.JWT_ACCESS_SECRET);
 }
 
+// 签发access token 生成
 export async function signAccessToken(
   env: ServerEnv,
   userId: string,
@@ -16,7 +17,7 @@ export async function signAccessToken(
     .setExpirationTime(env.JWT_ACCESS_TTL)
     .sign(accessSecretBytes(env));
 }
-
+// 验证access token
 export async function verifyAccessToken(
   env: ServerEnv,
   token: string,
