@@ -8,6 +8,11 @@ export function newOpaqueRefreshToken(): string {
   return randomBytes(48).toString('base64url');
 }
 
+/** Chrome 扩展「上传密钥」原文（仅创建成功时下发一次；前缀便于与支持 JWT 的中间件分支）。 */
+export function newExtensionUploadTokenRaw(): string {
+  return `tmext_${randomBytes(32).toString('base64url')}`;
+}
+
 // 登录/注册时
 
 // 服务端生成 newOpaqueRefreshToken() 原文，返回给客户端保存。

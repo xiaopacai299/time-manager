@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>页面监听 · 抓取预览</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 16px;
+        max-width: 960px;
+        margin-inline: auto;
+        color: #1e293b;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin: 0 0 8px;
+      }
+      .meta {
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 12px;
+      }
+      .meta a {
+        color: #2563eb;
+        word-break: break-all;
+      }
+      .box {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f8fafc;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 13px;
+        max-height: 70vh;
+        overflow: auto;
+      }
+      .empty {
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>最近一次抓取（仅验证模式会打开本页）</h1>
+    <p class="meta" id="meta"></p>
+    <div class="box" id="body"></div>
+    <script src="debug.js"></script>
+  </body>
+</html>

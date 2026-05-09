@@ -16,6 +16,8 @@ importers:
         specifier: 5.7.3
         version: 5.7.3
 
+  packages/chrome-extension: {}
+
   packages/desktop:
     dependencies:
       '@time-manger/shared':

@@ -247,4 +247,47 @@ export class ApiClient {
       method: "DELETE",
     });
   }
+
+  /** Chrome 扩展写入的「页面监听」摘要列表（按时间倒序）。 */
+  async listPageListenCaptures(limit?: number): Promise<{
+    captures: Array<{
+      id: string;
+      url: string;
+      title: string;
+      pageSnippet: string;
+      aiSummary: string;
+      capturedAt: string;
+    }>;
+  }> {
+    const q = limit != null ? `?limit=${encodeURIComponent(String(limit))}` : "";
+    return this.request(`/api/v1/page-listen/captures${q}`);
+  }
+
+  /** Chrome 扩展用长期密钥；创建成功后返回的 token 仅显示一次。 */
+  async createExtensionUploadToken(body?: {
+    label?: string;
+  }): Promise<{ token: string; id: string; label: string; createdAt: string }> {
+    return this.request("/api/v1/extension/upload-tokens", {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    });
+  }
+
+  async listExtensionUploadTokens(): Promise<{
+    tokens: Array<{
+      id: string;
+      label: string;
+      createdAt: string;
+      lastUsedAt: string | null;
+      revokedAt: string | null;
+    }>;
+  }> {
+    return this.request("/api/v1/extension/upload-tokens");
+  }
+
+  async revokeExtensionUploadToken(id: string): Promise<void> {
+    await this.request<void>(`/api/v1/extension/upload-tokens/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  }
 }

@@ -24,7 +24,37 @@ model User {
   workYearDigests WorkYearDigest[]
   aiConversations AiConversation[]
   aiSkills        AiSkill[]
-  refreshTokens   RefreshToken[]
+  refreshTokens           RefreshToken[]
+  browserCaptures         BrowserPageCapture[]
+  extensionUploadTokens   ExtensionUploadToken[]
+}
+
+/// Chrome 扩展用的「上传密钥」：长期有效，仅存哈希；吊销后记 revokedAt。
+model ExtensionUploadToken {
+  id          String    @id @default(uuid())
+  userId      String
+  tokenHash   String    @unique
+  label       String    @default("")
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Chrome 扩展「监听页面」抓取后经 AI 摘要，提交到服务端供移动端查看。
+model BrowserPageCapture {
+  id          String   @id @default(uuid())
+  userId      String
+  url         String   @db.Text
+  title       String   @default("")
+  pageSnippet String   @db.Text
+  aiSummary   String   @db.Text
+  capturedAt  DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, capturedAt])
 }
 
 model RefreshToken {

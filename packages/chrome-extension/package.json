@@ -1,0 +1,6 @@
+{
+  "name": "@time-manger/chrome-extension",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Chrome MV3：右键监听网页 → AI 摘要 → POST /api/v1/page-listen/captures"
+}

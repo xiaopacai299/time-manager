@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>页面监听 · AI 返回预览</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 16px;
+        max-width: 920px;
+        margin-inline: auto;
+        color: #1e293b;
+        line-height: 1.55;
+      }
+      h1 {
+        font-size: 1.1rem;
+      }
+      .meta {
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 16px;
+      }
+      section {
+        margin-bottom: 20px;
+      }
+      h2 {
+        font-size: 0.95rem;
+        margin: 0 0 8px;
+        color: #4338ca;
+      }
+      .ai-box {
+        border: 1px solid #c7d2fe;
+        border-radius: 10px;
+        padding: 14px;
+        background: #eef2ff;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      details {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: #f8fafc;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: #475569;
+      }
+      #rawBox {
+        margin-top: 10px;
+        font-size: 11px;
+        font-family: ui-monospace, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 320px;
+        overflow: auto;
+        color: #334155;
+      }
+      .empty {
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>最近一次 AI 摘要（预览模式，未上传）</h1>
+    <div class="meta" id="meta"></div>
+    <section>
+      <h2>模型返回的正文（choices[0].message.content）</h2>
+      <div class="ai-box" id="summary"></div>
+    </section>
+    <section>
+      <details>
+        <summary>原始响应 JSON（截断）</summary>
+        <div id="rawBox"></div>
+      </details>
+    </section>
+    <script src="ai-preview.js"></script>
+  </body>
+</html>

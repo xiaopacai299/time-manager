@@ -16,6 +16,7 @@ import { mountAuthRoutes } from './routes/auth.js';
 import { mountQuoteRoutes } from './routes/quotes.js';
 import { mountSyncRoutes } from './routes/sync.js';
 import { mountMobileRestRoutes } from './routes/mobileRest.js';
+import { mountExtensionUploadTokenRoutes } from './routes/extensionUploadTokens.js';
 
 export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   const app = express();
@@ -44,7 +45,11 @@ export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   // OPTIONS 为浏览器「预检」请求：直接 204，无需进入业务路由。
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && /^https?:\/\/localhost(?::\d+)?$/i.test(origin)) {
+    const allowChromeExt = typeof origin === 'string' && /^chrome-extension:\/\//i.test(origin);
+    if (
+      origin &&
+      (/^https?:\/\/localhost(?::\d+)?$/i.test(origin) || allowChromeExt)
+    ) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Device-Id');
@@ -91,6 +96,8 @@ export function createApp(prisma: PrismaClient, env: ServerEnv): Express {
   mountSyncRoutes(app, prisma, env);
   // 移动端相关
   mountMobileRestRoutes(app, prisma, env);
+  // Chrome 扩展上传密钥（登录后在 App 内签发）
+  mountExtensionUploadTokenRoutes(app, prisma, env);
 
   // --- 统一错误处理：路由里抛错或 next(err) 会落到此处，返回一致 JSON 错误格式 ---
   app.use(errorHandler);

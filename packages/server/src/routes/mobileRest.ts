@@ -8,6 +8,7 @@ import { timeRecordToDto } from '../lib/timeRecordDto.js';
 import { sendApiError } from '../lib/apiError.js';
 import { requireDeviceId } from '../middleware/requireDeviceId.js';
 import { requireAccessAuth } from '../middleware/requireAccessAuth.js';
+import { requireAccessAuthOrExtensionUploadToken } from '../middleware/requireAccessAuthOrExtensionUploadToken.js';
 
 const dateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -153,6 +154,7 @@ export function mountMobileRestRoutes(
   env: ServerEnv,
 ): void {
   const chain = [requireDeviceId, requireAccessAuth(env)] as const;
+  const pageListenChain = [requireDeviceId, requireAccessAuthOrExtensionUploadToken(env, prisma)] as const;
 
   app.get('/api/v1/diaries', ...chain, async (req, res, next) => {
     try {
@@ -492,6 +494,83 @@ export function mountMobileRestRoutes(
         orderBy: { durationMs: 'desc' },
       });
       res.json({ records: rows.map(timeRecordToDto) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  const PostPageListenBody = z.object({
+    url: z.string().min(1).max(8000),
+    title: z.string().max(2000).optional(),
+    pageSnippet: z.string().max(500_000),
+    aiSummary: z.string().max(200_000),
+  });
+
+  app.post('/api/v1/page-listen/captures', ...pageListenChain, async (req, res, next) => {
+    try {
+      const parsed = PostPageListenBody.safeParse(req.body);
+      if (!parsed.success) {
+        sendApiError(res, 400, 'VALIDATION_FAILED', 'Invalid body', {
+          issues: parsed.error.flatten(),
+        });
+        return;
+      }
+      const userId = req.userId!;
+      const row = await prisma.browserPageCapture.create({
+        data: {
+          id: randomUUID(),
+          userId,
+          url: parsed.data.url,
+          title: parsed.data.title ?? '',
+          pageSnippet: parsed.data.pageSnippet,
+          aiSummary: parsed.data.aiSummary,
+        },
+      });
+      res.status(201).json({
+        capture: {
+          id: row.id,
+          url: row.url,
+          title: row.title,
+          pageSnippet: row.pageSnippet,
+          aiSummary: row.aiSummary,
+          capturedAt: row.capturedAt.toISOString(),
+        },
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get('/api/v1/page-listen/captures', ...pageListenChain, async (req, res, next) => {
+    try {
+      const q = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).optional(),
+        })
+        .safeParse(req.query);
+      if (!q.success) {
+        sendApiError(res, 400, 'VALIDATION_FAILED', 'Invalid query', {
+          issues: q.error.flatten(),
+        });
+        return;
+      }
+      const limit = q.data.limit ?? 40;
+      const userId = req.userId!;
+      const rows = await prisma.browserPageCapture.findMany({
+        where: { userId },
+        orderBy: { capturedAt: 'desc' },
+        take: limit,
+      });
+      res.json({
+        captures: rows.map((row) => ({
+          id: row.id,
+          url: row.url,
+          title: row.title,
+          pageSnippet: row.pageSnippet,
+          aiSummary: row.aiSummary,
+          capturedAt: row.capturedAt.toISOString(),
+        })),
+      });
     } catch (e) {
       next(e);
     }

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Time Manager 页面监听 · 选项</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 24px auto;
+        padding: 0 16px;
+        line-height: 1.5;
+        color: #1e293b;
+      }
+      h1 {
+        font-size: 1.25rem;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-top: 14px;
+      }
+      label.row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-weight: 500;
+      }
+      label.row input[type="checkbox"] {
+        width: auto;
+        margin-top: 4px;
+      }
+      select {
+        width: 100%;
+        margin-top: 8px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        font: inherit;
+      }
+      kbd {
+        font-size: 0.9em;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+      }
+      input,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 6px;
+        padding: 8px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 72px;
+        resize: vertical;
+      }
+      .hint {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 4px;
+      }
+      button {
+        margin-top: 18px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: none;
+        background: #4f46e5;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #e2e8f0;
+        color: #0f172a;
+        margin-left: 8px;
+      }
+      #status {
+        margin-top: 12px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>页面监听扩展 · 配置</h1>
+    <p class="hint">
+      在 Chrome 打开「扩展程序 → 本扩展 → 详细信息 → 扩展程序选项」即可回到此页。加载方式：开发者模式 →
+      加载已解压的扩展程序 → 选择仓库内 <code>packages/chrome-extension</code> 目录。
+    </p>
+
+    <label for="pipelineMode">快捷键触发后的流程（默认 <kbd>Ctrl+Q</kbd>，可在「扩展程序 → 键盘快捷方式」修改；macOS 默认 <kbd>Ctrl+Shift+E</kbd> 避免与退出冲突）</label>
+    <select id="pipelineMode">
+      <option value="capture_preview">仅抓取正文：打开预览页（不调 AI、不上传）</option>
+      <option value="ai_preview">抓取 + 调用 AI：打开 AI 返回预览（不上传服务端）</option>
+      <option value="full">完整：AI 摘要后上传到你的服务端</option>
+    </select>
+    <div class="hint">
+      请先聚焦在要抓取的<strong>普通网页标签页</strong>上，再按快捷键。若按键完全无反应，请打开
+      <a href="#" id="shortcutLink"><code>chrome://extensions/shortcuts</code></a>
+      确认「Time Manager 页面监听」已绑定快捷键且未被占用。扩展使用<strong>普通 JSON</strong>调用 AI（非流式），正文入模前会<strong>截断</strong>，一般不是「数据太大」等问题。
+    </div>
+
+    <label for="apiBase">服务端 API 根地址</label>
+    <input id="apiBase" type="text" placeholder="http://192.168.1.10:3000" autocomplete="off" />
+    <div class="hint">与手机登录页填写的地址一致（不要带末尾斜杠）。</div>
+
+    <label for="uploadToken">扩展上传密钥</label>
+    <input id="uploadToken" type="password" placeholder="在手机 App「监听页面 → 扩展密钥」生成，形如 tmext_…" autocomplete="off" />
+    <div class="hint">
+      长期有效；泄漏后请在 App 内吊销并重新生成。请求头仍使用 <code>Authorization: Bearer &lt;密钥&gt;</code>。
+    </div>
+
+    <label for="deviceId">X-Device-Id（UUID）</label>
+    <input id="deviceId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+    <div class="hint">任意合法 UUID 即可（扩展会用该请求头发给服务端）；点按钮可随机生成。</div>
+
+    <label for="aiBaseUrl">AI OpenAI 兼容 API 根地址</label>
+    <input id="aiBaseUrl" type="text" placeholder="https://api.openai.com/v1" autocomplete="off" />
+    <div class="hint">
+      填到版本路径即可，扩展会自动接 <code>/chat/completions</code>。例如 OpenAI 用
+      <code>https://api.openai.com/v1</code>；若厂商文档给的是已含
+      <code>…/chat/completions</code> 的完整 URL，也可整条粘贴，不会重复拼接。
+    </div>
+
+    <label for="aiApiKey">AI API Key</label>
+    <input id="aiApiKey" type="password" autocomplete="off" />
+
+    <label for="aiModel">模型名</label>
+    <input id="aiModel" type="text" placeholder="gpt-4o-mini" autocomplete="off" />
+
+    <label for="aiSystemPrompt">系统提示（可选）</label>
+    <textarea id="aiSystemPrompt"></textarea>
+
+    <div>
+      <button type="button" id="save">保存</button>
+      <button type="button" id="genDevice" class="secondary">生成 Device UUID</button>
+    </div>
+    <div id="status"></div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

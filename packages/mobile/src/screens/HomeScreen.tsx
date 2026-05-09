@@ -19,7 +19,7 @@ const GAP = 12;
 const CARD_W = (SCREEN_W - GRID_PAD * 2 - GAP) / 2;
 
 type Nav = {
-  navigate: (screen: "Diaries" | "Worklist" | "AppStats" | "Memos") => void;
+  navigate: (screen: "Diaries" | "Worklist" | "AppStats" | "Memos" | "PageListen") => void;
 };
 
 type Props = {
@@ -211,6 +211,13 @@ export function HomeScreen({ navigation }: Props) {
             subtitle="快速随手记"
             tint={THEME.gold}
             onPress={() => navigation.navigate("Memos")}
+          />
+          <FeatureCard
+            icon="🌐"
+            title="监听页面"
+            subtitle="Chrome 摘要同步到此"
+            tint="#16A085"
+            onPress={() => navigation.navigate("PageListen")}
           />
         </View>
 

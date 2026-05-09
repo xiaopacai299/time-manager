@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>页面监听 · 提示</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 40px auto;
+        padding: 0 20px;
+        line-height: 1.6;
+        color: #1e293b;
+      }
+      h1 {
+        font-size: 1.1rem;
+        color: #b91c1c;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">页面监听</h1>
+    <pre id="msg"></pre>
+    <script>
+      const p = new URLSearchParams(location.search);
+      const t = p.get("title") || "提示";
+      const m = p.get("msg") || "（无详情）";
+      document.getElementById("title").textContent = t;
+      document.getElementById("msg").textContent = m;
+    </script>
+  </body>
+</html>

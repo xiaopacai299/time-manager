@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Time Manager 页面监听",
+  "version": "0.1.0",
+  "description": "快捷键抓取当前网页正文（默认 Ctrl+Q），可选调用 AI 并上传到服务端。",
+  "permissions": ["storage", "scripting", "activeTab", "notifications", "tabs"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "打开上次抓取预览（正文）"
+  },
+  "commands": {
+    "capture-page": {
+      "suggested_key": {
+        "default": "Ctrl+Q",
+        "mac": "Ctrl+Shift+E"
+      },
+      "description": "抓取当前标签页（按选项：仅正文 / AI 预览 / AI+上传）"
+    }
+  },
+  "options_page": "options.html"
+}
