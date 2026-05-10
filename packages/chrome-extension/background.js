@@ -67,30 +67,6 @@ function resolveChatCompletionsUrl(raw) {
   return `${base}/chat/completions`;
 }
 
-async function notify(title, message) {
-  try {
-    await chrome.notifications?.create?.({
-      type: "basic",
-      iconUrl: getNotifIcon(),
-      title,
-      message: message.slice(0, 250),
-    });
-  } catch {
-    /* ignore */
-  }
-}
-
-function openFeedback(title, msg) {
-  const q = new URLSearchParams({
-    title: String(title).slice(0, 120),
-    msg: String(msg).slice(0, 1800),
-  });
-  void chrome.tabs.create({
-    url: chrome.runtime.getURL(`feedback.html?${q.toString()}`),
-    active: true,
-  });
-}
-
 /**
  * SW 里没有「当前窗口」：用 lastFocusedWindow 才通常是用户正在看的前台窗口。
  */
@@ -120,15 +96,6 @@ async function setBadgeBusy() {
 async function setBadgeDone() {
   try {
     await chrome.action.setBadgeText({ text: "" });
-  } catch {
-    /* ignore */
-  }
-}
-
-async function setBadgeErr() {
-  try {
-    await chrome.action.setBadgeBackgroundColor({ color: "#b91c1c" });
-    await chrome.action.setBadgeText({ text: "!" });
   } catch {
     /* ignore */
   }
@@ -232,8 +199,6 @@ async function runPipelineForTab(tab) {
       : null;
   if (explainInvalid) {
     console.warn("[TimeManager]", explainInvalid, tab);
-    await notify("页面监听", explainInvalid);
-    openFeedback("页面监听 · 无法用当前标签", explainInvalid);
     return;
   }
 
@@ -272,12 +237,9 @@ async function runPipelineForTab(tab) {
         },
       });
       await chrome.tabs.create({ url: chrome.runtime.getURL("debug.html"), active: true });
-      await notify("页面监听（仅正文）", "已打开正文预览标签页。");
       await setBadgeDone();
       return;
     }
-
-    await notify("页面监听", pipeline === "ai_preview" ? "正在调用 AI（最多等待 2 分钟）…" : "正在调用 AI 并上传…");
 
     const { summary: aiSummary, debugRawSnippet } = await summarizePage(result, cfg);
 
@@ -292,7 +254,6 @@ async function runPipelineForTab(tab) {
         },
       });
       await chrome.tabs.create({ url: chrome.runtime.getURL("ai-preview.html"), active: true });
-      await notify("页面监听（AI 预览）", "已打开 AI 返回预览标签页。");
       await setBadgeDone();
       return;
     }
@@ -304,19 +265,11 @@ async function runPipelineForTab(tab) {
       aiSummary,
     });
 
-    await notify("页面监听", "已完成上传，可在手机 App 查看");
     await setBadgeDone();
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
     console.error("[TimeManager] 失败", e);
-    await setBadgeErr();
-    await notify("页面监听失败", msg);
-    openFeedback("页面监听失败", msg);
+    await setBadgeDone();
   }
-}
-
-function getNotifIcon() {
-  return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 }
 
 chrome.commands.onCommand.addListener((command) => {

@@ -3,7 +3,7 @@
   "name": "Time Manager 页面监听",
   "version": "0.1.0",
   "description": "快捷键抓取当前网页正文（默认 Ctrl+Q），可选调用 AI 并上传到服务端。",
-  "permissions": ["storage", "scripting", "activeTab", "notifications", "tabs"],
+  "permissions": ["storage", "scripting", "activeTab", "tabs"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
