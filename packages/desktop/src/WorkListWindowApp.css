@@ -7,6 +7,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
+  touch-action: auto;
   font-family: var(--tm-font);
   background-color: var(--tm-page-bg-base);
   background-image: var(--tm-window-bg-overlay), var(--tm-window-bg-image), var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
@@ -101,11 +102,13 @@
 
 .worklist-wrap {
   display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(380px, 1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
   padding: 16px 18px 20px;
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .worklist-content--today {
@@ -185,75 +188,212 @@
   margin-top: 4px;
 }
 
-.worklist-quadrant-matrix {
+/* 四象限坐标系：行=重要程度，列=紧急程度 */
+.worklist-matrix-shell {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 24px 1fr 1fr;
+  grid-template-rows: 22px 1fr 1fr;
+  gap: 5px;
   flex: 1;
   min-height: 0;
   width: 100%;
 }
 
+.worklist-matrix-corner {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.worklist-matrix-col-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #5a6f94;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.worklist-matrix-col-label--not-urgent {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.worklist-matrix-col-label--urgent {
+  grid-column: 3;
+  grid-row: 1;
+  color: #b85c4a;
+}
+
+.worklist-matrix-row-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #5a6f94;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+
+.worklist-matrix-row-label--important {
+  grid-column: 1;
+  grid-row: 2;
+  color: #3d5a9e;
+}
+
+.worklist-matrix-row-label--not-important {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.worklist-matrix-board {
+  grid-column: 2 / 4;
+  grid-row: 2 / 4;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(72, 98, 150, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+}
+
+.worklist-matrix-cross {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.worklist-matrix-cross::before,
+.worklist-matrix-cross::after {
+  content: "";
+  position: absolute;
+  background: rgba(58, 82, 130, 0.16);
+}
+
+.worklist-matrix-cross::before {
+  left: 50%;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+.worklist-matrix-cross::after {
+  top: 50%;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+}
+
+.worklist-quadrant-matrix {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
 .worklist-quadrant {
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  padding: 6px 8px 8px;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  padding: 6px 7px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
-/* 固定象限位置：左上 q2、右上 q1、左下 q3、右下 q4 */
 .worklist-quadrant--q2 {
   grid-column: 1;
   grid-row: 1;
-  background: linear-gradient(160deg, rgba(232, 240, 255, 0.92), rgba(210, 224, 255, 0.55));
+  background: linear-gradient(155deg, rgba(232, 240, 255, 0.95), rgba(198, 218, 255, 0.5));
 }
 
 .worklist-quadrant--q1 {
   grid-column: 2;
   grid-row: 1;
-  background: linear-gradient(160deg, rgba(255, 232, 232, 0.92), rgba(255, 210, 210, 0.55));
+  background: linear-gradient(155deg, rgba(255, 228, 228, 0.96), rgba(255, 198, 198, 0.52));
+  box-shadow: inset 0 0 0 1px rgba(220, 90, 90, 0.12);
 }
 
 .worklist-quadrant--q3 {
   grid-column: 1;
   grid-row: 2;
-  background: linear-gradient(160deg, rgba(255, 248, 224, 0.92), rgba(255, 236, 190, 0.55));
+  background: linear-gradient(155deg, rgba(255, 248, 220, 0.95), rgba(255, 232, 170, 0.48));
 }
 
 .worklist-quadrant--q4 {
   grid-column: 2;
   grid-row: 2;
-  background: linear-gradient(160deg, rgba(220, 245, 200, 0.94), rgba(186, 228, 165, 0.62));
+  background: linear-gradient(155deg, rgba(218, 245, 200, 0.96), rgba(178, 220, 155, 0.55));
 }
 
 .worklist-quadrant-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 5px;
   flex-shrink: 0;
 }
 
-.worklist-quadrant-head-main {
-  min-width: 0;
-  flex: 1;
+.worklist-quadrant-tag {
+  margin-right: auto;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #2a3f66;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+.worklist-quadrant-tag--q1 {
+  color: #9a3030;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.worklist-quadrant-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #425683;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
 .worklist-quadrant-add {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   background: var(--tm-btn-primary-fill);
   color: #fff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -269,50 +409,184 @@
   transform: var(--tm-btn-press);
 }
 
-.worklist-quadrant-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: #2a3f66;
-}
-
-.worklist-quadrant-hint {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: #5a6f94;
-}
-
 .worklist-quadrant-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .worklist-quadrant-empty {
-  margin: 8px 0;
-  font-size: 12px;
-  color: #6b7f9e;
-  text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 300;
+  color: rgba(90, 111, 148, 0.35);
+  line-height: 1;
+  user-select: none;
 }
 
-.worklist-item--q-q1 {
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.worklist-item--q-q2 {
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.worklist-item--q-q3 {
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.worklist-item--q-q4 {
+/* 今日计划 · 紧凑任务卡 */
+.worklist-item--card {
+  padding: 7px 8px;
+  margin-bottom: 0;
   background: rgba(255, 255, 255, 0.78);
+}
+
+.worklist-item--card.worklist-item--q-q1,
+.worklist-item--card.worklist-item--q-q2,
+.worklist-item--card.worklist-item--q-q3,
+.worklist-item--card.worklist-item--q-q4 {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.worklist-item--card .worklist-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.worklist-item--card .worklist-item-head-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.worklist-item--card .worklist-item-name {
+  font-size: 13px;
+}
+
+.worklist-item--card .worklist-item-icon-image,
+.worklist-item--card .worklist-item-icon-emoji {
+  width: 24px;
+  height: 24px;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.worklist-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.worklist-status-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.worklist-status-pill--pending {
+  color: #4a5f94;
+  background: rgba(238, 243, 255, 0.95);
+  border-color: rgba(180, 198, 240, 0.8);
+}
+
+.worklist-status-pill--pending .worklist-status-pill__dot {
+  background: #7b92c8;
+}
+
+.worklist-status-pill--doing {
+  color: #8a5a00;
+  background: rgba(255, 244, 220, 0.95);
+  border-color: rgba(243, 210, 138, 0.9);
+}
+
+.worklist-status-pill--doing .worklist-status-pill__dot {
+  background: #e6a020;
+  box-shadow: 0 0 0 2px rgba(230, 160, 32, 0.25);
+  animation: worklistStatusPulse 1.4s ease-in-out infinite;
+}
+
+.worklist-status-pill--undone {
+  color: #b33c2a;
+  background: rgba(255, 241, 239, 0.95);
+  border-color: rgba(241, 180, 171, 0.85);
+}
+
+.worklist-status-pill--undone .worklist-status-pill__dot {
+  background: #e07060;
+}
+
+.worklist-status-pill--done {
+  color: #1a6b42;
+  background: rgba(236, 249, 241, 0.95);
+  border-color: rgba(150, 215, 178, 0.85);
+}
+
+.worklist-status-pill--done .worklist-status-pill__dot {
+  background: #2db86a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes worklistStatusPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}
+
+.worklist-item--card .worklist-item-delete {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8a4a42;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.worklist-item--card:hover .worklist-item-delete,
+.worklist-item--card:focus-within .worklist-item-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.worklist-item--card .worklist-item-delete:hover {
+  border-color: #e07c6d;
+  background: linear-gradient(180deg, #ffefeb 0%, #ffd9d2 100%);
+}
+
+.worklist-item--card .worklist-item-delete__icon {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.worklist-item-note {
+  margin: 5px 0 0;
+  padding-left: 32px;
+  font-size: 11px;
+  color: #5a6f94;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .worklist-modal-overlay {
@@ -323,12 +597,23 @@
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
+  background: transparent;
+  touch-action: auto;
+}
+
+.worklist-modal-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: rgba(18, 28, 52, 0.38);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
+  pointer-events: none;
 }
 
 .worklist-modal {
+  position: relative;
+  z-index: 1;
   width: min(520px, 100%);
   max-height: min(88vh, 720px);
   overflow-y: auto;
@@ -336,8 +621,20 @@
   border: 1px solid var(--tm-glass-border-light);
   padding: 16px 18px 18px;
   background-image: var(--tm-glass-stack);
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: rgba(255, 255, 255, 0.96);
   box-shadow: var(--tm-glass-shadow), 0 18px 48px rgba(30, 45, 90, 0.18);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  isolation: auto;
+}
+
+.worklist-modal .worklist-input,
+.worklist-modal .worklist-textarea {
+  touch-action: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  caret-color: auto;
+  pointer-events: auto;
 }
 
 .worklist-modal-close {
@@ -354,8 +651,33 @@
   color: #2a3f66;
 }
 
-.worklist-content {
+.worklist-page .worklist-content {
+  animation: none;
+}
+
+.worklist-content--tab-switch {
   animation: worklistTabContentIn 220ms ease;
+}
+
+.worklist-content--memo .worklist-pane--memo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.worklist-memo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.worklist-content--memo .worklist-list {
+  flex: 1;
+  min-height: 0;
 }
 
 @keyframes worklistTabContentIn {

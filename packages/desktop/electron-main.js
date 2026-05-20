@@ -2637,7 +2637,15 @@ app.whenReady().then(() => {
 
   try {
     if (process.platform === 'win32') {
-      app.setAppUserModelId('com.timemanager.pet');
+      // 开发态用 execPath，避免通知显示为 Electron；打包后用固定 AppUserModelID
+      app.setAppUserModelId(
+        app.isPackaged ? 'com.timemanager.pet' : process.execPath
+      );
+    }
+    try {
+      app.setName('work master');
+    } catch {
+      // 忽略：部分环境不允许重复设置
     }
     appendLaunchLog('app ready, starting main flow');
     try {

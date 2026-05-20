@@ -42,6 +42,35 @@ export function createWorklistModule({
     return Number.isNaN(t) ? '' : new Date(t).toISOString();
   }
 
+  /** 系统通知角标（非自定义背景；完整象限名见 title） */
+  const QUADRANT_NOTIFY_TAG = {
+    q1: '急重',
+    q2: '重要',
+    q3: '急件',
+    q4: '缓办',
+  };
+
+  /**
+   * 系统级通知：无法自定义背景色/布局（由 Windows/macOS 绘制）。
+   * 可设置：应用图标、标题/正文、Linux/Windows urgency（q1 用 critical 提高优先级）。
+   */
+  function showReminderNotification({ title, body, quadrant }) {
+    if (!Notification.isSupported()) return;
+    const q = normalizeWorklistQuadrant(quadrant);
+    const tag = QUADRANT_NOTIFY_TAG[q];
+    const options = {
+      title: tag ? `【${tag}】${title}` : title,
+      body: String(body || '').trim().slice(0, 500) || '到提醒时间了',
+    };
+    if (iconPath) options.icon = iconPath;
+    if (q === 'q1') options.urgency = 'critical';
+    try {
+      new Notification(options).show();
+    } catch (error) {
+      console.error('[reminder-notification-error]', error);
+    }
+  }
+
   function sanitizeWorklistIcon(icon) {
     const v = String(icon || '').trim();
     if (!v) return '📋';
@@ -336,14 +365,13 @@ export function createWorklistModule({
       const t = Date.parse(reminderAt);
       if (Number.isNaN(t) || t > now) return item;
       const name = String(item.name || '工作清单').trim().slice(0, 120);
-      const body = String(item.note || '').trim().slice(0, 500) || '到提醒时间了';
+      const body = String(item.note || '').trim();
       if (canNotify) {
-        try {
-          const n = new Notification({ title: `工作提醒：${name}`, body });
-          n.show();
-        } catch (error) {
-          console.error('[worklist-reminder-notification-error]', error);
-        }
+        showReminderNotification({
+          title: name,
+          body,
+          quadrant: item.quadrant,
+        });
       }
       changed = true;
       return { ...item, reminderNotified: true, reminderAt };
@@ -370,14 +398,13 @@ export function createWorklistModule({
       const t = Date.parse(reminderAt);
       if (Number.isNaN(t) || t > now) return item;
       const memoTitle = String(item.name || '备忘录').trim().slice(0, 120);
-      const body = String(item.content || '').trim().slice(0, 500) || '到提醒时间了';
+      const body = String(item.content || '').trim();
       if (canNotify) {
-        try {
-          const n = new Notification({ title: `备忘录提醒：${memoTitle}`, body });
-          n.show();
-        } catch (error) {
-          console.error('[memo-reminder-notification-error]', error);
-        }
+        showReminderNotification({
+          title: `备忘录 · ${memoTitle}`,
+          body,
+          quadrant: 'q2',
+        });
       }
       memoChanged = true;
       return { ...item, reminderNotified: true, reminderAt };
@@ -509,6 +536,19 @@ export function createWorklistModule({
     });
   }
 
+  const WORKLIST_WINDOW_WIDTH = 1100;
+  const WORKLIST_WINDOW_HEIGHT = 750;
+
+  function revealWorklistWindow() {
+    if (!worklistWindow || worklistWindow.isDestroyed()) return;
+    worklistWindow.setMenuBarVisibility(false);
+    worklistWindow.setContentSize(WORKLIST_WINDOW_WIDTH, WORKLIST_WINDOW_HEIGHT);
+    worklistWindow.center();
+    worklistWindow.show();
+    broadcastWorklistUpdate();
+    broadcastMemoUpdate();
+  }
+
   function openWindow() {
     if (worklistWindow && !worklistWindow.isDestroyed()) {
       worklistWindow.show();
@@ -517,8 +557,9 @@ export function createWorklistModule({
     }
 
     worklistWindow = new BrowserWindow({
-      width: 1100,
-      height: 750,
+      width: WORKLIST_WINDOW_WIDTH,
+      height: WORKLIST_WINDOW_HEIGHT,
+      useContentSize: true,
       show: false,
       title: '工作清单',
       icon: iconPath,
@@ -530,13 +571,13 @@ export function createWorklistModule({
         webSecurity: false,
       },
     });
+    worklistWindow.setMenuBarVisibility(false);
 
+    let revealed = false;
     worklistWindow.once('ready-to-show', () => {
-      if (!worklistWindow || worklistWindow.isDestroyed()) return;
-      worklistWindow.setMenuBarVisibility(false);
-      worklistWindow.show();
-      broadcastWorklistUpdate();
-      broadcastMemoUpdate();
+      if (revealed) return;
+      revealed = true;
+      revealWorklistWindow();
     });
 
     worklistWindow.on('closed', () => {
