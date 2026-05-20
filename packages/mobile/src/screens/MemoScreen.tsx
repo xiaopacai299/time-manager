@@ -83,7 +83,7 @@ export function MemoScreen({ navigation }: Props) {
   const handleDelete = useCallback(
     (item: MemoItemPayload) => {
       if (auth.status !== "authenticated") return;
-      Alert.alert("删除便签", "确定删除这条便签吗？", [
+      Alert.alert("删除备忘录", "确定删除这条备忘录吗？", [
         { text: "取消", style: "cancel" },
         {
           text: "删除",
@@ -114,7 +114,7 @@ export function MemoScreen({ navigation }: Props) {
         <TouchableOpacity onPress={navigation.goBack} hitSlop={12}>
           <Text style={styles.back}>返回</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>便签</Text>
+        <Text style={styles.title}>备忘录</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -141,7 +141,7 @@ export function MemoScreen({ navigation }: Props) {
           multiline
         />
         <TouchableOpacity style={styles.primaryBtn} onPress={() => void handleSave()}>
-          <Text style={styles.primaryBtnText}>{editing ? "保存" : "新建便签"}</Text>
+          <Text style={styles.primaryBtnText}>{editing ? "保存" : "新建备忘录"}</Text>
         </TouchableOpacity>
         {editing ? (
           <TouchableOpacity style={styles.secondaryBtn} onPress={resetForm}>
@@ -157,7 +157,7 @@ export function MemoScreen({ navigation }: Props) {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            {loading ? <ActivityIndicator color="#6B5B95" /> : <Text style={styles.emptyText}>暂无便签</Text>}
+            {loading ? <ActivityIndicator color="#6B5B95" /> : <Text style={styles.emptyText}>暂无备忘录</Text>}
           </View>
         }
         renderItem={({ item }) => (

@@ -19,7 +19,9 @@ const GAP = 12;
 const CARD_W = (SCREEN_W - GRID_PAD * 2 - GAP) / 2;
 
 type Nav = {
-  navigate: (screen: "Diaries" | "Worklist" | "AppStats" | "Memos" | "PageListen") => void;
+  navigate: (
+    screen: "Diaries" | "Worklist" | "AppStats" | "Memos" | "YearWork" | "PageListen"
+  ) => void;
 };
 
 type Props = {
@@ -206,11 +208,18 @@ export function HomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("Diaries")}
           />
           <FeatureCard
-            icon="🗒️"
-            title="便签"
-            subtitle="快速随手记"
+            icon="📝"
+            title="备忘录"
+            subtitle="与桌面端同步"
             tint={THEME.gold}
             onPress={() => navigation.navigate("Memos")}
+          />
+          <FeatureCard
+            icon="📅"
+            title="今年工作总鉴"
+            subtitle="年度热力图"
+            tint="#8E44AD"
+            onPress={() => navigation.navigate("YearWork")}
           />
           <FeatureCard
             icon="🌐"

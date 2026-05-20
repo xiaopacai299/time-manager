@@ -205,7 +205,7 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    * 主进程通道：`worklist:get-list`（invoke/handle）
    * @returns {Promise<Array<object>>}
    */
-  getWorklist: () => ipcRenderer.invoke('worklist:get-list'),
+  getWorklist: (listDate) => ipcRenderer.invoke('worklist:get-list', listDate),
 
   /**
    * 新增工作清单项。

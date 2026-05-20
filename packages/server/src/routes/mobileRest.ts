@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { DiaryPayload, MemoItemPayload, WorklistItemPayload } from '@time-manger/shared';
+import { getLocalDateKey } from '@time-manger/shared';
 import { z } from 'zod';
 import type { ServerEnv } from '../config/env.js';
 import { timeRecordToDto } from '../lib/timeRecordDto.js';
@@ -34,6 +35,7 @@ function diaryToPayload(row: {
 
 function worklistToPayload(row: {
   id: string;
+  listDate: string;
   name: string;
   icon: string;
   note: string;
@@ -53,6 +55,7 @@ function worklistToPayload(row: {
       : '';
   return {
     id: row.id,
+    listDate: row.listDate,
     name: row.name,
     icon: row.icon,
     note: row.note,
@@ -83,6 +86,7 @@ const PatchDiaryBody = z
   });
 
 const PostWorklistBody = z.object({
+  listDate: dateParam.optional(),
   name: z.string().min(1),
   icon: z.string().optional(),
   note: z.string().optional(),
@@ -257,9 +261,16 @@ export function mountMobileRestRoutes(
   app.get('/api/v1/worklist-items', ...chain, async (req, res, next) => {
     try {
       const userId = req.userId!;
+      const dateQ = req.query.date;
+      const listDate =
+        typeof dateQ === 'string' && dateParam.safeParse(dateQ).success ? dateQ : undefined;
       const rows = await prisma.worklistItem.findMany({
-        where: { userId, deletedAt: null },
-        orderBy: { createdAt: 'asc' },
+        where: {
+          userId,
+          deletedAt: null,
+          ...(listDate ? { listDate } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
       });
       res.json({ items: rows.map(worklistToPayload) });
     } catch (e) {
@@ -281,10 +292,12 @@ export function mountMobileRestRoutes(
       const now = new Date();
       const rAt = parsed.data.reminderAt;
       const eAt = parsed.data.estimateDoneAt;
+      const listDate = parsed.data.listDate ?? getLocalDateKey();
       const row = await prisma.worklistItem.create({
         data: {
           id: randomUUID(),
           userId,
+          listDate,
           name: parsed.data.name,
           icon: parsed.data.icon ?? '📋',
           note: parsed.data.note ?? '',

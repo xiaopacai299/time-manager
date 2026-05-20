@@ -19,6 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTopInset } from "../hooks/useScreenInsets";
 import { useAuth } from "../hooks/useAuth";
+import { getLocalDateKey } from "@time-manger/shared";
 import type { WorklistItemPayload } from "@time-manger/shared";
 import { SwipeableDeleteRow } from "../components/SwipeableDeleteRow";
 
@@ -107,6 +108,8 @@ export function WorklistScreen({ navigation }: Props) {
   const { auth } = useAuth();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<WorklistItemPayload[]>([]);
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateKey());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,14 +130,16 @@ export function WorklistScreen({ navigation }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const { items: rows } = await auth.client.listWorklistItems();
+      const { items: rows } = await auth.client.listWorklistItems({
+        date: selectedDate,
+      });
       setItems(rows);
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, selectedDate]);
 
   useEffect(() => {
     void load();
@@ -185,6 +190,7 @@ export function WorklistScreen({ navigation }: Props) {
     setError(null);
     try {
       const payload = {
+        listDate: editing?.listDate || selectedDate,
         name: trimmed,
         icon: icon.trim() || "📋",
         note: note.trim(),
@@ -218,6 +224,7 @@ export function WorklistScreen({ navigation }: Props) {
     name,
     note,
     reminderAt,
+    selectedDate,
   ]);
 
   const handleDelete = useCallback(
@@ -259,8 +266,33 @@ export function WorklistScreen({ navigation }: Props) {
           <Text style={styles.back}>返回</Text>
         </TouchableOpacity>
         <Text style={styles.title}>工作清单</Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity onPress={() => setDatePickerOpen(true)} hitSlop={8}>
+          <Text style={styles.dateLink}>{selectedDate}</Text>
+        </TouchableOpacity>
       </View>
+
+      {datePickerOpen ? (
+        <View style={styles.datePickerWrap}>
+          <DateTimePicker
+            value={new Date(`${selectedDate}T12:00:00`)}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(_e, d) => {
+              if (!d) return;
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, "0");
+              const day = String(d.getDate()).padStart(2, "0");
+              setSelectedDate(`${y}-${m}-${day}`);
+              if (Platform.OS === "android") setDatePickerOpen(false);
+            }}
+          />
+          {Platform.OS === "ios" ? (
+            <TouchableOpacity style={styles.datePickerDone} onPress={() => setDatePickerOpen(false)}>
+              <Text style={styles.datePickerDoneText}>完成</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -543,7 +575,15 @@ const styles = StyleSheet.create({
   },
   back: { color: ACCENT, fontWeight: "700" },
   title: { fontSize: 18, fontWeight: "800", color: "#2D3436" },
-  headerSpacer: { width: 32 },
+  dateLink: { color: ACCENT, fontWeight: "700", fontSize: 13 },
+  datePickerWrap: {
+    backgroundColor: "#fff",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E8E4DE",
+    paddingVertical: 8,
+  },
+  datePickerDone: { alignSelf: "center", paddingVertical: 8 },
+  datePickerDoneText: { color: ACCENT, fontWeight: "800" },
   errorBanner: {
     backgroundColor: "#fff5f5",
     paddingVertical: 8,

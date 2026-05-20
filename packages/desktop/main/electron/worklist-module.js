@@ -1,3 +1,5 @@
+import { getLocalDateKey, listDateFromIso } from '@time-manger/shared';
+
 export function createWorklistModule({
   petState,
   persistPetState,
@@ -19,37 +21,18 @@ export function createWorklistModule({
   let estimatePromptResolver = null;
   let estimatePrompting = false;
 
-  function getLocalDateKey(ts = Date.now()) {
-    const d = new Date(ts);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+  function resolveItemListDate(item) {
+    const raw = String(item?.listDate || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    return listDateFromIso(item?.createdAt) || getLocalDateKey();
   }
 
-  function maybeResetWorklistForNewDay(now = Date.now()) {
-    const todayKey = getLocalDateKey(now);
-    const lastResetKey = String(petState.worklistLastResetDate || '').trim();
-    if (!lastResetKey) {
+  function touchWorklistDayMarker() {
+    const todayKey = getLocalDateKey();
+    if (petState.worklistLastResetDate !== todayKey) {
       petState.worklistLastResetDate = todayKey;
       persistPetState();
-      return false;
     }
-    if (lastResetKey === todayKey) return false;
-    const hadItems = Array.isArray(petState.worklist) && petState.worklist.length > 0;
-    if (hadItems) {
-      const deletedAt = new Date(now).toISOString();
-      for (const item of getWorklist()) {
-        markDirtyWorklistItem?.(item, deletedAt);
-      }
-    }
-    petState.worklist = [];
-    petState.worklistLastResetDate = todayKey;
-    persistPetState();
-    if (hadItems) {
-      broadcastWorklistUpdate();
-    }
-    return hadItems;
   }
 
   function normalizeWorklistDatetime(value) {
@@ -88,7 +71,25 @@ export function createWorklistModule({
         ? completionResultRaw
         : '';
     const confirmSnoozeUntil = normalizeWorklistDatetime(raw.confirmSnoozeUntil);
-    return { id, icon, name, reminderAt, estimateDoneAt, note, createdAt, updatedAt, deletedAt, reminderNotified, completionResult, confirmSnoozeUntil };
+    const listDateRaw = String(raw.listDate || '').trim();
+    const listDate = /^\d{4}-\d{2}-\d{2}$/.test(listDateRaw)
+      ? listDateRaw
+      : listDateFromIso(createdAt) || getLocalDateKey();
+    return {
+      id,
+      listDate,
+      icon,
+      name,
+      reminderAt,
+      estimateDoneAt,
+      note,
+      createdAt,
+      updatedAt,
+      deletedAt,
+      reminderNotified,
+      completionResult,
+      confirmSnoozeUntil,
+    };
   }
 
   function broadcastWorklistUpdate() {
@@ -220,20 +221,29 @@ export function createWorklistModule({
     return { ok: true, list: getMemoList() };
   }
 
-  function getWorklist() {
-    return (petState.worklist || [])
+  function getWorklist(listDateFilter) {
+    const sortDesc = (a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+    let list = (petState.worklist || [])
       .map((item) => sanitizeWorklistEntry(item))
       .filter(Boolean);
+    const filterKey = String(listDateFilter || '').trim();
+    if (filterKey) {
+      list = list.filter((item) => resolveItemListDate(item) === filterKey);
+    }
+    return list.sort(sortDesc);
   }
 
   function addWorklistItem(payload) {
-    maybeResetWorklistForNewDay();
+    touchWorklistDayMarker();
     const now = new Date().toISOString();
+    const listDateRaw = String(payload?.listDate || '').trim();
+    const listDate = /^\d{4}-\d{2}-\d{2}$/.test(listDateRaw) ? listDateRaw : getLocalDateKey();
     const id = typeof createSyncId === 'function'
       ? createSyncId()
       : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const entry = sanitizeWorklistEntry({
       id,
+      listDate,
       icon: payload?.icon,
       name: payload?.name,
       reminderAt: payload?.reminderAt,
@@ -256,7 +266,7 @@ export function createWorklistModule({
   }
 
   function updateWorklistItem(payload) {
-    maybeResetWorklistForNewDay();
+    touchWorklistDayMarker();
     const id = String(payload?.id || '').trim();
     if (!id) {
       return { ok: false, error: '缺少清单 ID', list: getWorklist() };
@@ -267,6 +277,7 @@ export function createWorklistModule({
     }
     const entry = sanitizeWorklistEntry({
       id,
+      listDate: existing.listDate,
       icon: payload?.icon,
       name: payload?.name,
       reminderAt: payload?.reminderAt,
@@ -289,7 +300,7 @@ export function createWorklistModule({
   }
 
   function removeWorklistItem(payload) {
-    maybeResetWorklistForNewDay();
+    touchWorklistDayMarker();
     const id = String(payload?.id || '').trim();
     if (!id) {
       return { ok: false, error: '缺少清单 ID', list: getWorklist() };
@@ -309,7 +320,7 @@ export function createWorklistModule({
 
   async function checkReminders() {
     const now = Date.now();
-    maybeResetWorklistForNewDay(now);
+    touchWorklistDayMarker();
     const raw = Array.isArray(petState.worklist) ? petState.worklist : [];
     let changed = false;
     const canNotify = Notification.isSupported();
@@ -383,7 +394,7 @@ export function createWorklistModule({
 
   async function maybePromptEstimateCompletion(now) {
     if (estimatePrompting) return;
-    const list = getWorklist();
+    const list = getWorklist(getLocalDateKey(now));
     const candidate = list.find((item) => {
       if (item.completionResult === 'completed' || item.completionResult === 'incomplete') return false;
       const estimateTs = Date.parse(String(item.estimateDoneAt || ''));
@@ -567,7 +578,7 @@ export function createWorklistModule({
   }
 
   function registerIpc(ipcMain) {
-    ipcMain.handle('worklist:get-list', () => getWorklist());
+    ipcMain.handle('worklist:get-list', (_event, listDate) => getWorklist(listDate));
     ipcMain.handle('worklist:open-export', () => openExportWindow());
     ipcMain.handle('memo-list:get', () => getMemoList());
     ipcMain.handle('memo-list:add', (_event, payload) => addMemoItem(payload));

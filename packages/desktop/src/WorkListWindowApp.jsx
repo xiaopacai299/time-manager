@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getLocalDateKey, listDateFromIso } from "@time-manger/shared";
 import "./WorkListWindowApp.css";
 
 const PRESET_ICONS = ["📋", "📝", "💼", "⏰", "✅", "🎯", "📌", "☕"];
@@ -45,6 +46,7 @@ export default function WorkListWindowApp() {
   const [memoBusy, setMemoBusy] = useState(false);
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedListDate, setSelectedListDate] = useState(() => getLocalDateKey());
 
   useEffect(() => {
     if (!message.text) return undefined;
@@ -84,7 +86,21 @@ export default function WorkListWindowApp() {
     };
   }, []);
 
-  const listTitle = useMemo(() => `工作清单 (${items.length})`, [items.length]);
+  const resolveListDate = useCallback((item) => {
+    const raw = String(item?.listDate || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    return listDateFromIso(item?.createdAt) || getLocalDateKey();
+  }, []);
+
+  const todayItems = useMemo(
+    () => items.filter((item) => resolveListDate(item) === selectedListDate),
+    [items, resolveListDate, selectedListDate]
+  );
+
+  const listTitle = useMemo(
+    () => `工作清单 (${todayItems.length}) · ${selectedListDate}`,
+    [todayItems.length, selectedListDate]
+  );
   const memoListTitle = useMemo(
     () => `备忘录 (${memoItems.length})`,
     [memoItems.length]
@@ -97,8 +113,8 @@ export default function WorkListWindowApp() {
       const idTs = Number(idPrefix);
       return Number.isFinite(idTs) ? idTs : 0;
     };
-    return [...items].sort((a, b) => parseCreatedTs(b) - parseCreatedTs(a));
-  }, [items]);
+    return [...todayItems].sort((a, b) => parseCreatedTs(b) - parseCreatedTs(a));
+  }, [todayItems]);
 
   const sortedMemos = useMemo(() => {
     const parseCreatedTs = (item) => {
@@ -199,6 +215,29 @@ export default function WorkListWindowApp() {
     }
   }, []);
 
+  const openDatePicker = useCallback((input) => {
+    if (!input || typeof input.showPicker !== "function") return;
+    try {
+      input.showPicker();
+    } catch {
+      // 保持静默
+    }
+  }, []);
+
+  const onDateFilterMouseDown = useCallback(
+    (event) => {
+      event.preventDefault();
+      const input =
+        event.currentTarget instanceof HTMLInputElement
+          ? event.currentTarget
+          : event.currentTarget
+              .closest?.(".worklist-date-filter")
+              ?.querySelector?.("input[type='date']");
+      openDatePicker(input);
+    },
+    [openDatePicker]
+  );
+
   function composeTodayDatetime(timeText) {
     const value = String(timeText || "").trim();
     if (!value) return "";
@@ -238,6 +277,7 @@ export default function WorkListWindowApp() {
       const payload = {
         icon,
         name: trimmedName,
+        listDate: selectedListDate,
         reminderAt: composeTodayDatetime(reminderAt),
         estimateDoneAt: composeTodayDatetime(estimateDoneAt),
         note: note.trim(),
@@ -619,24 +659,22 @@ export default function WorkListWindowApp() {
       {activeTab === TAB_TODAY ? (
         <div className="worklist-wrap worklist-content worklist-content--today">
           <section className="worklist-pane worklist-pane--list">
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <div>
-                <h1 className="worklist-title">{listTitle}</h1>
-                <p className="worklist-sub">
-                  左侧展示已保存的清单，右侧可继续新增。
-                </p>
-              </div>
-              <button
-                type="button"
-                className="worklist-export-btn"
-                onClick={() => {
-                  window.timeManagerAPI?.openWorklistExport?.();
-                }}
-              >
-                导出日志
-              </button>
+            <div className="worklist-list-header">
+              <h1 className="worklist-title">{listTitle}</h1>
+              <label className="worklist-date-filter">
+                <span onMouseDown={onDateFilterMouseDown}>查看日期</span>
+                <input
+                  type="date"
+                  value={selectedListDate}
+                  onMouseDown={onDateFilterMouseDown}
+                  onChange={(e) =>
+                    setSelectedListDate(e.target.value || getLocalDateKey())
+                  }
+                />
+              </label>
             </div>
-            <div className="worklist-list">
+            <div className="worklist-list-wrap">
+              <div className="worklist-list">
               {sortedItems.length === 0 ? (
                 <div className="worklist-empty">
                   暂无清单，去右侧添加第一项吧。
@@ -709,6 +747,16 @@ export default function WorkListWindowApp() {
                   );
                 })
               )}
+              </div>
+              <button
+                type="button"
+                className="worklist-export-btn worklist-export-btn--corner"
+                onClick={() => {
+                  window.timeManagerAPI?.openWorklistExport?.();
+                }}
+              >
+                导出日志
+              </button>
             </div>
           </section>
 

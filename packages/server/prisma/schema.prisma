@@ -113,6 +113,7 @@ model DiaryEntry {
 model WorklistItem {
   id                  String    @id
   userId              String
+  listDate            String
   name                String
   icon                String
   note                String    @db.Text
@@ -128,6 +129,7 @@ model WorklistItem {
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
+  @@index([userId, listDate])
 }
 
 model MemoItem {

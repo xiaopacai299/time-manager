@@ -164,11 +164,13 @@ export class ApiClient {
     });
   }
 
-  async listWorklistItems(): Promise<{ items: WorklistItemPayload[] }> {
-    return this.request("/api/v1/worklist-items");
+  async listWorklistItems(options?: { date?: string }): Promise<{ items: WorklistItemPayload[] }> {
+    const q = options?.date ? `?date=${encodeURIComponent(options.date)}` : "";
+    return this.request(`/api/v1/worklist-items${q}`);
   }
 
   async createWorklistItem(body: {
+    listDate?: string;
     name: string;
     icon?: string;
     note?: string;

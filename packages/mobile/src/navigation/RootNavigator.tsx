@@ -9,6 +9,7 @@ import { DiaryComposeScreen } from "../screens/DiaryComposeScreen";
 import { WorklistScreen } from "../screens/WorklistScreen";
 import { AppStatsScreen } from "../screens/AppStatsScreen";
 import { MemoScreen } from "../screens/MemoScreen";
+import { YearWorkScreen } from "../screens/YearWorkScreen";
 import { PageListenScreen } from "../screens/PageListenScreen";
 import { ExtensionTokensScreen } from "../screens/ExtensionTokensScreen";
 import { useAuth } from "../hooks/useAuth";
@@ -21,6 +22,7 @@ export type RootStackParamList = {
   Worklist: undefined;
   AppStats: undefined;
   Memos: undefined;
+  YearWork: undefined;
   PageListen: undefined;
   ExtensionTokens: undefined;
 };
@@ -53,6 +55,7 @@ export function RootNavigator() {
             <Stack.Screen name="Worklist" component={WorklistScreen} />
             <Stack.Screen name="AppStats" component={AppStatsScreen} />
             <Stack.Screen name="Memos" component={MemoScreen} />
+            <Stack.Screen name="YearWork" component={YearWorkScreen} />
             <Stack.Screen name="PageListen" component={PageListenScreen} />
             <Stack.Screen name="ExtensionTokens" component={ExtensionTokensScreen} />
           </>

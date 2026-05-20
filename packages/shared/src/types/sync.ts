@@ -20,6 +20,7 @@ export type DiaryRecord = SyncableRecord & {
 };
 
 export type WorklistItemRecord = SyncableRecord & {
+  listDate: string;
   name: string;
   icon: string;
   note: string;

@@ -30,7 +30,7 @@ import {
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
 import { debugLog } from './main/debug-log.js';
-import { computeYearWorkHeatmap } from '@time-manger/shared';
+import { computeYearWorkHeatmap, getLocalDateKey, listDateFromIso } from '@time-manger/shared';
 
 // 主进程默认阈值（毫秒）。不要依赖 src 目录，避免打包后模块缺失。
 const REMIND_CONTINUOUS_MS = 25 * 60 * 1000;
@@ -914,14 +914,20 @@ function normalizeWorklistItemForSync(raw, now = new Date().toISOString()) {
     return Number.isNaN(t) ? null : new Date(t).toISOString();
   };
   const completion = String(raw.completionResult || '').trim().toLowerCase();
+  const createdAt = normalizeDate(raw.createdAt) || now;
+  const listDateRaw = String(raw.listDate || '').trim();
+  const listDate = /^\d{4}-\d{2}-\d{2}$/.test(listDateRaw)
+    ? listDateRaw
+    : listDateFromIso(createdAt) || getLocalDateKey();
   return {
     id,
+    listDate,
     name,
     icon: String(raw.icon || '📋'),
     note: String(raw.note || '').slice(0, 2000),
     reminderAt: normalizeDate(raw.reminderAt),
     estimateDoneAt: normalizeDate(raw.estimateDoneAt),
-    createdAt: normalizeDate(raw.createdAt) || now,
+    createdAt,
     updatedAt: normalizeDate(raw.updatedAt) || now,
     deletedAt: normalizeDate(raw.deletedAt),
     reminderNotified: Boolean(raw.reminderNotified),
@@ -1173,7 +1179,7 @@ function mergeRemoteWorklistItems(records) {
   }
   if (changed) {
     petState.worklist = [...byId.values()].sort((a, b) =>
-      String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
+      String(b.createdAt || '').localeCompare(String(a.createdAt || '')),
     );
     persistPetState();
     worklistModule?.broadcastWorklistUpdate?.();
@@ -1784,6 +1790,24 @@ function toggleChaosCat() {
   return petState.chaosCat;
 }
 
+/** 构建登录项：开发态需把应用目录传给 electron.exe，否则会打开 Electron 官网。 */
+function buildLoginItemSettings(openAtLogin) {
+  if (app.isPackaged) {
+    return {
+      openAtLogin,
+      openAsHidden: false,
+      path: app.getPath('exe'),
+      args: [],
+    };
+  }
+  return {
+    openAtLogin,
+    openAsHidden: false,
+    path: process.execPath,
+    args: [__dirname],
+  };
+}
+
 /**
  * 切换开机自动启动状态
  * 使用 Electron 的 app.setLoginItemSettings API 设置 Windows 登录时自动启动
@@ -1793,12 +1817,7 @@ function toggleAutoLaunch() {
     const settings = app.getLoginItemSettings();
     const newValue = !settings.openAtLogin;
 
-    app.setLoginItemSettings({
-      openAtLogin: newValue,
-      openAsHidden: false, // 启动时显示窗口（不是隐藏）
-      path: process.execPath, // 使用当前可执行文件路径
-      args: [], // 启动参数
-    });
+    app.setLoginItemSettings(buildLoginItemSettings(newValue));
 
     // 刷新菜单以更新勾选状态
     menuModule.refreshTrayMenu();
@@ -2130,12 +2149,7 @@ function setupIpc() {
   ipcMain.handle('auto-launch:set', (_event, enabled) => {
     try {
       const shouldEnable = Boolean(enabled);
-      app.setLoginItemSettings({
-        openAtLogin: shouldEnable,
-        openAsHidden: false,
-        path: process.execPath,
-        args: [],
-      });
+      app.setLoginItemSettings(buildLoginItemSettings(shouldEnable));
       // 刷新菜单勾选状态
       menuModule.refreshTrayMenu();
       console.log(`[AutoLaunch] 开机自动启动已${shouldEnable ? '开启' : '关闭'} (via IPC)`);
@@ -2620,6 +2634,14 @@ app.whenReady().then(() => {
       app.setAppUserModelId('com.timemanager.pet');
     }
     appendLaunchLog('app ready, starting main flow');
+    try {
+      const login = app.getLoginItemSettings();
+      if (login.openAtLogin) {
+        app.setLoginItemSettings(buildLoginItemSettings(true));
+      }
+    } catch (error) {
+      console.error('[AutoLaunch] 修复登录项失败:', error);
+    }
     // 二、从用户目录中读取之前的状态
     loadPetState();
     // Keep startup behavior predictable: always start with click-through disabled.

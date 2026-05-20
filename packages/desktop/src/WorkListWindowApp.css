@@ -1,4 +1,4 @@
-﻿.worklist-page {
+.worklist-page {
   margin: 0;
   flex: 1;
   position: relative;
@@ -34,6 +34,59 @@
   background: rgba(236, 249, 241, 0.88);
   border-color: rgba(150, 215, 178, 0.65);
   color: #1d7a4a;
+}
+
+.worklist-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.worklist-date-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  font-size: 13px;
+  color: var(--tm-text-muted, #636e72);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.worklist-date-filter input {
+  border: 1px solid var(--tm-border, #dfd8cf);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--tm-text);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  caret-color: transparent;
+}
+
+.worklist-list-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.worklist-list-wrap .worklist-list {
+  margin-top: 0;
+  flex: 1;
+  padding-bottom: 44px;
+}
+
+.worklist-export-btn--corner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
 }
 
 .worklist-toast--err {
@@ -352,7 +405,6 @@
 }
 
 .worklist-list {
-  margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;

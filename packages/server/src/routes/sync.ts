@@ -145,6 +145,7 @@ function workYearDigestToDto(row: {
 
 function worklistItemToDto(row: {
   id: string;
+  listDate: string;
   name: string;
   icon: string;
   note: string;
@@ -160,6 +161,7 @@ function worklistItemToDto(row: {
 }): WorklistItemPayload {
   return {
     id: row.id,
+    listDate: row.listDate,
     name: row.name,
     icon: row.icon,
     note: row.note,
@@ -263,6 +265,7 @@ function getResourceConfig(
         return {
           id: rec.id,
           userId,
+          listDate: rec.listDate,
           name: rec.name,
           icon: rec.icon,
           note: rec.note,
@@ -281,6 +284,7 @@ function getResourceConfig(
         const rec = record as WorklistItemPayload;
         return {
           userId,
+          listDate: rec.listDate,
           name: rec.name,
           icon: rec.icon,
           note: rec.note,
