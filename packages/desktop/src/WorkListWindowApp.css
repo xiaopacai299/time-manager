@@ -724,12 +724,51 @@
   align-self: stretch;
 }
 
+.worklist-memo-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.worklist-memo-view-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 145, 200, 0.4);
+  background: rgba(255, 255, 255, 0.55);
+  gap: 2px;
+}
+
+.worklist-memo-view-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6f94;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.worklist-memo-view-btn--active {
+  color: #fff;
+  background: var(--tm-btn-primary-fill);
+  box-shadow: var(--tm-btn-3d-primary);
+}
+
 .worklist-content--memo .worklist-list {
   flex: 1;
   min-height: 0;
   padding-top: 3px;
   padding-bottom: 2px;
   box-sizing: border-box;
+}
+
+.worklist-content--memo .memo-cal {
+  flex: 1;
+  min-height: 0;
 }
 
 @keyframes worklistTabContentIn {

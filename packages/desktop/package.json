@@ -21,13 +21,14 @@
     "assets:run-cat": "node scripts/build-run-cat.mjs"
   },
   "dependencies": {
+    "@time-manger/shared": "workspace:*",
     "epubjs": "^0.3.93",
     "lottie-web": "^5.13.0",
+    "lunar-javascript": "^1.7.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "recharts": "^3.8.1",
-    "uiohook-napi": "^1.5.5",
-    "@time-manger/shared": "workspace:*"
+    "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

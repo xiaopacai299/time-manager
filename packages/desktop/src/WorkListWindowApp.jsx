@@ -6,12 +6,17 @@ import {
   listDateFromIso,
   normalizeWorklistQuadrant,
 } from "@time-manger/shared";
+import MemoMonthCalendar, {
+  dateKeyToDefaultReminderInput,
+} from "./components/MemoMonthCalendar/index.jsx";
 import "./WorkListWindowApp.css";
 
 const PRESET_ICONS = ["📋", "📝", "💼", "⏰", "✅", "🎯", "📌", "☕"];
 const TAB_TODAY = "today";
 const TAB_MEMO = "memo";
 const TAB_YEAR = "year";
+const MEMO_VIEW_CALENDAR = "calendar";
+const MEMO_VIEW_LIST = "list";
 
 /** 象限角标（短标签，完整含义见 title / WORKLIST_QUADRANT_META） */
 const QUADRANT_SHORT_TAG = {
@@ -67,6 +72,12 @@ export default function WorkListWindowApp() {
   const [memoReminderAt, setMemoReminderAt] = useState("");
   const [memoContent, setMemoContent] = useState("");
   const [memoBusy, setMemoBusy] = useState(false);
+  const [memoViewMode, setMemoViewMode] = useState(MEMO_VIEW_CALENDAR);
+  const [memoViewYear, setMemoViewYear] = useState(() => new Date().getFullYear());
+  const [memoViewMonthIndex, setMemoViewMonthIndex] = useState(() =>
+    new Date().getMonth()
+  );
+  const [memoSelectedDate, setMemoSelectedDate] = useState(() => getLocalDateKey());
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedListDate, setSelectedListDate] = useState(() => getLocalDateKey());
@@ -498,11 +509,20 @@ export default function WorkListWindowApp() {
     resetMemoForm();
   }
 
-  function openMemoAddModal(event) {
+  function openMemoAddModal(event, options = {}) {
     event?.stopPropagation?.();
     event?.preventDefault?.();
     resetMemoForm();
+    const dateKey = String(options.dateKey || "").trim();
+    if (dateKey) {
+      setMemoSelectedDate(dateKey);
+      setMemoReminderAt(dateKeyToDefaultReminderInput(dateKey));
+    }
     setActiveModal("memo");
+  }
+
+  function openMemoAddModalForDate(dateKey, event) {
+    openMemoAddModal(event, { dateKey });
   }
 
   function openMemoEditModal(item, event) {
@@ -1194,23 +1214,77 @@ export default function WorkListWindowApp() {
           <section className="worklist-pane worklist-pane--memo">
             <div className="worklist-memo-header">
               <h1 className="worklist-title">{memoListTitle}</h1>
-              <button
-                type="button"
-                className="worklist-add-btn"
-                onClick={openMemoAddModal}
-              >
-                添加
-              </button>
+              <div className="worklist-memo-header-actions">
+                <div
+                  className="worklist-memo-view-toggle"
+                  role="tablist"
+                  aria-label="备忘录视图"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={memoViewMode === MEMO_VIEW_CALENDAR}
+                    className={`worklist-memo-view-btn${
+                      memoViewMode === MEMO_VIEW_CALENDAR
+                        ? " worklist-memo-view-btn--active"
+                        : ""
+                    }`}
+                    onClick={() => setMemoViewMode(MEMO_VIEW_CALENDAR)}
+                  >
+                    日历
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={memoViewMode === MEMO_VIEW_LIST}
+                    className={`worklist-memo-view-btn${
+                      memoViewMode === MEMO_VIEW_LIST
+                        ? " worklist-memo-view-btn--active"
+                        : ""
+                    }`}
+                    onClick={() => setMemoViewMode(MEMO_VIEW_LIST)}
+                  >
+                    列表
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="worklist-add-btn"
+                  onClick={(e) =>
+                    openMemoAddModal(e, {
+                      dateKey: memoSelectedDate || getLocalDateKey(),
+                    })
+                  }
+                >
+                  添加
+                </button>
+              </div>
             </div>
-            <div className="worklist-list">
-              {sortedMemos.length === 0 ? (
-                <span className="worklist-quadrant-empty" aria-hidden="true">
-                  —
-                </span>
-              ) : (
-                sortedMemos.map((item) => renderMemoCard(item))
-              )}
-            </div>
+            {memoViewMode === MEMO_VIEW_CALENDAR ? (
+              <MemoMonthCalendar
+                items={memoItems}
+                viewYear={memoViewYear}
+                viewMonthIndex={memoViewMonthIndex}
+                selectedDate={memoSelectedDate}
+                onViewMonthChange={(year, monthIndex) => {
+                  setMemoViewYear(year);
+                  setMemoViewMonthIndex(monthIndex);
+                }}
+                onSelectDate={setMemoSelectedDate}
+                onAddForDate={(dateKey) => openMemoAddModalForDate(dateKey)}
+                onEditItem={(item) => openMemoEditModal(item)}
+              />
+            ) : (
+              <div className="worklist-list">
+                {sortedMemos.length === 0 ? (
+                  <span className="worklist-quadrant-empty" aria-hidden="true">
+                    —
+                  </span>
+                ) : (
+                  sortedMemos.map((item) => renderMemoCard(item))
+                )}
+              </div>
+            )}
           </section>
         </div>
       ) : (
