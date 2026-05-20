@@ -1,5 +1,6 @@
+import { getLocalDateKey } from '@time-manger/shared';
 import {
-  getMonthGridDateRange,
+  getForecastableDateRange,
   parseForecastDailyByDate,
 } from '../weather/openMeteoCore.js';
 
@@ -261,8 +262,17 @@ export function createWeatherModule({ petState, persistPetState }) {
     }
 
     const { lat, lon, label, weatherSettings } = await resolveAndPersistLocation();
-    const { startDate, endDate } = getMonthGridDateRange(y, m);
-    const cacheKey = `${lat.toFixed(3)},${lon.toFixed(3)},${startDate},${endDate}`;
+    const forecastRange = getForecastableDateRange(y, m, getLocalDateKey());
+    if (!forecastRange) {
+      return {
+        ok: true,
+        byDate: {},
+        locationLabel: label,
+        weatherSettings,
+      };
+    }
+    const { startDate, endDate } = forecastRange;
+    const cacheKey = `v4:${lat.toFixed(3)},${lon.toFixed(3)},${startDate},${endDate}`;
     const cached = monthForecastCache.get(cacheKey);
     if (cached && Date.now() - cached.at < MONTH_CACHE_MS) {
       return {

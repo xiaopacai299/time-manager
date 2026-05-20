@@ -152,8 +152,9 @@
 .worklist-content--today .worklist-pane,
 .worklist-content--memo .worklist-pane--memo {
   padding-top: 14px;
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
+  height: auto;
   display: flex;
   flex-direction: column;
 }
@@ -767,7 +768,7 @@
 }
 
 .worklist-content--memo .memo-cal {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -1237,6 +1238,25 @@
 .worklist-field label .req {
   color: #c14b2f;
   font-weight: 700;
+}
+
+.worklist-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c24a3a;
+  line-height: 1.4;
+}
+
+.worklist-input--invalid,
+.worklist-textarea--invalid {
+  border-color: rgba(194, 74, 58, 0.72);
+}
+
+.worklist-input--invalid:focus,
+.worklist-textarea--invalid:focus {
+  border-color: #c24a3a;
+  box-shadow: 0 0 0 2px rgba(194, 74, 58, 0.18);
 }
 
 .worklist-input,

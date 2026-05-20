@@ -6,17 +6,13 @@ import {
   listDateFromIso,
   normalizeWorklistQuadrant,
 } from "@time-manger/shared";
-import MemoMonthCalendar, {
-  dateKeyToDefaultReminderInput,
-} from "./components/MemoMonthCalendar/index.jsx";
+import MemoMonthCalendar from "./components/MemoMonthCalendar/index.jsx";
 import "./WorkListWindowApp.css";
 
 const PRESET_ICONS = ["📋", "📝", "💼", "⏰", "✅", "🎯", "📌", "☕"];
 const TAB_TODAY = "today";
 const TAB_MEMO = "memo";
 const TAB_YEAR = "year";
-const MEMO_VIEW_CALENDAR = "calendar";
-const MEMO_VIEW_LIST = "list";
 
 /** 象限角标（短标签，完整含义见 title / WORKLIST_QUADRANT_META） */
 const QUADRANT_SHORT_TAG = {
@@ -69,10 +65,10 @@ export default function WorkListWindowApp() {
   const [memoIconEmoji, setMemoIconEmoji] = useState("📝");
   const [memoIconCustomDataUrl, setMemoIconCustomDataUrl] = useState("");
   const [memoName, setMemoName] = useState("");
-  const [memoReminderAt, setMemoReminderAt] = useState("");
+  const [memoReminderTime, setMemoReminderTime] = useState("");
   const [memoContent, setMemoContent] = useState("");
   const [memoBusy, setMemoBusy] = useState(false);
-  const [memoViewMode, setMemoViewMode] = useState(MEMO_VIEW_CALENDAR);
+  const [memoFormErrors, setMemoFormErrors] = useState({});
   const [memoViewYear, setMemoViewYear] = useState(() => new Date().getFullYear());
   const [memoViewMonthIndex, setMemoViewMonthIndex] = useState(() =>
     new Date().getMonth()
@@ -179,7 +175,7 @@ export default function WorkListWindowApp() {
   );
 
   useEffect(() => {
-    if (activeTab !== TAB_MEMO || memoViewMode !== MEMO_VIEW_CALENDAR) return undefined;
+    if (activeTab !== TAB_MEMO) return undefined;
     let cancelled = false;
     (async () => {
       const settings = await window.timeManagerAPI?.getWeatherSettings?.();
@@ -200,7 +196,6 @@ export default function WorkListWindowApp() {
     };
   }, [
     activeTab,
-    memoViewMode,
     memoViewYear,
     memoViewMonthIndex,
     loadMemoCalendarWeather,
@@ -422,6 +417,33 @@ export default function WorkListWindowApp() {
     return `${y}-${m}-${d}T${h}:${mm}`;
   }
 
+  function toInputTime(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  /** 新建：当天日期 + 时分；编辑：保留原提醒日期仅改时分 */
+  function composeMemoReminderIso(timeText, existingIso) {
+    const trimmed = String(timeText || "").trim();
+    if (!trimmed) return "";
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(trimmed);
+    if (!match) return "";
+    if (existingIso) {
+      const date = new Date(existingIso);
+      if (!Number.isNaN(date.getTime())) {
+        const pad = (num) => String(num).padStart(2, "0");
+        const y = date.getFullYear();
+        const m = pad(date.getMonth() + 1);
+        const d = pad(date.getDate());
+        return `${y}-${m}-${d}T${match[1]}:${match[2]}`;
+      }
+    }
+    return composeTodayDatetime(trimmed);
+  }
+
   async function onSubmit(event) {
     event.preventDefault();
     setMessage({ type: "", text: "" });
@@ -620,8 +642,9 @@ export default function WorkListWindowApp() {
     const dateKey = String(options.dateKey || "").trim();
     if (dateKey) {
       setMemoSelectedDate(dateKey);
-      setMemoReminderAt(dateKeyToDefaultReminderInput(dateKey));
     }
+    setMemoReminderTime("09:00");
+    setMemoFormErrors({});
     setActiveModal("memo");
   }
 
@@ -660,9 +683,10 @@ export default function WorkListWindowApp() {
       setMemoIconCustomDataUrl("");
     }
     setMemoName(String(item.name || ""));
-    setMemoReminderAt(toInputDatetime(item.reminderAt));
+    setMemoReminderTime(toInputTime(item.reminderAt));
     setMemoContent(String(item.content || ""));
     setMemoEditingId(String(item.id || ""));
+    setMemoFormErrors({});
     setMessage({ type: "", text: "" });
   }
 
@@ -671,8 +695,9 @@ export default function WorkListWindowApp() {
     setMemoIconEmoji("📝");
     setMemoIconCustomDataUrl("");
     setMemoName("");
-    setMemoReminderAt("");
+    setMemoReminderTime("");
     setMemoContent("");
+    setMemoFormErrors({});
     setMessage({ type: "", text: "" });
   }
 
@@ -680,17 +705,24 @@ export default function WorkListWindowApp() {
     event.preventDefault();
     setMessage({ type: "", text: "" });
     const trimmedName = memoName.trim();
-    if (!trimmedName) {
-      setMessage({ type: "err", text: "请填写备忘录名称。" });
-      return;
-    }
     const trimmed = memoContent.trim();
-    if (!trimmed) {
-      setMessage({ type: "err", text: "请填写备忘录内容。" });
+    const timeTrimmed = memoReminderTime.trim();
+    const editingMemo = isMemoEditing
+      ? memoItems.find((m) => String(m.id) === String(memoEditingId))
+      : null;
+    const existingReminder = editingMemo?.reminderAt;
+    const reminderIso = composeMemoReminderIso(timeTrimmed, existingReminder);
+
+    const errors = {};
+    if (!trimmedName) errors.name = "请填写名称";
+    if (timeTrimmed && !reminderIso) errors.reminderTime = "请填写有效的时分（00:00–23:59）";
+    if (Object.keys(errors).length > 0) {
+      setMemoFormErrors(errors);
       return;
     }
+    setMemoFormErrors({});
+
     const icon = (memoIconCustomDataUrl || memoIconEmoji).trim() || "📝";
-    const reminderIso = memoReminderAt.trim();
     setMemoBusy(true);
     try {
       const payload = {
@@ -1108,38 +1140,64 @@ export default function WorkListWindowApp() {
         <input
           ref={memoNameInputRef}
           id="memo-name"
-          className="worklist-input"
+          className={`worklist-input${
+            memoFormErrors.name ? " worklist-input--invalid" : ""
+          }`}
           value={memoName}
-          onChange={(e) => setMemoName(e.target.value)}
-          placeholder="例如：下午开会材料"
+          onChange={(e) => {
+            setMemoName(e.target.value);
+            if (memoFormErrors.name) {
+              setMemoFormErrors((prev) => ({ ...prev, name: undefined }));
+            }
+          }}
           maxLength={200}
           autoComplete="off"
+          aria-invalid={memoFormErrors.name ? "true" : undefined}
+          aria-describedby={memoFormErrors.name ? "memo-name-error" : undefined}
         />
+        {memoFormErrors.name ? (
+          <p id="memo-name-error" className="worklist-field-error" role="alert">
+            {memoFormErrors.name}
+          </p>
+        ) : null}
       </div>
 
       <div className="worklist-field">
         <label htmlFor="memo-remind">提醒时间</label>
         <input
           id="memo-remind"
-          className="worklist-input"
-          type="datetime-local"
+          className={`worklist-input${
+            memoFormErrors.reminderTime ? " worklist-input--invalid" : ""
+          }`}
+          type="time"
           step="60"
-          value={memoReminderAt}
+          value={memoReminderTime}
           onClick={onTimeInputClick}
-          onChange={(e) => setMemoReminderAt(e.target.value)}
+          onChange={(e) => {
+            setMemoReminderTime(e.target.value);
+            if (memoFormErrors.reminderTime) {
+              setMemoFormErrors((prev) => ({ ...prev, reminderTime: undefined }));
+            }
+          }}
+          aria-invalid={memoFormErrors.reminderTime ? "true" : undefined}
+          aria-describedby={
+            memoFormErrors.reminderTime ? "memo-remind-error" : undefined
+          }
         />
+        {memoFormErrors.reminderTime ? (
+          <p id="memo-remind-error" className="worklist-field-error" role="alert">
+            {memoFormErrors.reminderTime}
+          </p>
+        ) : null}
       </div>
 
       <div className="worklist-field">
-        <label htmlFor="memo-content">
-          内容 <span className="req">*</span>
-        </label>
+        <label htmlFor="memo-content">内容</label>
         <textarea
           id="memo-content"
           className="worklist-textarea worklist-textarea--memo-body"
           value={memoContent}
           onChange={(e) => setMemoContent(e.target.value)}
-          placeholder="写在这里…"
           maxLength={50000}
           spellCheck="false"
         />
@@ -1318,54 +1376,8 @@ export default function WorkListWindowApp() {
           <section className="worklist-pane worklist-pane--memo">
             <div className="worklist-memo-header">
               <h1 className="worklist-title">{memoListTitle}</h1>
-              <div className="worklist-memo-header-actions">
-                <div
-                  className="worklist-memo-view-toggle"
-                  role="tablist"
-                  aria-label="备忘录视图"
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={memoViewMode === MEMO_VIEW_CALENDAR}
-                    className={`worklist-memo-view-btn${
-                      memoViewMode === MEMO_VIEW_CALENDAR
-                        ? " worklist-memo-view-btn--active"
-                        : ""
-                    }`}
-                    onClick={() => setMemoViewMode(MEMO_VIEW_CALENDAR)}
-                  >
-                    日历
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={memoViewMode === MEMO_VIEW_LIST}
-                    className={`worklist-memo-view-btn${
-                      memoViewMode === MEMO_VIEW_LIST
-                        ? " worklist-memo-view-btn--active"
-                        : ""
-                    }`}
-                    onClick={() => setMemoViewMode(MEMO_VIEW_LIST)}
-                  >
-                    列表
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="worklist-add-btn"
-                  onClick={(e) =>
-                    openMemoAddModal(e, {
-                      dateKey: memoSelectedDate || getLocalDateKey(),
-                    })
-                  }
-                >
-                  添加
-                </button>
-              </div>
             </div>
-            {memoViewMode === MEMO_VIEW_CALENDAR ? (
-              <MemoMonthCalendar
+            <MemoMonthCalendar
                 items={memoItems}
                 viewYear={memoViewYear}
                 viewMonthIndex={memoViewMonthIndex}
@@ -1382,18 +1394,8 @@ export default function WorkListWindowApp() {
                 onSelectDate={setMemoSelectedDate}
                 onAddForDate={(dateKey) => openMemoAddModalForDate(dateKey)}
                 onEditItem={(item) => openMemoEditModal(item)}
+                onDeleteItem={(item) => openDeleteConfirm("memo", item.id)}
               />
-            ) : (
-              <div className="worklist-list">
-                {sortedMemos.length === 0 ? (
-                  <span className="worklist-quadrant-empty" aria-hidden="true">
-                    —
-                  </span>
-                ) : (
-                  sortedMemos.map((item) => renderMemoCard(item))
-                )}
-              </div>
-            )}
           </section>
         </div>
       ) : (
@@ -1529,7 +1531,7 @@ export default function WorkListWindowApp() {
                 {activeModal === "memo" ? (
                   <form className="worklist-form" onSubmit={onMemoSubmit}>
                     {memoFormFields}
-                    <div className="worklist-actions">
+                    <div className="worklist-actions worklist-actions--memo">
                       <button
                         type="submit"
                         className="worklist-submit"
@@ -1540,14 +1542,6 @@ export default function WorkListWindowApp() {
                           : isMemoEditing
                             ? "保存修改"
                             : "保存备忘录"}
-                      </button>
-                      <button
-                        type="button"
-                        className="worklist-btn-secondary"
-                        onClick={closeActiveModal}
-                        disabled={memoBusy}
-                      >
-                        取消
                       </button>
                     </div>
                   </form>
