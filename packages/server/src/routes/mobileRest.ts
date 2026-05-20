@@ -2,7 +2,14 @@ import type { Express } from 'express';
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { DiaryPayload, MemoItemPayload, WorklistItemPayload } from '@time-manger/shared';
-import { getLocalDateKey, normalizeWorklistQuadrant } from '@time-manger/shared';
+import {
+  chinaStorageIsoNow,
+  chinaStorageIsoToPrismaDate,
+  getLocalDateKey,
+  normalizeWorklistQuadrant,
+  prismaDateToChinaStorageIso,
+  chinaStorageIsoNullableSchema,
+} from '@time-manger/shared';
 import { z } from 'zod';
 import type { ServerEnv } from '../config/env.js';
 import { timeRecordToDto } from '../lib/timeRecordDto.js';
@@ -26,9 +33,9 @@ function diaryToPayload(row: {
     id: row.id,
     date: row.date,
     content: row.content,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    createdAt: prismaDateToChinaStorageIso(row.createdAt)!,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     clientDeviceId: row.clientDeviceId,
   };
 }
@@ -61,14 +68,14 @@ function worklistToPayload(row: {
     name: row.name,
     icon: row.icon,
     note: row.note,
-    reminderAt: row.reminderAt ? row.reminderAt.toISOString() : null,
-    estimateDoneAt: row.estimateDoneAt ? row.estimateDoneAt.toISOString() : null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    reminderAt: prismaDateToChinaStorageIso(row.reminderAt),
+    estimateDoneAt: prismaDateToChinaStorageIso(row.estimateDoneAt),
+    createdAt: prismaDateToChinaStorageIso(row.createdAt)!,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     reminderNotified: row.reminderNotified,
     completionResult: cr,
-    confirmSnoozeUntil: row.confirmSnoozeUntil ? row.confirmSnoozeUntil.toISOString() : null,
+    confirmSnoozeUntil: prismaDateToChinaStorageIso(row.confirmSnoozeUntil),
     clientDeviceId: row.clientDeviceId,
   };
 }
@@ -93,8 +100,8 @@ const PostWorklistBody = z.object({
   name: z.string().min(1),
   icon: z.string().optional(),
   note: z.string().optional(),
-  reminderAt: z.string().datetime().nullable().optional(),
-  estimateDoneAt: z.string().datetime().nullable().optional(),
+  reminderAt: chinaStorageIsoNullableSchema.optional(),
+  estimateDoneAt: chinaStorageIsoNullableSchema.optional(),
 });
 
 function memoToPayload(row: {
@@ -114,10 +121,10 @@ function memoToPayload(row: {
     name: row.name,
     icon: row.icon,
     content: row.content,
-    reminderAt: row.reminderAt ? row.reminderAt.toISOString() : null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    reminderAt: prismaDateToChinaStorageIso(row.reminderAt),
+    createdAt: prismaDateToChinaStorageIso(row.createdAt)!,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     reminderNotified: row.reminderNotified,
     clientDeviceId: row.clientDeviceId,
   };
@@ -134,7 +141,7 @@ const PatchMemoBody = z
     name: z.string().min(1).optional(),
     icon: z.string().optional(),
     content: z.string().optional(),
-    reminderAt: z.string().datetime().nullable().optional(),
+    reminderAt: chinaStorageIsoNullableSchema.optional(),
     reminderNotified: z.boolean().optional(),
   })
   .refine((b) => Object.keys(b).length > 0, { message: 'Empty patch' });
@@ -145,11 +152,11 @@ const PatchWorklistBody = z
     name: z.string().min(1).optional(),
     icon: z.string().optional(),
     note: z.string().optional(),
-    reminderAt: z.string().datetime().nullable().optional(),
-    estimateDoneAt: z.string().datetime().nullable().optional(),
+    reminderAt: chinaStorageIsoNullableSchema.optional(),
+    estimateDoneAt: chinaStorageIsoNullableSchema.optional(),
     reminderNotified: z.boolean().optional(),
     completionResult: z.enum(['', 'completed', 'incomplete']).optional(),
-    confirmSnoozeUntil: z.string().datetime().nullable().optional(),
+    confirmSnoozeUntil: chinaStorageIsoNullableSchema.optional(),
   })
   .refine((b) => Object.keys(b).length > 0, { message: 'Empty patch' });
 
@@ -306,8 +313,8 @@ export function mountMobileRestRoutes(
           name: parsed.data.name,
           icon: parsed.data.icon ?? '📋',
           note: parsed.data.note ?? '',
-          reminderAt: rAt === undefined || rAt === null ? null : new Date(rAt),
-          estimateDoneAt: eAt === undefined || eAt === null ? null : new Date(eAt),
+          reminderAt: rAt === undefined || rAt === null ? null : chinaStorageIsoToPrismaDate(rAt),
+          estimateDoneAt: eAt === undefined || eAt === null ? null : chinaStorageIsoToPrismaDate(eAt),
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
@@ -351,14 +358,15 @@ export function mountMobileRestRoutes(
       if (b.reminderNotified !== undefined) data.reminderNotified = b.reminderNotified;
       if (b.completionResult !== undefined) data.completionResult = b.completionResult;
       if (b.reminderAt !== undefined) {
-        data.reminderAt = b.reminderAt === null ? null : new Date(b.reminderAt);
+        data.reminderAt = b.reminderAt === null ? null : chinaStorageIsoToPrismaDate(b.reminderAt);
       }
       if (b.estimateDoneAt !== undefined) {
-        data.estimateDoneAt = b.estimateDoneAt === null ? null : new Date(b.estimateDoneAt);
+        data.estimateDoneAt =
+          b.estimateDoneAt === null ? null : chinaStorageIsoToPrismaDate(b.estimateDoneAt);
       }
       if (b.confirmSnoozeUntil !== undefined) {
         data.confirmSnoozeUntil =
-          b.confirmSnoozeUntil === null ? null : new Date(b.confirmSnoozeUntil);
+          b.confirmSnoozeUntil === null ? null : chinaStorageIsoToPrismaDate(b.confirmSnoozeUntil);
       }
       const row = await prisma.worklistItem.update({
         where: { id },
@@ -464,7 +472,7 @@ export function mountMobileRestRoutes(
       if (b.content !== undefined) data.content = b.content;
       if (b.reminderNotified !== undefined) data.reminderNotified = b.reminderNotified;
       if (b.reminderAt !== undefined) {
-        data.reminderAt = b.reminderAt === null ? null : new Date(b.reminderAt);
+        data.reminderAt = b.reminderAt === null ? null : chinaStorageIsoToPrismaDate(b.reminderAt);
       }
       const row = await prisma.memoItem.update({
         where: { id },

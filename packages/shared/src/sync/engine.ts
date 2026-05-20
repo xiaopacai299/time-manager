@@ -1,4 +1,5 @@
 import type { PullResponse, PushResponse } from '../api-contract/sync-envelope.js';
+import { toChinaStorageIso } from '../china-datetime.js';
 
 export interface LocalStore {
   getLastSyncAt(resource: string): Promise<string | null>;
@@ -51,9 +52,9 @@ function parseIsoMs(iso: string | null | undefined): number | null {
 function maxIsoString(a: string | null, b: string | null): string | null {
   const ma = parseIsoMs(a);
   const mb = parseIsoMs(b);
-  if (ma == null) return mb != null ? new Date(mb).toISOString() : null;
-  if (mb == null) return new Date(ma).toISOString();
-  return new Date(Math.max(ma, mb)).toISOString();
+  if (ma == null) return mb != null ? toChinaStorageIso(mb) : null;
+  if (mb == null) return toChinaStorageIso(ma);
+  return toChinaStorageIso(Math.max(ma, mb));
 }
 
 function maxUpdatedAtFromRecords(records: unknown[]): string | null {
@@ -66,7 +67,7 @@ function maxUpdatedAtFromRecords(records: unknown[]): string | null {
       bestMs = t;
     }
   }
-  return bestMs === -Infinity ? null : new Date(bestMs).toISOString();
+  return bestMs === -Infinity ? null : toChinaStorageIso(bestMs);
 }
 
 /**

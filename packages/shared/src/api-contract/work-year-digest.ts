@@ -1,12 +1,13 @@
 import { z } from 'zod';
+import { chinaStorageIsoNullableSchema, chinaStorageIsoSchema } from '../china-datetime.js';
 
 export const WorkYearDigestSchema = z.object({
   id: z.string().uuid(),
   year: z.number().int().min(1970).max(2100),
   /** JSON.stringify(YearWorkHeatmapPayload) */
   payloadJson: z.string(),
-  updatedAt: z.string().datetime(),
-  deletedAt: z.string().datetime().nullable(),
+  updatedAt: chinaStorageIsoSchema,
+  deletedAt: chinaStorageIsoNullableSchema,
   clientDeviceId: z.string().uuid(),
 });
 

@@ -1,4 +1,10 @@
-import { getLocalDateKey, listDateFromIso, normalizeWorklistQuadrant } from '@time-manger/shared';
+import {
+  chinaStorageIsoNow,
+  getLocalDateKey,
+  listDateFromIso,
+  normalizeChinaStorageIso,
+  normalizeWorklistQuadrant,
+} from '@time-manger/shared';
 
 export function createWorklistModule({
   petState,
@@ -36,10 +42,7 @@ export function createWorklistModule({
   }
 
   function normalizeWorklistDatetime(value) {
-    const s = String(value || '').trim();
-    if (!s) return '';
-    const t = Date.parse(s);
-    return Number.isNaN(t) ? '' : new Date(t).toISOString();
+    return normalizeChinaStorageIso(value) || '';
   }
 
   /** 系统通知角标（非自定义背景；完整象限名见 title） */
@@ -154,7 +157,7 @@ export function createWorklistModule({
         .slice(0, 200) || memoNameFallbackFromContent(content);
     const icon = sanitizeWorklistIcon(raw.icon);
     const reminderAt = normalizeWorklistDatetime(raw.reminderAt);
-    const createdAt = normalizeWorklistDatetime(raw.createdAt) || new Date().toISOString();
+    const createdAt = normalizeWorklistDatetime(raw.createdAt) || chinaStorageIsoNow();
     const reminderNotified = Boolean(raw.reminderNotified);
     const updatedAt =
       normalizeWorklistDatetime(raw.updatedAt) ||
@@ -173,7 +176,7 @@ export function createWorklistModule({
     if (!String(payload?.name || '').trim()) {
       return { ok: false, error: '请填写备忘录名称', list: getMemoList() };
     }
-    const nowIso = new Date().toISOString();
+    const nowIso = chinaStorageIsoNow();
     const id =
       typeof createSyncId === 'function'
         ? createSyncId()
@@ -219,7 +222,7 @@ export function createWorklistModule({
       content: payload?.content,
       reminderAt: nextReminder,
       createdAt: existing.createdAt,
-      updatedAt: new Date().toISOString(),
+      updatedAt: chinaStorageIsoNow(),
       reminderNotified: reminderChanged ? false : existing.reminderNotified,
     });
     if (!entry) {
@@ -244,7 +247,7 @@ export function createWorklistModule({
       return { ok: false, error: '未找到要删除的备忘录', list: before };
     }
     if (existing) {
-      markDirtyMemoItem?.({ ...existing, updatedAt: new Date().toISOString() }, new Date().toISOString());
+      markDirtyMemoItem?.({ ...existing, updatedAt: chinaStorageIsoNow() }, chinaStorageIsoNow());
     }
     petState.memoList = next;
     persistPetState();
@@ -266,7 +269,7 @@ export function createWorklistModule({
 
   function addWorklistItem(payload) {
     touchWorklistDayMarker();
-    const now = new Date().toISOString();
+    const now = chinaStorageIsoNow();
     const listDateRaw = String(payload?.listDate || '').trim();
     const listDate = /^\d{4}-\d{2}-\d{2}$/.test(listDateRaw) ? listDateRaw : getLocalDateKey();
     const id = typeof createSyncId === 'function'
@@ -317,7 +320,7 @@ export function createWorklistModule({
       estimateDoneAt: payload?.estimateDoneAt,
       note: payload?.note,
       createdAt: existing.createdAt,
-      updatedAt: new Date().toISOString(),
+      updatedAt: chinaStorageIsoNow(),
       reminderNotified: existing.reminderNotified,
       completionResult: existing.completionResult,
       confirmSnoozeUntil: existing.confirmSnoozeUntil,
@@ -344,7 +347,7 @@ export function createWorklistModule({
       return { ok: false, error: '未找到要删除的清单', list: before };
     }
     const existing = before.find((item) => item.id === id);
-    if (existing) markDirtyWorklistItem?.(existing, new Date().toISOString());
+    if (existing) markDirtyWorklistItem?.(existing, chinaStorageIsoNow());
     petState.worklist = next;
     persistPetState();
     broadcastWorklistUpdate();
@@ -377,7 +380,7 @@ export function createWorklistModule({
       return { ...item, reminderNotified: true, reminderAt };
     });
     if (changed) {
-      const nowIso = new Date(now).toISOString();
+      const nowIso = chinaStorageIsoNow();
       petState.worklist = next.map((item, index) => {
         if (item === raw[index]) return item;
         const changedItem = { ...item, updatedAt: nowIso };
@@ -440,7 +443,7 @@ export function createWorklistModule({
     try {
       const action = await promptEstimateChoice(candidate);
 
-      const nowIso = new Date(now).toISOString();
+      const nowIso = chinaStorageIsoNow();
       const snoozeIso = new Date(now + 10 * 60 * 1000).toISOString();
       petState.worklist = getWorklist().map((item) => {
         if (item.id !== candidate.id) return item;

@@ -1,12 +1,13 @@
 import { z } from 'zod';
+import { chinaStorageIsoNullableSchema, chinaStorageIsoSchema } from '../china-datetime.js';
 
 export const DiarySchema = z.object({
   id: z.string().uuid(),
   date: z.string().min(1),
   content: z.string(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  deletedAt: z.string().datetime().nullable(),
+  createdAt: chinaStorageIsoSchema,
+  updatedAt: chinaStorageIsoSchema,
+  deletedAt: chinaStorageIsoNullableSchema,
   clientDeviceId: z.string().uuid(),
 });
 

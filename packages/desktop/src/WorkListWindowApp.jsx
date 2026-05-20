@@ -52,6 +52,8 @@ export default function WorkListWindowApp() {
   const [quadrant, setQuadrant] = useState("q2");
   /** null | 'worklist' | 'memo' */
   const [activeModal, setActiveModal] = useState(null);
+  /** 删除确认：null | { kind: 'worklist' | 'memo', id, name } */
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const nameInputRef = useRef(null);
   const memoNameInputRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -346,11 +348,37 @@ export default function WorkListWindowApp() {
     }
   }
 
-  async function onRemoveById(id) {
+  function openDeleteConfirm(kind, id) {
     const targetId = String(id || "").trim();
+    if (!targetId) return;
+    if (kind === "worklist" && busy) return;
+    if (kind === "memo" && memoBusy) return;
+    const list = kind === "worklist" ? items : memoItems;
+    const row = list.find((item) => String(item?.id) === targetId);
+    const label =
+      kind === "worklist"
+        ? String(row?.name || "").trim() || "这条工作清单"
+        : String(row?.name || "").trim() || "这条备忘录";
+    setDeleteConfirm({ kind, id: targetId, name: label });
+  }
+
+  function closeDeleteConfirm() {
+    setDeleteConfirm(null);
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirm) return;
+    const { kind, id } = deleteConfirm;
+    setDeleteConfirm(null);
+    if (kind === "worklist") {
+      await performRemoveWorklist(id);
+    } else {
+      await onRemoveMemoById(id);
+    }
+  }
+
+  async function performRemoveWorklist(targetId) {
     if (!targetId || busy) return;
-    const ok = window.confirm("确认删除当前工作清单吗？此操作不可撤销。");
-    if (!ok) return;
     setBusy(true);
     setMessage({ type: "", text: "" });
     try {
@@ -574,8 +602,6 @@ export default function WorkListWindowApp() {
   async function onRemoveMemoById(id) {
     const targetId = String(id || "").trim();
     if (!targetId || memoBusy) return;
-    const ok = window.confirm("确认删除这条备忘录吗？此操作不可撤销。");
-    if (!ok) return;
     setMemoBusy(true);
     setMessage({ type: "", text: "" });
     try {
@@ -718,7 +744,7 @@ export default function WorkListWindowApp() {
             title="删除"
             onClick={(event) => {
               event.stopPropagation();
-              onRemoveById(item.id);
+              openDeleteConfirm("worklist", item.id);
             }}
           >
             <span className="worklist-item-delete__icon" aria-hidden="true">
@@ -879,7 +905,7 @@ export default function WorkListWindowApp() {
             title="删除"
             onClick={(event) => {
               event.stopPropagation();
-              onRemoveMemoById(item.id);
+              openDeleteConfirm("memo", item.id);
             }}
           >
             <span className="worklist-item-delete__icon" aria-hidden="true">
@@ -1368,6 +1394,75 @@ export default function WorkListWindowApp() {
                     </div>
                   </form>
                 )}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+      {deleteConfirm && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="worklist-modal-overlay"
+              role="presentation"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  e.preventDefault();
+                }
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  closeDeleteConfirm();
+                }
+              }}
+            >
+              <div
+                className="worklist-modal worklist-modal--confirm"
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="worklist-delete-title"
+                aria-describedby="worklist-delete-desc"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="worklist-form-header">
+                  <div>
+                    <h2 className="worklist-title" id="worklist-delete-title">
+                      确认删除
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="worklist-modal-close"
+                    aria-label="关闭"
+                    onClick={closeDeleteConfirm}
+                    disabled={busy || memoBusy}
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className="worklist-confirm-text" id="worklist-delete-desc">
+                  {deleteConfirm.kind === "memo"
+                    ? `确认删除备忘录「${deleteConfirm.name}」吗？此操作不可撤销。`
+                    : `确认删除工作清单「${deleteConfirm.name}」吗？此操作不可撤销。`}
+                </p>
+                <div className="worklist-actions worklist-actions--confirm">
+                  <button
+                    type="button"
+                    className="worklist-btn-danger"
+                    disabled={busy || memoBusy}
+                    onClick={() => void confirmDelete()}
+                  >
+                    {busy || memoBusy ? "删除中…" : "确认删除"}
+                  </button>
+                  <button
+                    type="button"
+                    className="worklist-btn-secondary"
+                    onClick={closeDeleteConfirm}
+                    disabled={busy || memoBusy}
+                  >
+                    取消
+                  </button>
+                </div>
               </div>
             </div>,
             document.body

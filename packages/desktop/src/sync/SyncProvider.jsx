@@ -4,9 +4,12 @@ import { SyncEngine } from '@time-manger/shared';
 import { ApiClient } from './ApiClient.js';
 import { DesktopLocalStore } from './LocalStore.desktop.js';
 import { getAuthState, initDeviceId, saveAuthState } from './authStore.js';
+import {
+  mergeSyncRequestTargets,
+  resolveSyncResourceList,
+} from './syncResources.js';
 
 const SYNC_REQUEST_DEBOUNCE_MS = 400;
-const RESOURCES = ['time-records', 'diaries', 'worklist-items', 'memo-items', 'work-year-digests'];
 
 const SyncContext = createContext(null);
 
@@ -17,26 +20,33 @@ export function SyncProvider({ children }) {
   const [authState, setAuthState] = useState(null);
   const engineRef = useRef(null);
   const authStateRef = useRef(null);
-  const syncingRef = useRef(false); // 防止并发同步
+  const syncingRef = useRef(false);
   const syncRequestTimerRef = useRef(null);
+  const pendingSyncFullRef = useRef(false);
+  const pendingSyncPartialRef = useRef(new Set());
 
   useEffect(() => {
     authStateRef.current = authState;
   }, [authState]);
 
-  const triggerSync = useCallback(async () => {
+  /**
+   * @param {string[] | null | undefined} targetResources null/undefined = 全量同步
+   */
+  const triggerSync = useCallback(async (targetResources) => {
     if (!engineRef.current) return;
     if (syncingRef.current) return;
+    const resources = resolveSyncResourceList(targetResources);
     syncingRef.current = true;
     setStatus('syncing');
     setError(null);
     try {
-      // 执行真正的同步逻辑，将数据传送到服务端
-      await engineRef.current.syncAll(RESOURCES);
+      for (const resource of resources) {
+        await engineRef.current.syncResource(resource);
+      }
       setLastSyncAt(new Date().toLocaleTimeString('zh-CN'));
       setStatus('idle');
     } catch (e) {
-      console.warn('[sync] syncAll failed:', e);
+      console.warn('[sync] sync failed:', e);
       setError(e instanceof Error ? e.message : '同步失败');
       setStatus('error');
     } finally {
@@ -44,7 +54,35 @@ export function SyncProvider({ children }) {
     }
   }, []);
 
-  // 初始化：读取 auth 状态
+  const scheduleSyncFromRequest = useCallback(
+    (payload) => {
+      const merged = mergeSyncRequestTargets(
+        pendingSyncFullRef.current,
+        pendingSyncPartialRef.current,
+        payload?.resources,
+      );
+      pendingSyncFullRef.current = merged.full;
+      pendingSyncPartialRef.current = merged.partial;
+
+      if (syncRequestTimerRef.current) {
+        clearTimeout(syncRequestTimerRef.current);
+      }
+      syncRequestTimerRef.current = setTimeout(() => {
+        syncRequestTimerRef.current = null;
+        const runFull = pendingSyncFullRef.current;
+        const partial = [...pendingSyncPartialRef.current];
+        pendingSyncFullRef.current = false;
+        pendingSyncPartialRef.current = new Set();
+        if (runFull) {
+          void triggerSync(null);
+        } else if (partial.length) {
+          void triggerSync(partial);
+        }
+      }, SYNC_REQUEST_DEBOUNCE_MS);
+    },
+    [triggerSync],
+  );
+
   useEffect(() => {
     let mounted = true;
     async function init() {
@@ -54,10 +92,11 @@ export function SyncProvider({ children }) {
       setAuthState(auth ? { ...auth, deviceId } : null);
     }
     void init();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // 构建/重建 SyncEngine（当 authState 变化时）
   useEffect(() => {
     if (!authState?.accessToken || !authState?.apiBase || !authState?.deviceId) {
       engineRef.current = null;
@@ -65,7 +104,6 @@ export function SyncProvider({ children }) {
       return;
     }
     const store = new DesktopLocalStore();
-    // 配置的一套会自动处理鉴权和续期的HTTP客户端
     const client = new ApiClient(
       authState.apiBase,
       () => authStateRef.current?.accessToken ?? null,
@@ -83,31 +121,24 @@ export function SyncProvider({ children }) {
       },
     );
     engineRef.current = new SyncEngine(store, client, authState.deviceId);
-    // 构建完成后立即同步一次
-    void triggerSync();
+    void triggerSync(null);
   }, [authState, triggerSync]);
 
-  // 事件驱动同步：本地数据变更后主进程会广播 sync:request ******
-  // 监听主进程sync:request，然后调用triggerSync()
   useEffect(() => {
     if (!authState?.accessToken) return undefined;
-    const off = window.timeManagerAPI?.sync?.onRequest?.(() => {
-      if (syncRequestTimerRef.current) {
-        clearTimeout(syncRequestTimerRef.current);
-      }
-      syncRequestTimerRef.current = setTimeout(() => {
-        syncRequestTimerRef.current = null;
-        void triggerSync();
-      }, SYNC_REQUEST_DEBOUNCE_MS);
+    const off = window.timeManagerAPI?.sync?.onRequest?.((payload) => {
+      scheduleSyncFromRequest(payload);
     });
     return () => {
       if (syncRequestTimerRef.current) {
         clearTimeout(syncRequestTimerRef.current);
         syncRequestTimerRef.current = null;
       }
+      pendingSyncFullRef.current = false;
+      pendingSyncPartialRef.current = new Set();
       if (typeof off === 'function') off();
     };
-  }, [authState, triggerSync]);
+  }, [authState, scheduleSyncFromRequest]);
 
   const value = {
     status,
@@ -118,11 +149,7 @@ export function SyncProvider({ children }) {
     triggerSync,
   };
 
-  return (
-    <SyncContext.Provider value={value}>
-      {children}
-    </SyncContext.Provider>
-  );
+  return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
 }
 
 export function useSyncContext() {

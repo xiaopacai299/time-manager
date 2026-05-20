@@ -223,5 +223,13 @@ body {
   background: transparent;
 }
 
+/* 可滚动列表：首项 hover 时顶边/阴影不被 overflow 裁切 */
+.diary-list,
+.sticky-list,
+.pet-ai-panel__history-body {
+  padding-top: 3px;
+  box-sizing: border-box;
+}
+
 
 

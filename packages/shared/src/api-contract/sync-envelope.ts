@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { chinaStorageIsoSchema } from '../china-datetime.js';
 
 export const PullResponseSchema = z.object({
   resource: z.string(),
-  serverTime: z.string().datetime(),
+  serverTime: chinaStorageIsoSchema,
   records: z.array(z.unknown()),
   hasMore: z.boolean(),
   nextCursor: z.string().nullable(),
@@ -10,7 +11,7 @@ export const PullResponseSchema = z.object({
 
 export const PushAcceptedItemSchema = z.object({
   id: z.string().uuid(),
-  updatedAt: z.string().datetime(),
+  updatedAt: chinaStorageIsoSchema,
 });
 
 export const PushRejectedItemSchema = z.object({
@@ -20,7 +21,7 @@ export const PushRejectedItemSchema = z.object({
 
 export const PushResponseSchema = z.object({
   resource: z.string(),
-  serverTime: z.string().datetime(),
+  serverTime: chinaStorageIsoSchema,
   accepted: z.array(PushAcceptedItemSchema),
   rejected: z.array(PushRejectedItemSchema),
 });

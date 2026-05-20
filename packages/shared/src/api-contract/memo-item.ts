@@ -1,14 +1,15 @@
 import { z } from 'zod';
+import { chinaStorageIsoNullableSchema, chinaStorageIsoSchema } from '../china-datetime.js';
 
 export const MemoItemSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
   icon: z.string(),
   content: z.string(),
-  reminderAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  deletedAt: z.string().datetime().nullable(),
+  reminderAt: chinaStorageIsoNullableSchema,
+  createdAt: chinaStorageIsoSchema,
+  updatedAt: chinaStorageIsoSchema,
+  deletedAt: chinaStorageIsoNullableSchema,
   reminderNotified: z.boolean(),
   clientDeviceId: z.string().uuid(),
 });

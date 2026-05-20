@@ -31,9 +31,11 @@ import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
 import { debugLog } from './main/debug-log.js';
 import {
+  chinaStorageIsoNow,
   computeYearWorkHeatmap,
   getLocalDateKey,
   listDateFromIso,
+  normalizeChinaStorageIso,
   normalizeWorklistQuadrant,
 } from '@time-manger/shared';
 
@@ -826,7 +828,7 @@ function updateDirtyTimeRecords(snapshot) {
     if (!dayKey || !perAppToday.length) return;
     const state = readSyncState();
     const deviceId = getSyncDeviceId();
-    const now = new Date().toISOString();
+    const now = chinaStorageIsoNow();
     for (const appRecord of perAppToday) {
       const appKey = String(appRecord.appId || '').trim();
       if (!appKey) continue;
@@ -890,34 +892,23 @@ function markDirtyRecord(resource, record) {
   writeSyncState(state);
 }
 
-function normalizeDiaryForSync(raw, now = new Date().toISOString()) {
+function normalizeDiaryForSync(raw, now = chinaStorageIsoNow()) {
   if (!raw || typeof raw !== 'object') return null;
   const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
   const content = String(raw.content || '').slice(0, 50000);
   const date = String(raw.date || now.slice(0, 10)).slice(0, 20);
-  const createdAt = raw.createdAt && !Number.isNaN(Date.parse(raw.createdAt))
-    ? new Date(raw.createdAt).toISOString()
-    : now;
-  const updatedAt = raw.updatedAt && !Number.isNaN(Date.parse(raw.updatedAt))
-    ? new Date(raw.updatedAt).toISOString()
-    : now;
-  const deletedAt = raw.deletedAt && !Number.isNaN(Date.parse(raw.deletedAt))
-    ? new Date(raw.deletedAt).toISOString()
-    : null;
+  const createdAt = normalizeChinaStorageIso(raw.createdAt) || now;
+  const updatedAt = normalizeChinaStorageIso(raw.updatedAt) || now;
+  const deletedAt = normalizeChinaStorageIso(raw.deletedAt);
   return { id, date, content, createdAt, updatedAt, deletedAt, clientDeviceId: getSyncDeviceId() };
 }
 
-function normalizeWorklistItemForSync(raw, now = new Date().toISOString()) {
+function normalizeWorklistItemForSync(raw, now = chinaStorageIsoNow()) {
   if (!raw || typeof raw !== 'object') return null;
   const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
   const name = String(raw.name || '').trim().slice(0, 200);
   if (!name) return null;
-  const normalizeDate = (value) => {
-    const s = String(value || '').trim();
-    if (!s) return null;
-    const t = Date.parse(s);
-    return Number.isNaN(t) ? null : new Date(t).toISOString();
-  };
+  const normalizeDate = (value) => normalizeChinaStorageIso(value);
   const completion = String(raw.completionResult || '').trim().toLowerCase();
   const createdAt = normalizeDate(raw.createdAt) || now;
   const listDateRaw = String(raw.listDate || '').trim();
@@ -944,7 +935,7 @@ function normalizeWorklistItemForSync(raw, now = new Date().toISOString()) {
 }
 
 function markDirtyDiary(raw, deletedAt = null) {
-  const now = new Date().toISOString();
+  const now = chinaStorageIsoNow();
   // 1. 将原始数据转换为同步格式
   const diary = normalizeDiaryForSync({ ...raw, updatedAt: now, deletedAt }, now);
   if (!diary) return null;
@@ -956,7 +947,7 @@ function markDirtyDiary(raw, deletedAt = null) {
 }
 
 function markDirtyWorklistItem(raw, deletedAt = null) {
-  const now = new Date().toISOString();
+  const now = chinaStorageIsoNow();
   const item = normalizeWorklistItemForSync({ ...raw, updatedAt: now, deletedAt }, now);
   if (!item) return null;
   markDirtyRecord('worklist-items', item);
@@ -969,23 +960,15 @@ function markDirtyWorklistItem(raw, deletedAt = null) {
   return item;
 }
 
-function normalizeMemoForSync(raw, now = new Date().toISOString()) {
+function normalizeMemoForSync(raw, now = chinaStorageIsoNow()) {
   if (!raw || typeof raw !== 'object') return null;
   const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
-  const deletedAt =
-    raw.deletedAt && !Number.isNaN(Date.parse(raw.deletedAt))
-      ? new Date(raw.deletedAt).toISOString()
-      : null;
+  const deletedAt = normalizeChinaStorageIso(raw.deletedAt);
   const content = String(raw.content ?? '').trim().slice(0, 50000);
   if (!content && !deletedAt) return null;
   const name = String(raw.name || '').trim().slice(0, 200) || '备忘录';
   const icon = String(raw.icon || '📝').trim().slice(0, 2000) || '📝';
-  const normalizeDate = (value) => {
-    const s = String(value || '').trim();
-    if (!s) return null;
-    const t = Date.parse(s);
-    return Number.isNaN(t) ? null : new Date(t).toISOString();
-  };
+  const normalizeDate = (value) => normalizeChinaStorageIso(value);
   const reminderAt = normalizeDate(raw.reminderAt);
   const createdAt = normalizeDate(raw.createdAt) || now;
   const updatedAt = normalizeDate(raw.updatedAt) || now;
@@ -1004,9 +987,8 @@ function normalizeMemoForSync(raw, now = new Date().toISOString()) {
 }
 
 function markDirtyMemoItem(raw, deletedAt = null) {
-  const now = new Date().toISOString();
-  const deletedIso =
-    deletedAt && !Number.isNaN(Date.parse(deletedAt)) ? new Date(deletedAt).toISOString() : null;
+  const now = chinaStorageIsoNow();
+  const deletedIso = deletedAt ? normalizeChinaStorageIso(deletedAt) : null;
   const memo = normalizeMemoForSync({ ...raw, updatedAt: now, deletedAt: deletedIso }, now);
   if (!memo) return null;
   markDirtyRecord('memo-items', memo);
@@ -1030,7 +1012,7 @@ function queueYearWorkDigestsDirty() {
     const id = state.stableIds[stableKey];
     const heatmap = computeYearWorkHeatmap(items, y);
     const payloadJson = JSON.stringify(heatmap);
-    const nowIso = new Date().toISOString();
+    const nowIso = chinaStorageIsoNow();
     markDirtyRecord('work-year-digests', {
       id,
       year: y,
@@ -1364,9 +1346,26 @@ function broadcastDiariesUpdate() {
   }
 }
 
-function broadcastSyncRequest(reason = 'data-changed') {
+/** sync:request 的 resources：null 表示全量；数组表示仅同步列出的资源 */
+const SYNC_REASON_RESOURCES = {
+  'diary-changed': ['diaries'],
+  'worklist-changed': ['worklist-items', 'work-year-digests'],
+  'memo-changed': ['memo-items'],
+};
+
+function resolveBroadcastSyncResources(reason, explicitResources) {
+  if (Array.isArray(explicitResources) && explicitResources.length > 0) {
+    return explicitResources;
+  }
+  const key = String(reason || 'data-changed');
+  if (key === 'auth-initialized' || key === 'data-changed') return null;
+  return SYNC_REASON_RESOURCES[key] ?? null;
+}
+
+function broadcastSyncRequest(reason = 'data-changed', explicitResources) {
   const payload = {
     reason: String(reason || 'data-changed'),
+    resources: resolveBroadcastSyncResources(reason, explicitResources),
     requestedAt: new Date().toISOString(),
   };
   const send = (win) => {
@@ -2479,7 +2478,7 @@ function setupIpc() {
   ipcMain.handle('diary:delete-diary', (_event, id) => {
     const existing = petState.diaries.find(d => d.id === id);
     if (existing) {
-      markDirtyDiary(existing, new Date().toISOString());
+      markDirtyDiary(existing, chinaStorageIsoNow());
     }
     petState.diaries = petState.diaries.filter(d => d.id !== id);
     persistPetState();
@@ -2508,7 +2507,7 @@ function setupIpc() {
       const crypto = require('crypto');
       const hash = crypto.createHash('sha256').update(password).digest('hex');
       petState.diaryPasswordHash = hash;
-      petState.diaryPasswordSetAt = new Date().toISOString();
+      petState.diaryPasswordSetAt = chinaStorageIsoNow();
       persistPetState();
       return { success: true };
     } catch (error) {

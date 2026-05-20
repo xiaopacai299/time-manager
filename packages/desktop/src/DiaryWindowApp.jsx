@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { chinaStorageIsoNow, getLocalDateKey } from '@time-manger/shared'
 import './DiaryWindowApp.css'
 
 export default function DiaryWindowApp() {
@@ -11,7 +12,7 @@ export default function DiaryWindowApp() {
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateKey()
 
   useEffect(() => {
     checkPasswordStatus()
@@ -96,7 +97,7 @@ export default function DiaryWindowApp() {
         id: Date.now().toString(),
         date: today,
         content: currentDiary,
-        createdAt: new Date().toISOString()
+        createdAt: chinaStorageIsoNow()
       }
       
       const updatedDiaries = await window.timeManagerAPI?.addDiary?.(newDiary) || []
@@ -134,7 +135,7 @@ export default function DiaryWindowApp() {
         id: editingDiaryId,
         date: today,
         content: currentDiary,
-        createdAt: new Date().toISOString()
+        createdAt: chinaStorageIsoNow()
       }
       
       const updatedDiaries = await window.timeManagerAPI?.updateDiary?.(updatedDiary) || []

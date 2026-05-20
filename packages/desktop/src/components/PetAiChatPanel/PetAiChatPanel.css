@@ -590,7 +590,7 @@
 
 .pet-ai-panel__history-item:hover {
   background: #f0f5ff;
-  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(62, 92, 157, 0.1);
 }
 
 .pet-ai-panel--window .pet-ai-panel__history-item {

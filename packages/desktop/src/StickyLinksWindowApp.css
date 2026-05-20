@@ -1,4 +1,4 @@
-﻿/* 子窗口内 #root 为 height:100% + overflow:hidden；勿用 100vh，否则 vh 按屏高算、内容被裁在视窗外，列表像「添加无效」 */
+/* 子窗口内 #root 为 height:100% + overflow:hidden；勿用 100vh，否则 vh 按屏高算、内容被裁在视窗外，列表像「添加无效」 */
 .sticky-page {
   margin: 0;
   height: 100%;
@@ -242,7 +242,8 @@
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 3px 4px 2px 0;
+  box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
 }
 

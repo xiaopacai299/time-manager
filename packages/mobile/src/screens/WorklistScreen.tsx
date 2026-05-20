@@ -23,6 +23,7 @@ import {
   WORKLIST_QUADRANT_META,
   WORKLIST_QUADRANT_ORDER,
   getLocalDateKey,
+  toChinaStorageIso,
   normalizeWorklistQuadrant,
 } from "@time-manger/shared";
 import type { WorklistItemPayload, WorklistQuadrant } from "@time-manger/shared";
@@ -210,8 +211,8 @@ export function WorklistScreen({ navigation }: Props) {
         name: trimmed,
         icon: icon.trim() || "📋",
         note: note.trim(),
-        reminderAt: reminderAt ? reminderAt.toISOString() : null,
-        estimateDoneAt: estimateDoneAt ? estimateDoneAt.toISOString() : null,
+        reminderAt: reminderAt ? toChinaStorageIso(reminderAt) : null,
+        estimateDoneAt: estimateDoneAt ? toChinaStorageIso(estimateDoneAt) : null,
       };
       if (editing) {
         await auth.client.updateWorklistItem(editing.id, {

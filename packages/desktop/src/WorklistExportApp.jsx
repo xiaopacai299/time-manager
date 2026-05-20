@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getLocalDateKey, listDateFromIso } from '@time-manger/shared'
 import './WorklistExportApp.css'
 
 export default function WorklistExportApp() {
@@ -16,10 +17,10 @@ export default function WorklistExportApp() {
   const loadWorklistItems = async () => {
     try {
       const items = await window.timeManagerAPI?.getWorklist?.() || []
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateKey()
       
       const todayItems = items.filter(item => {
-        const itemDate = item.createdAt?.split('T')[0]
+        const itemDate = listDateFromIso(item.createdAt) || item.listDate
         return itemDate === today
       })
 

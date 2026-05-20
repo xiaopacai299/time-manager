@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chinaStorageIsoNullableSchema, chinaStorageIsoSchema } from '../china-datetime.js';
 
 export const TimeRecordSchema = z.object({
   id: z.string().uuid(),
@@ -6,8 +7,8 @@ export const TimeRecordSchema = z.object({
   appKey: z.string().min(1),
   appName: z.string(),
   durationMs: z.number().int().nonnegative(),
-  updatedAt: z.string().datetime(),
-  deletedAt: z.string().datetime().nullable(),
+  updatedAt: chinaStorageIsoSchema,
+  deletedAt: chinaStorageIsoNullableSchema,
   clientDeviceId: z.string().uuid(),
 });
 

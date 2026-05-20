@@ -16,6 +16,9 @@ import {
   type WorkYearDigestPayload,
   type WorklistItemPayload,
   normalizeWorklistQuadrant,
+  chinaStorageIsoNow,
+  chinaStorageIsoToPrismaDate,
+  prismaDateToChinaStorageIso,
 } from '@time-manger/shared';
 import type { ServerEnv } from '../config/env.js';
 import { encodeSyncCursor, decodeSyncCursor } from '../lib/syncCursor.js';
@@ -77,7 +80,7 @@ function parseResource(resource: string): SyncResource | null {
 }
 
 function nullableDate(value: string | null): Date | null {
-  return value ? new Date(value) : null;
+  return chinaStorageIsoToPrismaDate(value);
 }
 
 function diaryToDto(row: {
@@ -93,9 +96,9 @@ function diaryToDto(row: {
     id: row.id,
     date: row.date,
     content: row.content,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    createdAt: prismaDateToChinaStorageIso(row.createdAt)!,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     clientDeviceId: row.clientDeviceId,
   };
 }
@@ -117,10 +120,10 @@ function memoItemToDto(row: {
     name: row.name,
     icon: row.icon,
     content: row.content,
-    reminderAt: row.reminderAt ? row.reminderAt.toISOString() : null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    reminderAt: prismaDateToChinaStorageIso(row.reminderAt),
+    createdAt: prismaDateToChinaStorageIso(row.createdAt)!,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     reminderNotified: row.reminderNotified,
     clientDeviceId: row.clientDeviceId,
   };
@@ -138,8 +141,8 @@ function workYearDigestToDto(row: {
     id: row.id,
     year: row.year,
     payloadJson: row.payloadJson,
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     clientDeviceId: row.clientDeviceId,
   };
 }
@@ -168,19 +171,17 @@ function worklistItemToDto(row: {
     name: row.name,
     icon: row.icon,
     note: row.note,
-    reminderAt: row.reminderAt ? row.reminderAt.toISOString() : null,
-    estimateDoneAt: row.estimateDoneAt ? row.estimateDoneAt.toISOString() : null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    reminderAt: prismaDateToChinaStorageIso(row.reminderAt),
+    estimateDoneAt: prismaDateToChinaStorageIso(row.estimateDoneAt),
+    createdAt: prismaDateToChinaStorageIso(row.createdAt)!,
+    updatedAt: prismaDateToChinaStorageIso(row.updatedAt)!,
+    deletedAt: prismaDateToChinaStorageIso(row.deletedAt),
     reminderNotified: row.reminderNotified,
     completionResult:
       row.completionResult === 'completed' || row.completionResult === 'incomplete'
         ? row.completionResult
         : '',
-    confirmSnoozeUntil: row.confirmSnoozeUntil
-      ? row.confirmSnoozeUntil.toISOString()
-      : null,
+    confirmSnoozeUntil: prismaDateToChinaStorageIso(row.confirmSnoozeUntil),
     clientDeviceId: row.clientDeviceId,
   };
 }
@@ -203,7 +204,7 @@ function getResourceConfig(
           appKey: rec.appKey,
           appName: rec.appName,
           durationMs: rec.durationMs,
-          updatedAt: new Date(rec.updatedAt),
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           clientDeviceId: rec.clientDeviceId,
         };
@@ -216,7 +217,7 @@ function getResourceConfig(
           appKey: rec.appKey,
           appName: rec.appName,
           durationMs: rec.durationMs,
-          updatedAt: new Date(rec.updatedAt),
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           clientDeviceId: rec.clientDeviceId,
         };
@@ -236,8 +237,8 @@ function getResourceConfig(
           userId,
           date: rec.date,
           content: rec.content,
-          createdAt: new Date(rec.createdAt),
-          updatedAt: new Date(rec.updatedAt),
+          createdAt: chinaStorageIsoToPrismaDate(rec.createdAt)!,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           clientDeviceId: rec.clientDeviceId,
         };
@@ -248,8 +249,8 @@ function getResourceConfig(
           userId,
           date: rec.date,
           content: rec.content,
-          createdAt: new Date(rec.createdAt),
-          updatedAt: new Date(rec.updatedAt),
+          createdAt: chinaStorageIsoToPrismaDate(rec.createdAt)!,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           clientDeviceId: rec.clientDeviceId,
         };
@@ -275,8 +276,8 @@ function getResourceConfig(
           note: rec.note,
           reminderAt: nullableDate(rec.reminderAt),
           estimateDoneAt: nullableDate(rec.estimateDoneAt),
-          createdAt: new Date(rec.createdAt),
-          updatedAt: new Date(rec.updatedAt),
+          createdAt: chinaStorageIsoToPrismaDate(rec.createdAt)!,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           reminderNotified: rec.reminderNotified,
           completionResult: rec.completionResult,
@@ -295,8 +296,8 @@ function getResourceConfig(
           note: rec.note,
           reminderAt: nullableDate(rec.reminderAt),
           estimateDoneAt: nullableDate(rec.estimateDoneAt),
-          createdAt: new Date(rec.createdAt),
-          updatedAt: new Date(rec.updatedAt),
+          createdAt: chinaStorageIsoToPrismaDate(rec.createdAt)!,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           reminderNotified: rec.reminderNotified,
           completionResult: rec.completionResult,
@@ -321,8 +322,8 @@ function getResourceConfig(
           icon: rec.icon,
           content: rec.content,
           reminderAt: nullableDate(rec.reminderAt),
-          createdAt: new Date(rec.createdAt),
-          updatedAt: new Date(rec.updatedAt),
+          createdAt: chinaStorageIsoToPrismaDate(rec.createdAt)!,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           reminderNotified: rec.reminderNotified,
           clientDeviceId: rec.clientDeviceId,
@@ -336,8 +337,8 @@ function getResourceConfig(
           icon: rec.icon,
           content: rec.content,
           reminderAt: nullableDate(rec.reminderAt),
-          createdAt: new Date(rec.createdAt),
-          updatedAt: new Date(rec.updatedAt),
+          createdAt: chinaStorageIsoToPrismaDate(rec.createdAt)!,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
           deletedAt: nullableDate(rec.deletedAt),
           reminderNotified: rec.reminderNotified,
           clientDeviceId: rec.clientDeviceId,
@@ -358,7 +359,7 @@ function getResourceConfig(
         userId,
         year: rec.year,
         payloadJson: rec.payloadJson,
-        updatedAt: new Date(rec.updatedAt),
+        updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
         deletedAt: nullableDate(rec.deletedAt),
         clientDeviceId: rec.clientDeviceId,
       };
@@ -369,7 +370,7 @@ function getResourceConfig(
         userId,
         year: rec.year,
         payloadJson: rec.payloadJson,
-        updatedAt: new Date(rec.updatedAt),
+        updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
         deletedAt: nullableDate(rec.deletedAt),
         clientDeviceId: rec.clientDeviceId,
       };
@@ -466,9 +467,9 @@ export function mountSyncRoutes(
     const last = page[page.length - 1];
     const nextCursor =
       hasMore && last
-        ? encodeSyncCursor(last.updatedAt.toISOString(), last.id)
+        ? encodeSyncCursor(prismaDateToChinaStorageIso(last.updatedAt)!, last.id)
         : null;
-    const serverTime = new Date().toISOString();
+    const serverTime = chinaStorageIsoNow();
 
     res.json({
       resource,
@@ -521,49 +522,83 @@ export function mountSyncRoutes(
       const rejected: { id: string; reason: 'stale' }[] = [];
 
       for (const rec of parsed.data.records) {
-        const existing = await prisma.workYearDigest.findUnique({
+        const existingByYear = await prisma.workYearDigest.findUnique({
           where: { userId_year: { userId, year: rec.year } },
         });
-        if (existing && existing.userId !== userId) {
+        const existingById = await prisma.workYearDigest.findUnique({
+          where: { id: rec.id },
+        });
+        if (existingById && existingById.userId !== userId) {
           sendApiError(res, 403, 'FORBIDDEN', 'Cannot modify another user record', {
             id: rec.id,
           });
           return;
         }
+        /** 业务主键是 userId+year；id 可能与 stableIds 轮换不一致，需合并两种查找。 */
+        const existing =
+          existingByYear ?? (existingById?.userId === userId ? existingById : null);
         const existingDto = existing ? workYearDigestToDto(existing) : null;
         if (lwwServerPush(rec, existingDto) === 'stale') {
           rejected.push({ id: rec.id, reason: 'stale' });
           continue;
         }
+        const writeData = {
+          payloadJson: rec.payloadJson,
+          updatedAt: chinaStorageIsoToPrismaDate(rec.updatedAt)!,
+          deletedAt: nullableDate(rec.deletedAt),
+          clientDeviceId: rec.clientDeviceId,
+        };
         if (existing) {
           await prisma.workYearDigest.update({
             where: { id: existing.id },
-            data: {
-              payloadJson: rec.payloadJson,
-              updatedAt: new Date(rec.updatedAt),
-              deletedAt: nullableDate(rec.deletedAt),
-              clientDeviceId: rec.clientDeviceId,
-            },
+            data: writeData,
           });
         } else {
-          await prisma.workYearDigest.create({
-            data: {
-              id: rec.id,
-              userId,
-              year: rec.year,
-              payloadJson: rec.payloadJson,
-              updatedAt: new Date(rec.updatedAt),
-              deletedAt: nullableDate(rec.deletedAt),
-              clientDeviceId: rec.clientDeviceId,
-            },
-          });
+          try {
+            await prisma.workYearDigest.create({
+              data: {
+                id: rec.id,
+                userId,
+                year: rec.year,
+                ...writeData,
+              },
+            });
+          } catch (e) {
+            if (
+              e instanceof Prisma.PrismaClientKnownRequestError &&
+              e.code === 'P2002'
+            ) {
+              const row =
+                (await prisma.workYearDigest.findUnique({
+                  where: { userId_year: { userId, year: rec.year } },
+                })) ??
+                (await prisma.workYearDigest.findUnique({ where: { id: rec.id } }));
+              if (!row || row.userId !== userId) {
+                sendApiError(res, 409, 'CONFLICT', 'Sync unique constraint violated', {
+                  resource,
+                  id: rec.id,
+                });
+                return;
+              }
+              if (lwwServerPush(rec, workYearDigestToDto(row)) === 'stale') {
+                rejected.push({ id: rec.id, reason: 'stale' });
+                continue;
+              }
+              await prisma.workYearDigest.update({
+                where: { id: row.id },
+                data: writeData,
+              });
+            } else {
+              throw e;
+            }
+          }
         }
         accepted.push({ id: rec.id, updatedAt: rec.updatedAt });
       }
 
       res.json({
         resource,
-        serverTime: new Date().toISOString(),
+        serverTime: chinaStorageIsoNow(),
         accepted,
         rejected,
       });
@@ -660,7 +695,7 @@ export function mountSyncRoutes(
       accepted.push({ id: rec.id, updatedAt: rec.updatedAt });
     }
 
-    const serverTime = new Date().toISOString();
+    const serverTime = chinaStorageIsoNow();
     res.json({
       resource,
       serverTime,

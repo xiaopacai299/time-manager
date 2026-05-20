@@ -84,7 +84,9 @@
 .worklist-list-wrap .worklist-list {
   margin-top: 0;
   flex: 1;
+  padding-top: 3px;
   padding-bottom: 44px;
+  box-sizing: border-box;
 }
 
 .worklist-export-btn--corner {
@@ -121,25 +123,52 @@
   align-self: stretch;
 }
 
-.worklist-content--today .worklist-wrap {
+.worklist-content--today .worklist-wrap,
+.worklist-content--memo .worklist-wrap {
   grid-template-columns: 1fr;
   max-width: none;
   width: 100%;
   margin: 0;
   flex: 1;
   min-height: 0;
-  padding: 4px 6px 6px;
-  gap: 0;
+  padding-top: 16px;
   box-sizing: border-box;
 }
 
-.worklist-content--today .worklist-pane {
-  padding: 6px 8px 8px;
-  border-radius: 10px;
+.worklist-content--today .worklist-wrap {
+  padding-right: 6px;
+  padding-bottom: 6px;
+  padding-left: 6px;
+  gap: 0;
+}
+
+.worklist-content--memo .worklist-wrap {
+  padding-right: 18px;
+  padding-bottom: 20px;
+  padding-left: 18px;
+  gap: 16px;
+}
+
+.worklist-content--today .worklist-pane,
+.worklist-content--memo .worklist-pane--memo {
+  padding-top: 14px;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.worklist-content--today .worklist-pane {
+  padding-right: 8px;
+  padding-bottom: 8px;
+  padding-left: 8px;
+  border-radius: 10px;
+}
+
+.worklist-content--memo .worklist-pane--memo {
+  padding-right: 14px;
+  padding-bottom: 14px;
+  padding-left: 14px;
 }
 
 .worklist-pane--today {
@@ -149,13 +178,15 @@
   min-height: 0;
 }
 
-.worklist-today-header {
+.worklist-today-header,
+.worklist-memo-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
   flex-wrap: wrap;
   flex-shrink: 0;
+  margin-bottom: 8px;
 }
 
 .worklist-today-header-actions {
@@ -416,6 +447,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-top: 3px;
+  padding-bottom: 2px;
+  box-sizing: border-box;
 }
 
 .worklist-quadrant-empty {
@@ -651,6 +685,27 @@
   color: #2a3f66;
 }
 
+.worklist-modal--confirm {
+  width: min(400px, 100%);
+}
+
+.worklist-confirm-text {
+  margin: 4px 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #4a5f85;
+}
+
+.worklist-actions--confirm {
+  margin-top: 0;
+  justify-content: flex-end;
+}
+
+.worklist-actions--confirm .worklist-btn-danger,
+.worklist-actions--confirm .worklist-btn-secondary {
+  flex: 0 0 auto;
+}
+
 .worklist-page .worklist-content {
   animation: none;
 }
@@ -659,25 +714,22 @@
   animation: worklistTabContentIn 220ms ease;
 }
 
-.worklist-content--memo .worklist-pane--memo {
-  display: flex;
-  flex-direction: column;
+.worklist-content--memo {
   flex: 1;
   min-height: 0;
-}
-
-.worklist-memo-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-  flex-shrink: 0;
-  margin-bottom: 8px;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
 }
 
 .worklist-content--memo .worklist-list {
   flex: 1;
   min-height: 0;
+  padding-top: 3px;
+  padding-bottom: 2px;
+  box-sizing: border-box;
 }
 
 @keyframes worklistTabContentIn {
@@ -982,6 +1034,9 @@
   gap: 10px;
   overflow: auto;
   min-height: 0;
+  padding-top: 3px;
+  padding-bottom: 2px;
+  box-sizing: border-box;
 }
 
 .worklist-empty {
@@ -1008,7 +1063,6 @@
 .worklist-item:hover {
   border-color: rgba(156, 182, 255, 0.75);
   box-shadow: 0 4px 16px rgba(95, 135, 255, 0.12), var(--tm-glass-inset);
-  transform: translateY(-1px);
 }
 
 .worklist-item--active {

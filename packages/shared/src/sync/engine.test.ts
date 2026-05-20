@@ -55,7 +55,7 @@ test('SyncEngine keeps original since while paging', async () => {
     { since: '2026-04-25T00:00:00.000Z', cursor: 'next-page' },
   ]);
   assert.equal(result.pulled, 2);
-  assert.equal(lastSetSince, '2026-04-25T11:00:00.000Z');
+  assert.equal(lastSetSince, '2026-04-25T19:00:00.000+08:00');
 });
 
 test('SyncEngine does not advance since on empty pull', async () => {

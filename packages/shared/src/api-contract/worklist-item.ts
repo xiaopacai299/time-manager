@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chinaStorageIsoNullableSchema, chinaStorageIsoSchema } from '../china-datetime.js';
 import { WorklistQuadrantSchema } from '../worklist-quadrant.js';
 
 const listDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -10,14 +11,14 @@ export const WorklistItemSchema = z.object({
   name: z.string().min(1),
   icon: z.string(),
   note: z.string(),
-  reminderAt: z.string().datetime().nullable(),
-  estimateDoneAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  deletedAt: z.string().datetime().nullable(),
+  reminderAt: chinaStorageIsoNullableSchema,
+  estimateDoneAt: chinaStorageIsoNullableSchema,
+  createdAt: chinaStorageIsoSchema,
+  updatedAt: chinaStorageIsoSchema,
+  deletedAt: chinaStorageIsoNullableSchema,
   reminderNotified: z.boolean(),
   completionResult: z.enum(['', 'completed', 'incomplete']),
-  confirmSnoozeUntil: z.string().datetime().nullable(),
+  confirmSnoozeUntil: chinaStorageIsoNullableSchema,
   clientDeviceId: z.string().uuid(),
 });
 
