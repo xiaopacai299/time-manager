@@ -171,6 +171,7 @@ export class ApiClient {
 
   async createWorklistItem(body: {
     listDate?: string;
+    quadrant?: WorklistItemPayload["quadrant"];
     name: string;
     icon?: string;
     note?: string;
@@ -186,6 +187,7 @@ export class ApiClient {
   async updateWorklistItem(
     id: string,
     body: Partial<{
+      quadrant: WorklistItemPayload["quadrant"];
       name: string;
       icon: string;
       note: string;

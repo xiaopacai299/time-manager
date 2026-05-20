@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getLocalDateKey, listDateFromIso } from "@time-manger/shared";
+import {
+  WORKLIST_QUADRANT_META,
+  WORKLIST_QUADRANT_ORDER,
+  getLocalDateKey,
+  listDateFromIso,
+  normalizeWorklistQuadrant,
+} from "@time-manger/shared";
 import "./WorkListWindowApp.css";
 
 const PRESET_ICONS = ["📋", "📝", "💼", "⏰", "✅", "🎯", "📌", "☕"];
@@ -33,6 +39,8 @@ export default function WorkListWindowApp() {
   const [reminderAt, setReminderAt] = useState("");
   const [estimateDoneAt, setEstimateDoneAt] = useState("");
   const [note, setNote] = useState("");
+  const [quadrant, setQuadrant] = useState("q2");
+  const [formModalOpen, setFormModalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [activeTab, setActiveTab] = useState(TAB_TODAY);
@@ -115,6 +123,15 @@ export default function WorkListWindowApp() {
     };
     return [...todayItems].sort((a, b) => parseCreatedTs(b) - parseCreatedTs(a));
   }, [todayItems]);
+
+  const itemsByQuadrant = useMemo(() => {
+    const buckets = { q1: [], q2: [], q3: [], q4: [] };
+    for (const item of sortedItems) {
+      const q = normalizeWorklistQuadrant(item?.quadrant);
+      buckets[q].push(item);
+    }
+    return buckets;
+  }, [sortedItems]);
 
   const sortedMemos = useMemo(() => {
     const parseCreatedTs = (item) => {
@@ -278,6 +295,7 @@ export default function WorkListWindowApp() {
         icon,
         name: trimmedName,
         listDate: selectedListDate,
+        quadrant: normalizeWorklistQuadrant(quadrant),
         reminderAt: composeTodayDatetime(reminderAt),
         estimateDoneAt: composeTodayDatetime(estimateDoneAt),
         note: note.trim(),
@@ -294,13 +312,8 @@ export default function WorkListWindowApp() {
       }
       setItems(Array.isArray(result?.list) ? result.list : []);
       setMessage({ type: "ok", text: isEditing ? "更新成功" : "保存成功" });
-      setName("");
-      setReminderAt("");
-      setEstimateDoneAt("");
-      setNote("");
-      setIconEmoji("📋");
-      setIconCustomDataUrl("");
-      setEditingId("");
+      resetForm();
+      setFormModalOpen(false);
     } catch {
       setMessage({ type: "err", text: "保存失败，请稍后重试。" });
     } finally {
@@ -325,6 +338,7 @@ export default function WorkListWindowApp() {
       }
       setItems(Array.isArray(result?.list) ? result.list : []);
       if (editingId === targetId) {
+        setFormModalOpen(false);
         resetForm();
       }
       setMessage({ type: "ok", text: "删除成功。" });
@@ -394,6 +408,7 @@ export default function WorkListWindowApp() {
     setReminderAt(toInputTime(item.reminderAt));
     setEstimateDoneAt(toInputTime(item.estimateDoneAt));
     setNote(String(item.note || ""));
+    setQuadrant(normalizeWorklistQuadrant(item.quadrant));
     setEditingId(String(item.id || ""));
     setMessage({ type: "", text: "" });
   }
@@ -406,7 +421,24 @@ export default function WorkListWindowApp() {
     setReminderAt("");
     setEstimateDoneAt("");
     setNote("");
+    setQuadrant("q2");
     setMessage({ type: "", text: "" });
+  }
+
+  function openAddModalForQuadrant(q) {
+    resetForm();
+    setQuadrant(normalizeWorklistQuadrant(q));
+    setFormModalOpen(true);
+  }
+
+  function openEditModal(item) {
+    fillFormByItem(item);
+    setFormModalOpen(true);
+  }
+
+  function closeFormModal() {
+    setFormModalOpen(false);
+    resetForm();
   }
 
   function getMemoReminderMeta(item) {
@@ -605,6 +637,170 @@ export default function WorkListWindowApp() {
     };
   }, [items, selectedYear]);
 
+  function renderWorklistCard(item) {
+    const icon = String(item.icon || "").trim() || "📋";
+    const status = getStatusMeta(item);
+    const q = normalizeWorklistQuadrant(item.quadrant);
+    return (
+      <article
+        key={item.id}
+        className={`worklist-item worklist-item--q-${q}${
+          editingId === item.id ? " worklist-item--active" : ""
+        }`}
+        onClick={() => openEditModal(item)}
+      >
+        <div className="worklist-item-head">
+          <div className="worklist-item-head-main">
+            {icon.startsWith("data:image/") ? (
+              <img className="worklist-item-icon-image" src={icon} alt="" />
+            ) : (
+              <span className="worklist-item-icon-emoji">{icon}</span>
+            )}
+            <h2 className="worklist-item-name">{item.name}</h2>
+          </div>
+          <div className="worklist-item-head-side">
+            <span
+              className={`worklist-item-status worklist-item-status--${status.cls}`}
+            >
+              {status.text}
+            </span>
+            <button
+              type="button"
+              className="worklist-item-delete"
+              disabled={busy}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRemoveById(item.id);
+              }}
+            >
+              <span className="worklist-item-delete__icon" aria-hidden="true">
+                🗑
+              </span>
+              <span>删除</span>
+            </button>
+          </div>
+        </div>
+        <p className="worklist-item-line">
+          <strong>提醒时间：</strong>
+          {formatDatetime(item.reminderAt)}
+        </p>
+        <p className="worklist-item-line">
+          <strong>估计完成时间：</strong>
+          {formatDatetime(item.estimateDoneAt)}
+        </p>
+        <p className="worklist-item-line">
+          <strong>备注：</strong>
+          {item.note || "无"}
+        </p>
+      </article>
+    );
+  }
+
+  const worklistFormFields = (
+    <>
+      <div className="worklist-field">
+        <label>图标</label>
+        <div className="worklist-icon-row">
+          {PRESET_ICONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className={`worklist-icon-btn${
+                iconEmoji === emoji && !iconCustomDataUrl
+                  ? " worklist-icon-btn--active"
+                  : ""
+              }`}
+              title={emoji}
+              onClick={() => {
+                setIconEmoji(emoji);
+                setIconCustomDataUrl("");
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+          {iconCustomDataUrl ? (
+            <>
+              <img
+                className="worklist-icon-preview"
+                src={iconCustomDataUrl}
+                alt=""
+              />
+              <button
+                type="button"
+                className="worklist-btn-secondary"
+                onClick={clearCustomIcon}
+              >
+                清除自定义图
+              </button>
+            </>
+          ) : null}
+          <label className="worklist-file">
+            <input type="file" accept="image/*" onChange={onPickImage} hidden />
+            <span
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+            >
+              上传自定义图标…
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div className="worklist-field">
+        <label htmlFor="wl-name">
+          工作清单名称 <span className="req">*</span>
+        </label>
+        <input
+          id="wl-name"
+          className="worklist-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="例如：写完周报"
+          maxLength={200}
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="worklist-field">
+        <label htmlFor="wl-remind">提醒时间</label>
+        <input
+          id="wl-remind"
+          className="worklist-input"
+          type="time"
+          step="60"
+          value={reminderAt}
+          onClick={onTimeInputClick}
+          onChange={(e) => setReminderAt(e.target.value)}
+        />
+      </div>
+
+      <div className="worklist-field">
+        <label htmlFor="wl-est">估计完成时间</label>
+        <input
+          id="wl-est"
+          className="worklist-input"
+          type="time"
+          step="60"
+          value={estimateDoneAt}
+          onClick={onTimeInputClick}
+          onChange={(e) => setEstimateDoneAt(e.target.value)}
+        />
+      </div>
+
+      <div className="worklist-field">
+        <label htmlFor="wl-note">备注（写给自己的提醒）</label>
+        <textarea
+          id="wl-note"
+          className="worklist-textarea"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="例如：别忘带电源、先做第 3 节…"
+          maxLength={2000}
+        />
+      </div>
+    </>
+  );
+
   return (
     <main className="worklist-page">
       {message.text ? (
@@ -658,250 +854,130 @@ export default function WorkListWindowApp() {
 
       {activeTab === TAB_TODAY ? (
         <div className="worklist-wrap worklist-content worklist-content--today">
-          <section className="worklist-pane worklist-pane--list">
-            <div className="worklist-list-header">
+          <section className="worklist-pane worklist-pane--today">
+            <div className="worklist-today-header">
               <h1 className="worklist-title">{listTitle}</h1>
-              <label className="worklist-date-filter">
-                <span onMouseDown={onDateFilterMouseDown}>查看日期</span>
-                <input
-                  type="date"
-                  value={selectedListDate}
-                  onMouseDown={onDateFilterMouseDown}
-                  onChange={(e) =>
-                    setSelectedListDate(e.target.value || getLocalDateKey())
-                  }
-                />
-              </label>
+              <div className="worklist-today-header-actions">
+                <label className="worklist-date-filter">
+                  <span onMouseDown={onDateFilterMouseDown}>查看日期</span>
+                  <input
+                    type="date"
+                    value={selectedListDate}
+                    onMouseDown={onDateFilterMouseDown}
+                    onChange={(e) =>
+                      setSelectedListDate(e.target.value || getLocalDateKey())
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="worklist-export-btn"
+                  onClick={() => {
+                    window.timeManagerAPI?.openWorklistExport?.();
+                  }}
+                >
+                  导出日志
+                </button>
+              </div>
             </div>
             <div className="worklist-list-wrap">
-              <div className="worklist-list">
-              {sortedItems.length === 0 ? (
-                <div className="worklist-empty">
-                  暂无清单，去右侧添加第一项吧。
-                </div>
-              ) : (
-                sortedItems.map((item) => {
-                  const icon = String(item.icon || "").trim() || "📋";
-                  const status = getStatusMeta(item);
+              <div className="worklist-quadrant-matrix">
+                {WORKLIST_QUADRANT_ORDER.map((q) => {
+                  const meta = WORKLIST_QUADRANT_META[q];
+                  const quadrantItems = itemsByQuadrant[q] || [];
                   return (
-                    <article
-                      key={item.id}
-                      className={`worklist-item${
-                        editingId === item.id ? " worklist-item--active" : ""
-                      }`}
-                      onClick={() => fillFormByItem(item)}
+                    <section
+                      key={q}
+                      className={`worklist-quadrant worklist-quadrant--${q}`}
                     >
-                      <div className="worklist-item-head">
-                        <div className="worklist-item-head-main">
-                          {icon.startsWith("data:image/") ? (
-                            <img
-                              className="worklist-item-icon-image"
-                              src={icon}
-                              alt=""
-                            />
-                          ) : (
-                            <span className="worklist-item-icon-emoji">
-                              {icon}
-                            </span>
-                          )}
-                          <h2 className="worklist-item-name">{item.name}</h2>
-                        </div>
-                        <div className="worklist-item-head-side">
-                          <span
-                            className={`worklist-item-status worklist-item-status--${status.cls}`}
-                          >
-                            {status.text}
+                      <header className="worklist-quadrant-head">
+                        <div className="worklist-quadrant-head-main">
+                          <h3 className="worklist-quadrant-title">
+                            {meta.label}
+                          </h3>
+                          <span className="worklist-quadrant-hint">
+                            {meta.hint} · {quadrantItems.length} 项
                           </span>
-                          <button
-                            type="button"
-                            className="worklist-item-delete"
-                            disabled={busy}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onRemoveById(item.id);
-                            }}
-                          >
-                            <span
-                              className="worklist-item-delete__icon"
-                              aria-hidden="true"
-                            >
-                              🗑
-                            </span>
-                            <span>删除</span>
-                          </button>
                         </div>
+                        <button
+                          type="button"
+                          className="worklist-quadrant-add"
+                          title={`添加到${meta.label}`}
+                          aria-label={`添加到${meta.label}`}
+                          onClick={() => openAddModalForQuadrant(q)}
+                        >
+                          +
+                        </button>
+                      </header>
+                      <div className="worklist-quadrant-list">
+                        {quadrantItems.length === 0 ? (
+                          <p className="worklist-quadrant-empty">暂无任务</p>
+                        ) : (
+                          quadrantItems.map((item) => renderWorklistCard(item))
+                        )}
                       </div>
-                      <p className="worklist-item-line">
-                        <strong>提醒时间：</strong>
-                        {formatDatetime(item.reminderAt)}
-                      </p>
-                      <p className="worklist-item-line">
-                        <strong>估计完成时间：</strong>
-                        {formatDatetime(item.estimateDoneAt)}
-                      </p>
-                      <p className="worklist-item-line">
-                        <strong>备注：</strong>
-                        {item.note || "无"}
-                      </p>
-                    </article>
+                    </section>
                   );
-                })
-              )}
+                })}
               </div>
-              <button
-                type="button"
-                className="worklist-export-btn worklist-export-btn--corner"
-                onClick={() => {
-                  window.timeManagerAPI?.openWorklistExport?.();
-                }}
-              >
-                导出日志
-              </button>
             </div>
           </section>
 
-          <section className="worklist-pane worklist-pane--form">
-            <div className="worklist-form-header">
-              <div>
-                <h2 className="worklist-title">
-                  {isEditing ? "编辑工作清单" : "添加工作清单"}
-                </h2>
-                <p className="worklist-sub">
-                  填写后保存到本机；到「提醒时间」会尝试通过系统通知提醒你。
-                </p>
-              </div>
-            </div>
-
-            <form className="worklist-form" onSubmit={onSubmit}>
-              <div className="worklist-field">
-                <label>图标</label>
-                <div className="worklist-icon-row">
-                  {PRESET_ICONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className={`worklist-icon-btn${
-                        iconEmoji === emoji && !iconCustomDataUrl
-                          ? " worklist-icon-btn--active"
-                          : ""
-                      }`}
-                      title={emoji}
-                      onClick={() => {
-                        setIconEmoji(emoji);
-                        setIconCustomDataUrl("");
-                      }}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                  {iconCustomDataUrl ? (
-                    <>
-                      <img
-                        className="worklist-icon-preview"
-                        src={iconCustomDataUrl}
-                        alt=""
-                      />
-                      <button
-                        type="button"
-                        className="worklist-btn-secondary"
-                        onClick={clearCustomIcon}
-                      >
-                        清除自定义图
-                      </button>
-                    </>
-                  ) : null}
-                  <label className="worklist-file">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={onPickImage}
-                      hidden
-                    />
-                    <span
-                      style={{ cursor: "pointer", textDecoration: "underline" }}
-                    >
-                      上传自定义图标…
-                    </span>
-                  </label>
+          {formModalOpen ? (
+            <div
+              className="worklist-modal-overlay"
+              role="presentation"
+              onClick={closeFormModal}
+            >
+              <div
+                className="worklist-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="worklist-modal-title"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="worklist-form-header">
+                  <div>
+                    <h2 className="worklist-title" id="worklist-modal-title">
+                      {isEditing ? "编辑工作清单" : "添加工作清单"}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="worklist-modal-close"
+                    aria-label="关闭"
+                    onClick={closeFormModal}
+                  >
+                    ×
+                  </button>
                 </div>
-              </div>
-
-              <div className="worklist-field">
-                <label htmlFor="wl-name">
-                  工作清单名称 <span className="req">*</span>
-                </label>
-                <input
-                  id="wl-name"
-                  className="worklist-input"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="例如：写完周报"
-                  maxLength={200}
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="worklist-field">
-                <label htmlFor="wl-remind">提醒时间</label>
-                <input
-                  id="wl-remind"
-                  className="worklist-input"
-                  type="time"
-                  step="60"
-                  value={reminderAt}
-                  onClick={onTimeInputClick}
-                  onChange={(e) => setReminderAt(e.target.value)}
-                />
-              </div>
-
-              <div className="worklist-field">
-                <label htmlFor="wl-est">估计完成时间</label>
-                <input
-                  id="wl-est"
-                  className="worklist-input"
-                  type="time"
-                  step="60"
-                  value={estimateDoneAt}
-                  onClick={onTimeInputClick}
-                  onChange={(e) => setEstimateDoneAt(e.target.value)}
-                />
-              </div>
-
-              <div className="worklist-field">
-                <label htmlFor="wl-note">备注（写给自己的提醒）</label>
-                <textarea
-                  id="wl-note"
-                  className="worklist-textarea"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="例如：别忘带电源、先做第 3 节…"
-                  maxLength={2000}
-                />
-              </div>
-
-              <div className="worklist-actions">
-                <button
-                  type="submit"
-                  className="worklist-submit"
-                  disabled={busy}
-                >
-                  {busy ? "保存中…" : isEditing ? "保存修改" : "保存工作清单"}
-                </button>
-                {isEditing ? (
-                  <>
+                <form className="worklist-form" onSubmit={onSubmit}>
+                  {worklistFormFields}
+                  <div className="worklist-actions">
+                    <button
+                      type="submit"
+                      className="worklist-submit"
+                      disabled={busy}
+                    >
+                      {busy
+                        ? "保存中…"
+                        : isEditing
+                        ? "保存修改"
+                        : "保存工作清单"}
+                    </button>
                     <button
                       type="button"
                       className="worklist-btn-secondary"
-                      onClick={resetForm}
+                      onClick={closeFormModal}
                       disabled={busy}
                     >
-                      取消编辑
+                      取消
                     </button>
-                  </>
-                ) : null}
+                  </div>
+                </form>
               </div>
-            </form>
-          </section>
+            </div>
+          ) : null}
         </div>
       ) : activeTab === TAB_MEMO ? (
         <div className="worklist-wrap worklist-content worklist-content--memo">

@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { WorklistQuadrantSchema } from '../worklist-quadrant.js';
 
 const listDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const WorklistItemSchema = z.object({
   id: z.string().uuid(),
   listDate: listDateSchema,
+  quadrant: WorklistQuadrantSchema,
   name: z.string().min(1),
   icon: z.string(),
   note: z.string(),

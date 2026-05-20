@@ -1,4 +1,4 @@
-import { getLocalDateKey, listDateFromIso } from '@time-manger/shared';
+import { getLocalDateKey, listDateFromIso, normalizeWorklistQuadrant } from '@time-manger/shared';
 
 export function createWorklistModule({
   petState,
@@ -75,9 +75,11 @@ export function createWorklistModule({
     const listDate = /^\d{4}-\d{2}-\d{2}$/.test(listDateRaw)
       ? listDateRaw
       : listDateFromIso(createdAt) || getLocalDateKey();
+    const quadrant = normalizeWorklistQuadrant(raw.quadrant);
     return {
       id,
       listDate,
+      quadrant,
       icon,
       name,
       reminderAt,
@@ -244,6 +246,7 @@ export function createWorklistModule({
     const entry = sanitizeWorklistEntry({
       id,
       listDate,
+      quadrant: payload?.quadrant,
       icon: payload?.icon,
       name: payload?.name,
       reminderAt: payload?.reminderAt,
@@ -278,6 +281,7 @@ export function createWorklistModule({
     const entry = sanitizeWorklistEntry({
       id,
       listDate: existing.listDate,
+      quadrant: payload?.quadrant ?? existing.quadrant,
       icon: payload?.icon,
       name: payload?.name,
       reminderAt: payload?.reminderAt,

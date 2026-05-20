@@ -19,8 +19,13 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTopInset } from "../hooks/useScreenInsets";
 import { useAuth } from "../hooks/useAuth";
-import { getLocalDateKey } from "@time-manger/shared";
-import type { WorklistItemPayload } from "@time-manger/shared";
+import {
+  WORKLIST_QUADRANT_META,
+  WORKLIST_QUADRANT_ORDER,
+  getLocalDateKey,
+  normalizeWorklistQuadrant,
+} from "@time-manger/shared";
+import type { WorklistItemPayload, WorklistQuadrant } from "@time-manger/shared";
 import { SwipeableDeleteRow } from "../components/SwipeableDeleteRow";
 
 type Props = {
@@ -28,6 +33,14 @@ type Props = {
 };
 
 const ACCENT = "#6B5B95";
+
+const QUADRANT_CARD_BG: Record<WorklistQuadrant, string> = {
+  q1: "#FFE8E8",
+  q2: "#E8F0FF",
+  q3: "#FFF8E0",
+  q4: "#D4EDC4",
+};
+
 /** 列表卡片固定高度（标题/备注各两行 + 元信息 + 内边距） */
 const LIST_CARD_HEIGHT = 132;
 
@@ -120,6 +133,7 @@ export function WorklistScreen({ navigation }: Props) {
   const [note, setNote] = useState("");
   const [reminderAt, setReminderAt] = useState<Date | null>(null);
   const [estimateDoneAt, setEstimateDoneAt] = useState<Date | null>(null);
+  const [quadrant, setQuadrant] = useState<WorklistQuadrant>("q2");
   const [picker, setPicker] = useState<"none" | "reminder" | "estimate">("none");
   const [saving, setSaving] = useState(false);
   /** 图标库仅在点击当前图标后展开 */
@@ -168,6 +182,7 @@ export function WorklistScreen({ navigation }: Props) {
     setNote(item.note ?? "");
     setReminderAt(item.reminderAt ? new Date(item.reminderAt) : null);
     setEstimateDoneAt(item.estimateDoneAt ? new Date(item.estimateDoneAt) : null);
+    setQuadrant(normalizeWorklistQuadrant(item.quadrant));
     setPicker("none");
     setIconPickerVisible(false);
     setModalOpen(true);
@@ -191,6 +206,7 @@ export function WorklistScreen({ navigation }: Props) {
     try {
       const payload = {
         listDate: editing?.listDate || selectedDate,
+        quadrant: normalizeWorklistQuadrant(quadrant),
         name: trimmed,
         icon: icon.trim() || "📋",
         note: note.trim(),
@@ -223,6 +239,7 @@ export function WorklistScreen({ navigation }: Props) {
     load,
     name,
     note,
+    quadrant,
     reminderAt,
     selectedDate,
   ]);
@@ -318,9 +335,10 @@ export function WorklistScreen({ navigation }: Props) {
         }
         renderItem={({ item }) => {
           const { label, variant } = completionUi(item);
+          const q = normalizeWorklistQuadrant(item.quadrant);
           return (
             <SwipeableDeleteRow onDeleteRequest={(closeSwipe) => handleDelete(item, closeSwipe)}>
-              <View style={styles.card}>
+              <View style={[styles.card, { backgroundColor: QUADRANT_CARD_BG[q] }]}>
                 <TouchableOpacity
                   style={styles.row}
                   onPress={() => openEdit(item)}
@@ -444,6 +462,29 @@ export function WorklistScreen({ navigation }: Props) {
                   ))}
                 </View>
               ) : null}
+
+              <Text style={styles.fieldLabel}>重要紧急程度</Text>
+              <View style={styles.quadrantPickGrid}>
+                {WORKLIST_QUADRANT_ORDER.map((q) => {
+                  const meta = WORKLIST_QUADRANT_META[q];
+                  const active = quadrant === q;
+                  return (
+                    <TouchableOpacity
+                      key={q}
+                      style={[
+                        styles.quadrantPickBtn,
+                        { backgroundColor: QUADRANT_CARD_BG[q] },
+                        active && styles.quadrantPickBtnActive,
+                      ]}
+                      onPress={() => setQuadrant(q)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.quadrantPickLabel}>{meta.label}</Text>
+                      <Text style={styles.quadrantPickHint}>{meta.hint}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               <Text style={styles.fieldLabel}>清单名称</Text>
               <TextInput
@@ -740,6 +781,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 10,
   },
+  quadrantPickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
+  quadrantPickBtn: {
+    width: "48%",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0D8CF",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  quadrantPickBtnActive: {
+    borderColor: ACCENT,
+    borderWidth: 2,
+  },
+  quadrantPickLabel: { fontSize: 12, fontWeight: "800", color: "#2D3436" },
+  quadrantPickHint: { fontSize: 10, color: "#95A5A6", marginTop: 2 },
   input: {
     borderWidth: 1,
     borderColor: "#DFD8CF",

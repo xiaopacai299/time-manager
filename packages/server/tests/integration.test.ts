@@ -183,6 +183,7 @@ test(
           {
             id: worklistId,
             listDate: '2026-04-25',
+            quadrant: 'q1',
             name: '整理同步需求',
             icon: '📝',
             note: '只同步工作清单，不同步备忘录',

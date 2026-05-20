@@ -15,6 +15,7 @@ import {
   type TimeRecordPayload,
   type WorkYearDigestPayload,
   type WorklistItemPayload,
+  normalizeWorklistQuadrant,
 } from '@time-manger/shared';
 import type { ServerEnv } from '../config/env.js';
 import { encodeSyncCursor, decodeSyncCursor } from '../lib/syncCursor.js';
@@ -146,6 +147,7 @@ function workYearDigestToDto(row: {
 function worklistItemToDto(row: {
   id: string;
   listDate: string;
+  quadrant: string;
   name: string;
   icon: string;
   note: string;
@@ -162,6 +164,7 @@ function worklistItemToDto(row: {
   return {
     id: row.id,
     listDate: row.listDate,
+    quadrant: normalizeWorklistQuadrant(row.quadrant),
     name: row.name,
     icon: row.icon,
     note: row.note,
@@ -266,6 +269,7 @@ function getResourceConfig(
           id: rec.id,
           userId,
           listDate: rec.listDate,
+          quadrant: normalizeWorklistQuadrant(rec.quadrant),
           name: rec.name,
           icon: rec.icon,
           note: rec.note,
@@ -285,6 +289,7 @@ function getResourceConfig(
         return {
           userId,
           listDate: rec.listDate,
+          quadrant: normalizeWorklistQuadrant(rec.quadrant),
           name: rec.name,
           icon: rec.icon,
           note: rec.note,

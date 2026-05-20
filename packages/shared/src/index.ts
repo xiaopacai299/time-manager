@@ -8,6 +8,7 @@ export * from './api-contract/memo-item.js';
 export * from './api-contract/work-year-digest.js';
 export * from './year-work-heatmap.js';
 export * from './date-key.js';
+export * from './worklist-quadrant.js';
 export * from './api-contract/sync-pull.js';
 export * from './api-contract/sync-envelope.js';
 export * from './sync/lww.js';

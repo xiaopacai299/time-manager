@@ -2,7 +2,7 @@ import type { Express } from 'express';
 import { randomUUID } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { DiaryPayload, MemoItemPayload, WorklistItemPayload } from '@time-manger/shared';
-import { getLocalDateKey } from '@time-manger/shared';
+import { getLocalDateKey, normalizeWorklistQuadrant } from '@time-manger/shared';
 import { z } from 'zod';
 import type { ServerEnv } from '../config/env.js';
 import { timeRecordToDto } from '../lib/timeRecordDto.js';
@@ -36,6 +36,7 @@ function diaryToPayload(row: {
 function worklistToPayload(row: {
   id: string;
   listDate: string;
+  quadrant: string;
   name: string;
   icon: string;
   note: string;
@@ -56,6 +57,7 @@ function worklistToPayload(row: {
   return {
     id: row.id,
     listDate: row.listDate,
+    quadrant: normalizeWorklistQuadrant(row.quadrant),
     name: row.name,
     icon: row.icon,
     note: row.note,
@@ -87,6 +89,7 @@ const PatchDiaryBody = z
 
 const PostWorklistBody = z.object({
   listDate: dateParam.optional(),
+  quadrant: z.enum(['q1', 'q2', 'q3', 'q4']).optional(),
   name: z.string().min(1),
   icon: z.string().optional(),
   note: z.string().optional(),
@@ -138,6 +141,7 @@ const PatchMemoBody = z
 
 const PatchWorklistBody = z
   .object({
+    quadrant: z.enum(['q1', 'q2', 'q3', 'q4']).optional(),
     name: z.string().min(1).optional(),
     icon: z.string().optional(),
     note: z.string().optional(),
@@ -298,6 +302,7 @@ export function mountMobileRestRoutes(
           id: randomUUID(),
           userId,
           listDate,
+          quadrant: normalizeWorklistQuadrant(parsed.data.quadrant),
           name: parsed.data.name,
           icon: parsed.data.icon ?? '📋',
           note: parsed.data.note ?? '',
@@ -339,6 +344,7 @@ export function mountMobileRestRoutes(
       const b = parsed.data;
       const now = new Date();
       const data: Prisma.WorklistItemUpdateInput = { updatedAt: now };
+      if (b.quadrant !== undefined) data.quadrant = normalizeWorklistQuadrant(b.quadrant);
       if (b.name !== undefined) data.name = b.name;
       if (b.icon !== undefined) data.icon = b.icon;
       if (b.note !== undefined) data.note = b.note;

@@ -3,6 +3,10 @@
   flex: 1;
   position: relative;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
   font-family: var(--tm-font);
   background-color: var(--tm-page-bg-base);
   background-image: var(--tm-window-bg-overlay), var(--tm-window-bg-image), var(--tm-mesh-a), var(--tm-mesh-b), var(--tm-mesh-c), var(--tm-mesh-base);
@@ -102,6 +106,252 @@
   padding: 16px 18px 20px;
   max-width: 1180px;
   margin: 0 auto;
+}
+
+.worklist-content--today {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+}
+
+.worklist-content--today .worklist-wrap {
+  grid-template-columns: 1fr;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
+  padding: 4px 6px 6px;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+.worklist-content--today .worklist-pane {
+  padding: 6px 8px 8px;
+  border-radius: 10px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.worklist-pane--today {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.worklist-today-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.worklist-today-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.worklist-add-btn {
+  padding: 8px 18px;
+  border-radius: var(--tm-btn-radius);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: var(--tm-btn-primary-fill);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--tm-btn-3d-primary);
+  transition: var(--tm-btn-ease);
+}
+
+.worklist-add-btn:hover {
+  transform: var(--tm-btn-lift);
+}
+
+.worklist-content--today .worklist-list-wrap {
+  flex: 1;
+  min-height: 0;
+  margin-top: 4px;
+}
+
+.worklist-quadrant-matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.worklist-quadrant {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 固定象限位置：左上 q2、右上 q1、左下 q3、右下 q4 */
+.worklist-quadrant--q2 {
+  grid-column: 1;
+  grid-row: 1;
+  background: linear-gradient(160deg, rgba(232, 240, 255, 0.92), rgba(210, 224, 255, 0.55));
+}
+
+.worklist-quadrant--q1 {
+  grid-column: 2;
+  grid-row: 1;
+  background: linear-gradient(160deg, rgba(255, 232, 232, 0.92), rgba(255, 210, 210, 0.55));
+}
+
+.worklist-quadrant--q3 {
+  grid-column: 1;
+  grid-row: 2;
+  background: linear-gradient(160deg, rgba(255, 248, 224, 0.92), rgba(255, 236, 190, 0.55));
+}
+
+.worklist-quadrant--q4 {
+  grid-column: 2;
+  grid-row: 2;
+  background: linear-gradient(160deg, rgba(220, 245, 200, 0.94), rgba(186, 228, 165, 0.62));
+}
+
+.worklist-quadrant-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.worklist-quadrant-head-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.worklist-quadrant-add {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--tm-btn-primary-fill);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--tm-btn-3d-primary);
+  transition: var(--tm-btn-ease);
+}
+
+.worklist-quadrant-add:hover {
+  transform: var(--tm-btn-lift);
+}
+
+.worklist-quadrant-add:active {
+  transform: var(--tm-btn-press);
+}
+
+.worklist-quadrant-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2a3f66;
+}
+
+.worklist-quadrant-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #5a6f94;
+}
+
+.worklist-quadrant-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.worklist-quadrant-empty {
+  margin: 8px 0;
+  font-size: 12px;
+  color: #6b7f9e;
+  text-align: center;
+}
+
+.worklist-item--q-q1 {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.worklist-item--q-q2 {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.worklist-item--q-q3 {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.worklist-item--q-q4 {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.worklist-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(18, 28, 52, 0.38);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.worklist-modal {
+  width: min(520px, 100%);
+  max-height: min(88vh, 720px);
+  overflow-y: auto;
+  border-radius: 16px;
+  border: 1px solid var(--tm-glass-border-light);
+  padding: 16px 18px 18px;
+  background-image: var(--tm-glass-stack);
+  background-color: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--tm-glass-shadow), 0 18px 48px rgba(30, 45, 90, 0.18);
+}
+
+.worklist-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  color: #5a6f94;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.worklist-modal-close:hover {
+  color: #2a3f66;
 }
 
 .worklist-content {
@@ -777,6 +1027,11 @@
   .worklist-wrap {
     grid-template-columns: 1fr;
   }
+
+  .worklist-quadrant-matrix {
+    grid-template-columns: 1fr;
+  }
+
 }
 
 .worklist-form-header {

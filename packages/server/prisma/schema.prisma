@@ -114,6 +114,7 @@ model WorklistItem {
   id                  String    @id
   userId              String
   listDate            String
+  quadrant            String    @default("q2")
   name                String
   icon                String
   note                String    @db.Text

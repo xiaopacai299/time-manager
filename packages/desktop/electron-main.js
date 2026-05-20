@@ -30,7 +30,12 @@ import {
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
 import { debugLog } from './main/debug-log.js';
-import { computeYearWorkHeatmap, getLocalDateKey, listDateFromIso } from '@time-manger/shared';
+import {
+  computeYearWorkHeatmap,
+  getLocalDateKey,
+  listDateFromIso,
+  normalizeWorklistQuadrant,
+} from '@time-manger/shared';
 
 // 主进程默认阈值（毫秒）。不要依赖 src 目录，避免打包后模块缺失。
 const REMIND_CONTINUOUS_MS = 25 * 60 * 1000;
@@ -922,6 +927,7 @@ function normalizeWorklistItemForSync(raw, now = new Date().toISOString()) {
   return {
     id,
     listDate,
+    quadrant: normalizeWorklistQuadrant(raw.quadrant),
     name,
     icon: String(raw.icon || '📋'),
     note: String(raw.note || '').slice(0, 2000),
