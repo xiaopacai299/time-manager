@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getLocalDateKey } from '@time-manger/shared';
 import {
   CALENDAR_WEEKDAY_LABELS,
@@ -34,6 +34,11 @@ function weekNumberInMonth(year, monthIndex, day) {
  * @param {(dateKey: string) => void} props.onSelectDate
  * @param {(dateKey: string) => void} props.onAddForDate 点击空白日期格
  * @param {(item: object) => void} props.onEditItem 点击格内条目
+ * @param {Record<string, { text: string, title?: string }>} [props.weatherByDate]
+ * @param {string} [props.weatherLocationLabel]
+ * @param {boolean} [props.weatherLoading]
+ * @param {{ locationMode?: string, cityName?: string, locationLabel?: string }} [props.weatherSettings]
+ * @param {(payload: object) => Promise<{ ok?: boolean, error?: string }>} [props.onWeatherSettingsSave]
  */
 export default function MemoMonthCalendar({
   items = [],
@@ -41,11 +46,22 @@ export default function MemoMonthCalendar({
   viewMonthIndex,
   selectedDate = null,
   maxPreviewPerDay = 3,
+  weatherByDate = {},
+  weatherLocationLabel = '',
+  weatherLoading = false,
+  weatherSettings = null,
+  onWeatherSettingsSave,
   onViewMonthChange,
   onSelectDate,
   onAddForDate,
   onEditItem,
 }) {
+  const [weatherPanelOpen, setWeatherPanelOpen] = useState(false);
+  const [draftMode, setDraftMode] = useState('ip');
+  const [draftCity, setDraftCity] = useState('');
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const weatherPanelRef = useRef(null);
   const todayKey = getLocalDateKey();
   const grid = useMemo(
     () => buildMonthCalendarGrid(viewYear, viewMonthIndex),
@@ -77,6 +93,51 @@ export default function MemoMonthCalendar({
     onSelectDate?.(getLocalDateKey(now));
   }
 
+  useEffect(() => {
+    if (!weatherPanelOpen) return undefined;
+    const mode = weatherSettings?.locationMode === 'manual' ? 'manual' : 'ip';
+    setDraftMode(mode);
+    setDraftCity(String(weatherSettings?.cityName || ''));
+    setSettingsError('');
+  }, [weatherPanelOpen, weatherSettings]);
+
+  useEffect(() => {
+    if (!weatherPanelOpen) return undefined;
+    function onDocPointerDown(event) {
+      if (weatherPanelRef.current?.contains(event.target)) return;
+      setWeatherPanelOpen(false);
+    }
+    document.addEventListener('mousedown', onDocPointerDown);
+    return () => document.removeEventListener('mousedown', onDocPointerDown);
+  }, [weatherPanelOpen]);
+
+  async function saveWeatherSettings() {
+    if (!onWeatherSettingsSave) return;
+    setSettingsBusy(true);
+    setSettingsError('');
+    const res = await onWeatherSettingsSave({
+      locationMode: draftMode === 'manual' ? 'manual' : 'ip',
+      cityName: draftMode === 'manual' ? draftCity : '',
+    });
+    setSettingsBusy(false);
+    if (res?.ok) {
+      setWeatherPanelOpen(false);
+      return;
+    }
+    setSettingsError(String(res?.error || '保存失败'));
+  }
+
+  const displayCity =
+    weatherLocationLabel ||
+    weatherSettings?.locationLabel ||
+    (weatherSettings?.locationMode === 'manual' ? weatherSettings?.cityName : '') ||
+    '';
+  const locationBtnLabel = weatherLoading
+    ? displayCity
+      ? `${displayCity}…`
+      : '定位中…'
+    : displayCity || '定位中…';
+
   return (
     <div className="memo-cal">
       <div className="memo-cal__panel">
@@ -105,10 +166,70 @@ export default function MemoMonthCalendar({
               ›
             </button>
           </div>
-          <button type="button" className="memo-cal__today-btn" onClick={goToday}>
-            <span className="memo-cal__today-dot" aria-hidden="true" />
-            今天
-          </button>
+          <div className="memo-cal__toolbar-actions">
+            <div className="memo-cal__location-wrap" ref={weatherPanelRef}>
+              <button
+                type="button"
+                className="memo-cal__location-btn"
+                aria-expanded={weatherPanelOpen}
+                onClick={() => setWeatherPanelOpen((v) => !v)}
+              >
+                <span className="memo-cal__location-pin" aria-hidden="true">
+                  📍
+                </span>
+                {locationBtnLabel}
+              </button>
+              {weatherPanelOpen ? (
+                <div className="memo-cal__location-panel" role="dialog" aria-label="天气城市设置">
+                  <p className="memo-cal__location-panel-title">天气位置</p>
+                  <label className="memo-cal__location-option">
+                    <input
+                      type="radio"
+                      name="weather-location-mode"
+                      checked={draftMode === 'ip'}
+                      onChange={() => setDraftMode('ip')}
+                    />
+                    自动定位（默认）
+                  </label>
+                  <label className="memo-cal__location-option">
+                    <input
+                      type="radio"
+                      name="weather-location-mode"
+                      checked={draftMode === 'manual'}
+                      onChange={() => setDraftMode('manual')}
+                    />
+                    指定城市
+                  </label>
+                  {draftMode === 'manual' ? (
+                    <input
+                      type="text"
+                      className="memo-cal__location-input"
+                      placeholder="例如：上海、北京"
+                      value={draftCity}
+                      onChange={(e) => setDraftCity(e.target.value)}
+                    />
+                  ) : null}
+                  {settingsError ? (
+                    <p className="memo-cal__location-error">{settingsError}</p>
+                  ) : null}
+                  <div className="memo-cal__location-actions">
+                    <button
+                      type="button"
+                      className="memo-cal__location-save"
+                      disabled={settingsBusy}
+                      onClick={saveWeatherSettings}
+                    >
+                      {settingsBusy ? '保存中…' : '保存'}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <button type="button" className="memo-cal__today-btn" onClick={goToday}>
+              <span className="memo-cal__today-dot" aria-hidden="true" />
+              今天
+            </button>
+          </div>
         </header>
 
         <div className="memo-cal__weekdays" aria-hidden="true">
@@ -143,6 +264,7 @@ export default function MemoMonthCalendar({
             const weekdayIndex =
               (new Date(cellYear, cellMonth - 1, cellDay).getDay() + 6) % 7;
             const isWeekend = weekdayIndex >= 5;
+            const weather = weatherByDate?.[cell.dateKey];
 
             return (
               <button
@@ -169,7 +291,7 @@ export default function MemoMonthCalendar({
                 <div className="memo-cal__cell-head">
                   <div className="memo-cal__day-row">
                     <span className="memo-cal__day">{cell.day}</span>
-                    {meta?.restBadge || meta?.festivalLabel ? (
+                    {meta?.restBadge || meta?.festivalLabel || weather?.text ? (
                       <span className="memo-cal__mark-group">
                         {meta?.restBadge ? (
                           <span
@@ -186,6 +308,11 @@ export default function MemoMonthCalendar({
                         {meta?.festivalLabel ? (
                           <span className="memo-cal__festival" title={meta.festivalLabel}>
                             {meta.festivalLabel}
+                          </span>
+                        ) : null}
+                        {weather?.text ? (
+                          <span className="memo-cal__weather" title={weather.title || weather.text}>
+                            {weather.text}
                           </span>
                         ) : null}
                       </span>

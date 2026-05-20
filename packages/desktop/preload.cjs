@@ -294,6 +294,11 @@ contextBridge.exposeInMainWorld('timeManagerAPI', {
    */
   updatePetSettings: (payload) => ipcRenderer.invoke('pet-settings:update', payload),
 
+  getWeatherSettings: () => ipcRenderer.invoke('weather-settings:get'),
+  resolveWeatherLocation: () => ipcRenderer.invoke('weather:resolve-location'),
+  updateWeatherSettings: (payload) => ipcRenderer.invoke('weather-settings:update', payload),
+  fetchWeatherMonth: (payload) => ipcRenderer.invoke('weather:fetch-month', payload),
+
   /**
    * 从本地选择一张图片并复制到应用数据目录，设为 AI 独立对话窗口背景；会持久化并广播 `pet:state-changed`。
    * 主进程通道：`pet-ai-chat-bg:choose-image`

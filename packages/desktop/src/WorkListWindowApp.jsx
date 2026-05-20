@@ -78,6 +78,15 @@ export default function WorkListWindowApp() {
     new Date().getMonth()
   );
   const [memoSelectedDate, setMemoSelectedDate] = useState(() => getLocalDateKey());
+  const [weatherByDate, setWeatherByDate] = useState({});
+  const [weatherLocationLabel, setWeatherLocationLabel] = useState("");
+  const [weatherSettings, setWeatherSettings] = useState({
+    locationMode: "ip",
+    cityName: "",
+    locationLabel: "",
+  });
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const weatherLoadTokenRef = useRef(0);
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedListDate, setSelectedListDate] = useState(() => getLocalDateKey());
@@ -119,6 +128,101 @@ export default function WorkListWindowApp() {
       if (off) off();
     };
   }, []);
+
+  const applyWeatherResponse = useCallback((res) => {
+    if (!res?.ok) return false;
+    setWeatherByDate(res.byDate || {});
+    const label = String(
+      res.locationLabel || res.weatherSettings?.locationLabel || ""
+    ).trim();
+    if (label) setWeatherLocationLabel(label);
+    if (res.weatherSettings) setWeatherSettings(res.weatherSettings);
+    return true;
+  }, []);
+
+  const resolveWeatherLocation = useCallback(async () => {
+    const api = window.timeManagerAPI?.resolveWeatherLocation;
+    if (!api) return false;
+    const res = await api();
+    if (!res?.ok) return false;
+    const label = String(
+      res.locationLabel || res.weatherSettings?.locationLabel || ""
+    ).trim();
+    if (label) setWeatherLocationLabel(label);
+    if (res.weatherSettings) setWeatherSettings(res.weatherSettings);
+    return true;
+  }, []);
+
+  const loadMemoCalendarWeather = useCallback(
+    async (year, monthIndex) => {
+      const api = window.timeManagerAPI?.fetchWeatherMonth;
+      if (!api) return;
+      const token = weatherLoadTokenRef.current + 1;
+      weatherLoadTokenRef.current = token;
+      setWeatherLoading(true);
+      try {
+        const res = await api({ year, monthIndex });
+        if (weatherLoadTokenRef.current !== token) return;
+        if (!applyWeatherResponse(res)) {
+          setMessage({
+            type: "err",
+            text: String(res?.error || "天气加载失败"),
+          });
+        }
+      } finally {
+        if (weatherLoadTokenRef.current === token) {
+          setWeatherLoading(false);
+        }
+      }
+    },
+    [applyWeatherResponse]
+  );
+
+  useEffect(() => {
+    if (activeTab !== TAB_MEMO || memoViewMode !== MEMO_VIEW_CALENDAR) return undefined;
+    let cancelled = false;
+    (async () => {
+      const settings = await window.timeManagerAPI?.getWeatherSettings?.();
+      if (cancelled) return;
+      if (settings) {
+        setWeatherSettings(settings);
+        const savedLabel = String(settings.locationLabel || "").trim();
+        if (savedLabel) setWeatherLocationLabel(savedLabel);
+      }
+      if (settings?.locationMode === "ip" && !String(settings.locationLabel || "").trim()) {
+        await resolveWeatherLocation();
+        if (cancelled) return;
+      }
+      await loadMemoCalendarWeather(memoViewYear, memoViewMonthIndex);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeTab,
+    memoViewMode,
+    memoViewYear,
+    memoViewMonthIndex,
+    loadMemoCalendarWeather,
+    resolveWeatherLocation,
+  ]);
+
+  const handleWeatherSettingsSave = useCallback(
+    async (payload) => {
+      const res = await window.timeManagerAPI?.updateWeatherSettings?.(payload);
+      if (res?.ok) {
+        const label = String(
+          res.locationLabel || res.weatherSettings?.locationLabel || ""
+        ).trim();
+        if (label) setWeatherLocationLabel(label);
+        if (res.weatherSettings) setWeatherSettings(res.weatherSettings);
+        await loadMemoCalendarWeather(memoViewYear, memoViewMonthIndex);
+        return { ok: true };
+      }
+      return { ok: false, error: res?.error || "保存失败" };
+    },
+    [loadMemoCalendarWeather, memoViewMonthIndex, memoViewYear]
+  );
 
   const resolveListDate = useCallback((item) => {
     const raw = String(item?.listDate || "").trim();
@@ -1266,6 +1370,11 @@ export default function WorkListWindowApp() {
                 viewYear={memoViewYear}
                 viewMonthIndex={memoViewMonthIndex}
                 selectedDate={memoSelectedDate}
+                weatherByDate={weatherByDate}
+                weatherLocationLabel={weatherLocationLabel}
+                weatherLoading={weatherLoading}
+                weatherSettings={weatherSettings}
+                onWeatherSettingsSave={handleWeatherSettingsSave}
                 onViewMonthChange={(year, monthIndex) => {
                   setMemoViewYear(year);
                   setMemoViewMonthIndex(monthIndex);

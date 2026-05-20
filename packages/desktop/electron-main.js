@@ -29,6 +29,10 @@ import {
 } from './main/electron/quick-links-module.js';
 import { createMenuModule } from './main/electron/menu-module.js';
 import { createPetMotionModule } from './main/electron/pet-motion-module.js';
+import {
+  createWeatherModule,
+  normalizeWeatherSettings,
+} from './main/electron/weather-module.js';
 import { debugLog } from './main/debug-log.js';
 import {
   chinaStorageIsoNow,
@@ -407,6 +411,14 @@ const petState = {
   diaryPasswordHash: null,
   /** 日记密码设置时间 */
   diaryPasswordSetAt: null,
+  /** 备忘录日历天气：ip 自动定位 / manual 指定城市 */
+  weatherSettings: {
+    locationMode: 'ip',
+    cityName: '',
+    latitude: null,
+    longitude: null,
+    locationLabel: '',
+  },
 };
 
 const LLM_SKILL_MAX = 8;
@@ -1282,6 +1294,9 @@ function loadPetState() {
           createdAt: String(h.createdAt || new Date().toISOString()),
         })).filter(h => h.id && h.messages.length > 0);
       }
+      if (parsed.weatherSettings && typeof parsed.weatherSettings === 'object') {
+        petState.weatherSettings = normalizeWeatherSettings(parsed.weatherSettings);
+      }
     }
   } catch {
     // Use defaults when state file does not exist.
@@ -1521,6 +1536,8 @@ const quickLinksModule = createQuickLinksModule({
   __dirname,
   loadPetRenderer,
 });
+
+const weatherModule = createWeatherModule({ petState, persistPetState });
 
 // 菜单模块：托盘菜单与宠物右键菜单统一从这里创建。
 const menuModule = createMenuModule({
@@ -2612,6 +2629,8 @@ function setupIpc() {
   // 2) 收藏夹模块
   favoritesModule.registerIpc(ipcMain);
   quickLinksModule.registerIpc(ipcMain);
+
+  weatherModule.registerIpc(ipcMain);
 
   // 3) 工作清单模块（已拆分至独立文件）
   worklistModule.registerIpc(ipcMain);
