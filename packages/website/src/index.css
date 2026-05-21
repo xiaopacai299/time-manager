@@ -1,0 +1,76 @@
+:root {
+  --wm-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --wm-text: rgba(22, 32, 52, 0.94);
+  --wm-text-muted: rgba(58, 72, 98, 0.72);
+  --wm-accent: #5f87ff;
+  --wm-accent-deep: #4062d6;
+  --wm-page-bg: #edf2ff;
+  --wm-blur-md: blur(28px) saturate(1.58);
+  --wm-glass-bg: rgba(255, 255, 255, 0.22);
+  --wm-glass-bg-strong: rgba(255, 255, 255, 0.36);
+  --wm-glass-border: rgba(112, 130, 176, 0.22);
+  --wm-glass-border-light: rgba(255, 255, 255, 0.64);
+  --wm-glass-shadow: 0 16px 44px rgba(32, 48, 88, 0.1);
+  --wm-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --wm-mesh-a: radial-gradient(ellipse 125% 82% at 10% -8%, rgba(130, 168, 255, 0.42), transparent 56%);
+  --wm-mesh-b: radial-gradient(ellipse 100% 70% at 90% 12%, rgba(218, 195, 255, 0.36), transparent 52%);
+  --wm-mesh-c: radial-gradient(ellipse 88% 56% at 48% 106%, rgba(140, 228, 238, 0.28), transparent 50%);
+  --wm-mesh-base: linear-gradient(172deg, #f5f8ff 0%, #eef3fc 36%, #e4ecfa 68%, #dce5f7 100%);
+  --wm-btn-primary: linear-gradient(168deg, #b0bcff 0%, #93a4ff 26%, #748dff 58%, #637de8 100%);
+  --wm-btn-3d-primary:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 1px rgba(35, 55, 130, 0.12),
+    0 4px 14px rgba(60, 90, 200, 0.2),
+    0 10px 28px rgba(70, 105, 210, 0.12);
+  --wm-section-pad: clamp(64px, 10vw, 120px);
+  --wm-content-max: 1120px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--wm-font);
+  color: var(--wm-text);
+  background: var(--wm-page-bg);
+  background-image: var(--wm-mesh-a), var(--wm-mesh-b), var(--wm-mesh-c), var(--wm-mesh-base);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+code {
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(95, 135, 255, 0.12);
+  color: var(--wm-accent-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

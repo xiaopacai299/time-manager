@@ -10,6 +10,7 @@ pnpm workspace monorepo，包含桌面端、移动端、后端与共享包。
 | `@time-manger/mobile`  | `packages/mobile/`  | React Native (Expo, TS)      | 移动端（Phase 1 初始化） |
 | `@time-manger/server`  | `packages/server/`  | Node + Express + Prisma (TS) | 多端数据同步后端 |
 | `@time-manger/shared`  | `packages/shared/`  | TypeScript                    | 三端共享的类型、API 契约、同步算法、加密工具 |
+| `@time-manger/website` | `packages/website/` | React + Vite                  | 产品官网（功能介绍与下载） |
 
 ## 前置
 
@@ -20,6 +21,10 @@ pnpm workspace monorepo，包含桌面端、移动端、后端与共享包。
 
     pnpm install
     pnpm --filter @time-manger/shared build
+
+### 官网开发
+
+    pnpm website:dev
 
 ### 桌面端开发
 
