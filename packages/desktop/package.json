@@ -18,12 +18,14 @@
     "electron-start-debug-log": "concurrently \"npm run react-start\" \"wait-on http://localhost:4567 && set DEBUG_LOG=true&& electron .\"",
     "electron-build": "npm run icon:ico && vite build && node scripts/electron-build.mjs",
     "icon:ico": "node scripts/generate-icon-ico.mjs",
-    "assets:run-cat": "node scripts/build-run-cat.mjs"
+    "assets:run-cat": "node scripts/build-run-cat.mjs",
+    "preview:weather-icons": "node scripts/open-weather-icon-preview.mjs"
   },
   "dependencies": {
     "@time-manger/shared": "workspace:*",
     "epubjs": "^0.3.93",
     "lottie-web": "^5.13.0",
+    "lucide-react": "^1.16.0",
     "lunar-javascript": "^1.7.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",

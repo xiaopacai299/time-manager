@@ -977,8 +977,8 @@ function normalizeMemoForSync(raw, now = chinaStorageIsoNow()) {
   const id = isSyncUUID(raw.id) ? raw.id : generateSyncUUID();
   const deletedAt = normalizeChinaStorageIso(raw.deletedAt);
   const content = String(raw.content ?? '').trim().slice(0, 50000);
-  if (!content && !deletedAt) return null;
   const name = String(raw.name || '').trim().slice(0, 200) || '备忘录';
+  if (!deletedAt && !String(raw.name || '').trim()) return null;
   const icon = String(raw.icon || '📝').trim().slice(0, 2000) || '📝';
   const normalizeDate = (value) => normalizeChinaStorageIso(value);
   const reminderAt = normalizeDate(raw.reminderAt);

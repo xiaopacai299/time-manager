@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>天气图标方案预览 · time-manager</title>
+  <style>
+    :root {
+      --bg: #eef3fb;
+      --panel: rgba(255, 255, 255, 0.92);
+      --border: rgba(120, 150, 210, 0.28);
+      --text: #2a3f6e;
+      --muted: #6a7fa8;
+      --accent: #5f87ff;
+      --cell-bg: rgba(255, 255, 255, 0.55);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(160deg, #e8f0ff 0%, #f5f8ff 45%, #eef3fb 100%);
+      color: var(--text);
+      padding: 24px 20px 48px;
+    }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .lead { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 720px; }
+    .lead strong { color: var(--accent); }
+    .schemes-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-bottom: 24px;
+      padding: 14px 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      font-size: 13px;
+    }
+    .schemes-legend span { white-space: nowrap; }
+    .scheme-tag {
+      display: inline-block;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .tag-a { background: #e8f0ff; color: #3a6ab8; }
+    .tag-b { background: #fff3e0; color: #b86a20; }
+    .tag-c { background: #e8fff0; color: #2a8a5a; }
+    .tag-d { background: #f3e8ff; color: #6b4ab8; }
+    .tag-e { background: #ffe8f0; color: #b84a6a; }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .weather-row {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 8px 24px rgba(80, 120, 200, 0.08);
+    }
+    .weather-row h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .weather-row .kind-id {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+    }
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .option {
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 12px 10px 10px;
+      background: var(--cell-bg);
+      text-align: center;
+      cursor: default;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .option:hover {
+      border-color: rgba(95, 135, 255, 0.45);
+      box-shadow: 0 4px 14px rgba(95, 135, 255, 0.12);
+    }
+    .option.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(95, 135, 255, 0.2);
+    }
+    .option-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 10px;
+      letter-spacing: 0.02em;
+    }
+    .icon-box {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    .icon-box svg { display: block; }
+    .icon-box img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+    }
+    /* 日历格模拟（与实际 memo-cal 接近） */
+    .mock-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .mock-temp { color: #e07c6d; }
+
+    /* A: 当前叠层 Lucide */
+    .a-sun { color: #f5c842; stroke: #e8a820; }
+    .a-cloud { color: #fff; stroke: #c8d4e8; filter: drop-shadow(0 0 1px rgba(90,120,170,.25)); }
+    .a-rain { color: #4a9eff; stroke: #2f7ee8; }
+    .a-thunder { color: #f0b429; stroke: #d49212; }
+    .stack { position: relative; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; }
+    .stack .sun-back { position: absolute; left: -2px; top: -1px; }
+    .stack .cloud-front { position: relative; z-index: 1; }
+    .stack .precip { position: absolute; right: -1px; bottom: -2px; z-index: 2; }
+
+    /* B: Lucide 单体 */
+    .b-sun { color: #f5c842; }
+    .b-cloudy { color: #8ab4e8; }
+    .b-rain { color: #4a9eff; }
+
+    /* D: Tabler */
+    .d-sun { stroke: #f5c842; }
+    .d-cloud { stroke: #fff; filter: drop-shadow(0 0 1px #9ab); }
+    .d-rain { stroke: #4a9eff; }
+
+    footer {
+      margin-top: 28px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    footer code {
+      background: rgba(95, 135, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .open-hint {
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: #fff8e8;
+      border: 1px solid #f0d8a0;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #8a6020;
+    }
+  </style>
+</head>
+<body>
+  <h1>天气图标方案预览</h1>
+  <p class="lead">
+    以下为<strong>开源图标库</strong>多种风格对比（非 AI 生成图）。请在本页查看后，回复要采用的方案，例如：
+    <strong>「全部用 C」</strong>、<strong>「晴/多云用 C，雨用 A」</strong> 或 <strong>「继续优化 A」</strong>。
+    点击某一格可高亮选中（仅本地记录，方便你对照）。
+  </p>
+
+  <div class="schemes-legend">
+    <span><span class="scheme-tag tag-a">A</span>现用：Lucide 叠层（黄太阳 / 白云 / 蓝雨）</span>
+    <span><span class="scheme-tag tag-b">B</span>Lucide 单体（CloudSun、CloudRain 等）</span>
+    <span><span class="scheme-tag tag-c">C</span>Basmilius Weather Icons 彩色填充（MIT）</span>
+    <span><span class="scheme-tag tag-d">D</span>Tabler Icons 描边（MIT）</span>
+    <span><span class="scheme-tag tag-e">E</span>Phosphor Icons 双色（MIT）</span>
+  </div>
+
+  <div class="open-hint">
+    打开方式：在资源管理器中双击本文件，或在终端执行
+    <code>pnpm --filter @time-manger/desktop run preview:weather-icons</code>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <p><strong>图库说明</strong></p>
+    <ul>
+      <li><a href="https://lucide.dev" target="_blank" rel="noreferrer">Lucide</a> — 当前项目已安装</li>
+      <li><a href="https://github.com/basmilius/weather-icons" target="_blank" rel="noreferrer">Basmilius Weather Icons</a> — 彩色、辨识度高</li>
+      <li><a href="https://tabler.io/icons" target="_blank" rel="noreferrer">Tabler Icons</a></li>
+      <li><a href="https://phosphoricons.com" target="_blank" rel="noreferrer">Phosphor Icons</a></li>
+    </ul>
+    <p>下方「日历模拟」展示约 14px 图标 + 26° 在实际格子中的大小感。</p>
+  </footer>
+
+  <script type="module">
+    const BASMILIUS = 'https://cdn.jsdelivr.net/gh/basmilius/weather-icons@2.0.5/design/fill/animated-fill';
+    const basmiliusFile = {
+      clear: 'clear-day',
+      'partly-cloudy': 'partly-cloudy-day',
+      fog: 'fog',
+      drizzle: 'drizzle',
+      rain: 'rain',
+      snow: 'snow',
+      thunder: 'thunderstorm',
+    };
+
+    const WEATHERS = [
+      { kind: 'clear', label: '晴' },
+      { kind: 'partly-cloudy', label: '多云' },
+      { kind: 'fog', label: '雾' },
+      { kind: 'drizzle', label: '毛毛雨' },
+      { kind: 'rain', label: '雨' },
+      { kind: 'snow', label: '雪' },
+      { kind: 'thunder', label: '雷雨' },
+    ];
+
+    // Lucide SVG paths (simplified inline, MIT)
+    const lucide = {
+      sun: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`,
+      cloud: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`,
+      cloudSun: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M4.93 4.93l1.41 1.41M2 12h2M2 19.07l1.41-1.41M12 20v2M17.66 17.66l1.41 1.41M20 12h2M20.93 4.93l-1.41 1.41"/><path d="M12 10a4 4 0 0 0-4 4 4 4 0 0 0 4 4h.5"/><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`,
+      cloudFog: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 1 1 0 9H5"/><path d="M16 17H7M17 21H9M21 13H11"/></svg>`,
+      cloudRain: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 1 1 0 9H5"/><path d="M16 14v6M8 14v6M12 16v6"/></svg>`,
+      cloudSnow: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 1 1 0 9H5"/><path d="M8 15h.01M8 19h.01M12 17h.01M12 21h.01M16 15h.01M16 19h.01"/></svg>`,
+      droplets: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.04 0-1.6-1.29-3.73-3.07-6.32-.42-.63-.76-1.05-1.08-1.05-.32 0-.66.42-1.08 1.05C3.29 10.43 2 12.56 2 14.16 2 16.37 3.8 18.2 6 18.2"/><path d="M16.56 18.2c2.2 0 4-1.83 4-4.04 0-1.6-1.29-3.73-3.07-6.32-.42-.63-.76-1.05-1.08-1.05-.32 0-.66.42-1.08 1.05-1.78 2.59-3.07 4.72-3.07 6.32 0 2.21 1.8 4.04 4 4.04Z"/></svg>`,
+      zap: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>`,
+    };
+
+    function iconA(kind) {
+      const sun = `<span class="a-sun sun-back">${lucide.sun.replace('width="28"','width="22"').replace('height="28"','height="22"')}</span>`;
+      const cloud = `<span class="a-cloud cloud-front">${lucide.cloud}</span>`;
+      const rain = `<span class="a-rain precip">${lucide.droplets}</span>`;
+      const thunder = `<span class="a-thunder precip">${lucide.zap}</span>`;
+      switch (kind) {
+        case 'clear': return `<div class="icon-box a-sun">${lucide.sun}</div>`;
+        case 'partly-cloudy': return `<div class="icon-box stack">${sun}${cloud}</div>`;
+        case 'fog': return `<div class="icon-box a-cloud">${lucide.cloudFog}</div>`;
+        case 'drizzle':
+        case 'rain': return `<div class="icon-box stack">${cloud}${rain}</div>`;
+        case 'snow': return `<div class="icon-box a-cloud">${lucide.cloudSnow}</div>`;
+        case 'thunder': return `<div class="icon-box stack">${cloud}${thunder}</div>`;
+        default: return `<div class="icon-box a-cloud">${lucide.cloud}</div>`;
+      }
+    }
+
+    function iconB(kind) {
+      const wrap = (cls, svg) => `<div class="icon-box ${cls}">${svg}</div>`;
+      switch (kind) {
+        case 'clear': return wrap('b-sun', lucide.sun);
+        case 'partly-cloudy': return wrap('b-cloudy', lucide.cloudSun);
+        case 'fog': return wrap('b-cloudy', lucide.cloudFog);
+        case 'drizzle':
+        case 'rain': return wrap('b-rain', lucide.cloudRain);
+        case 'snow': return wrap('b-cloudy', lucide.cloudSnow);
+        case 'thunder': return wrap('b-rain', lucide.cloudRain.replace('M16 14v6M8 14v6M12 16v6', '') + lucide.zap.replace('width="16"','width="20"').replace('height="16"','height="20"'));
+        default: return wrap('b-cloudy', lucide.cloud);
+      }
+    }
+
+    function iconC(kind) {
+      const file = basmiliusFile[kind] || 'cloudy';
+      const url = `${BASMILIUS}/${file}.svg`;
+      return `<div class="icon-box"><img src="${url}" alt="${kind}" loading="lazy" onerror="this.alt='加载失败';this.style.opacity=.4"/></div>`;
+    }
+
+    // Tabler (MIT) — 精简 path
+    const tabler = {
+      sun: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-sun"><path d="M8 12a4 4 0 1 0 8 0 4 4 0 1 0 -8 0"/><path d="M3 12h1m8-9v1m8 8h1m-9 8v1M5.6 5.6l.7.7m12.1-.7l-.7.7m0 11.4l.7.7m-12.1-.7l-.7.7"/></svg>`,
+      cloud: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-cloud"><path d="M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.483 4.657 -4.483c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.573 3.956 -.267 5.562 1.068c1.606 1.335 2.615 3.403 2.879 5.605c2.572 0 4.657 2.008 4.657 4.484c0 2.476 -2.085 4.484 -4.657 4.484h-12.004"/></svg>`,
+      rain: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-rain"><path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 10 0h.5a4.5 4.5 0 0 1 .5 8.5"/><path d="M16 19v2M8 19v2M12 21v2"/></svg>`,
+      snow: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-cloud"><path d="M10 4v4M14 6l-2 2M16 10h-4M14 14l-2 -2M10 20v-4M8.5 16.5l2.5 -2.5M7 10h4M8.5 7.5l2.5 2.5"/><path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 10 0h.5"/></svg>`,
+      fog: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-cloud"><path d="M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 10 0h.5"/><path d="M6 20h12M9 16h6"/></svg>`,
+      bolt: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-rain"><path d="M13 13l-2 -2M8.5 16.5l2.5 2.5M7 18a4.6 4.4 0 0 1 0 -9a5 4.5 0 0 1 10 0h.5"/><path d="M13 18l-2 4h3l-2 4"/></svg>`,
+    };
+
+    function iconD(kind) {
+      const w = (svg) => `<div class="icon-box">${svg}</div>`;
+      switch (kind) {
+        case 'clear': return w(tabler.sun);
+        case 'partly-cloudy': return w(tabler.sun.replace('d-sun','d-sun') + tabler.cloud.replace('width="28"','width="24"').replace('class="d-cloud"','class="d-cloud" style="margin-left:-18px;margin-top:6px"'));
+        case 'fog': return w(tabler.fog);
+        case 'drizzle':
+        case 'rain': return w(tabler.rain);
+        case 'snow': return w(tabler.snow);
+        case 'thunder': return w(tabler.bolt);
+        default: return w(tabler.cloud);
+      }
+    }
+
+    // Phosphor duotone style (MIT) via CDN fill SVGs
+    const phosphor = 'https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/fill';
+    const phosphorFile = {
+      clear: 'sun-fill',
+      'partly-cloudy': 'cloud-sun-fill',
+      fog: 'cloud-fog-fill',
+      drizzle: 'cloud-rain-fill',
+      rain: 'cloud-rain-fill',
+      snow: 'cloud-snow-fill',
+      thunder: 'cloud-lightning-fill',
+    };
+
+    function iconE(kind) {
+      const file = phosphorFile[kind] || 'cloud-fill';
+      const url = `${phosphor}/${file}.svg`;
+      return `<div class="icon-box"><img src="${url}" alt="${kind}" width="32" height="32" style="filter: hue-rotate(-10deg);" onerror="this.style.opacity=.35"/></div>`;
+    }
+
+    function mockCell(htmlIcon) {
+      const small = htmlIcon
+        .replace(/width="28"/g, 'width="14"')
+        .replace(/height="28"/g, 'height="14"')
+        .replace(/width="22"/g, 'width="12"')
+        .replace(/height="22"/g, 'height="12"')
+        .replace(/width="36"/g, 'width="18"')
+        .replace(/height="36"/g, 'height="18"')
+        .replace(/width="32"/g, 'width="16"')
+        .replace(/height="32"/g, 'height="16"');
+      return `<div class="mock-cell">${small}<span class="mock-temp">26°</span></div>`;
+    }
+
+    const schemes = [
+      { id: 'A', name: 'Lucide 叠层（现用）', render: iconA },
+      { id: 'B', name: 'Lucide 单体', render: iconB },
+      { id: 'C', name: 'Basmilius 彩色', render: iconC },
+      { id: 'D', name: 'Tabler 描边', render: iconD },
+      { id: 'E', name: 'Phosphor 填充', render: iconE },
+    ];
+
+    const grid = document.getElementById('grid');
+    for (const w of WEATHERS) {
+      const row = document.createElement('section');
+      row.className = 'weather-row';
+      row.innerHTML = `<h2>${w.label} <span class="kind-id">${w.kind}</span></h2>`;
+      const opts = document.createElement('div');
+      opts.className = 'options';
+      for (const s of schemes) {
+        const html = s.render(w.kind);
+        const el = document.createElement('div');
+        el.className = 'option';
+        el.dataset.scheme = s.id;
+        el.dataset.kind = w.kind;
+        el.innerHTML = `
+          <div class="option-label"><span class="scheme-tag tag-${s.id.toLowerCase()}">${s.id}</span>${s.name}</div>
+          ${html}
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">日历模拟</div>
+          ${mockCell(html)}
+        `;
+        el.addEventListener('click', () => {
+          document.querySelectorAll(`.option[data-kind="${w.kind}"]`).forEach((n) => n.classList.remove('selected'));
+          el.classList.add('selected');
+        });
+        opts.appendChild(el);
+      }
+      row.appendChild(opts);
+      grid.appendChild(row);
+    }
+  </script>
+</body>
+</html>

@@ -1,14 +1,15 @@
 .memo-cal {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 0 auto;
+  width: 100%;
   min-height: 0;
 }
 
 .memo-cal__panel {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   gap: 12px;
   padding: 14px 14px 12px;
@@ -44,7 +45,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  max-width: 9.5em;
+  min-width: calc(9.5em + 100px);
+  max-width: calc(9.5em + 100px);
   border: 1px solid var(--tm-glass-border-light);
   border-radius: var(--tm-btn-radius);
   padding: 7px 11px;
@@ -214,14 +216,6 @@
   background: var(--tm-btn-secondary-fill-hover);
 }
 
-.memo-cal__today-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffb347, #ff8c42);
-  box-shadow: 0 0 0 2px rgba(255, 140, 66, 0.25);
-}
-
 .memo-cal__weekdays {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -246,10 +240,10 @@
 .memo-cal__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: minmax(92px, 1fr);
+  grid-auto-rows: auto;
   gap: 5px;
-  flex: 1;
-  min-height: 300px;
+  flex: 0 0 auto;
+  align-content: start;
 }
 
 .memo-cal__cell {
@@ -258,7 +252,8 @@
   flex-direction: column;
   align-items: stretch;
   text-align: left;
-  min-height: 92px;
+  min-height: 72px;
+  height: auto;
   padding: 7px 7px 6px;
   border: 1px solid rgba(130, 155, 210, 0.28);
   border-radius: 12px;
@@ -419,12 +414,55 @@
 }
 
 .memo-cal__weather {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 10px;
   font-weight: 700;
-  line-height: 1.2;
-  color: #3a6ab8;
+  line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.memo-cal__weather--md {
+  gap: 4px;
+  font-size: 11px;
+}
+
+.memo-cal__weather-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 1px rgba(40, 60, 120, 0.12));
+}
+
+.memo-cal__weather-glyph {
+  display: block;
+  flex-shrink: 0;
+}
+
+.memo-cal__weather-icon--clear .memo-cal__weather-glyph,
+.memo-cal__weather-icon--partly-cloudy .memo-cal__weather-glyph {
+  color: #f5c842;
+  stroke: #e8a820;
+}
+
+.memo-cal__weather-icon--fog .memo-cal__weather-glyph,
+.memo-cal__weather-icon--snow .memo-cal__weather-glyph {
+  color: #f4f7fc;
+  stroke: #b8c8dc;
+}
+
+.memo-cal__weather-icon--drizzle .memo-cal__weather-glyph,
+.memo-cal__weather-icon--rain .memo-cal__weather-glyph,
+.memo-cal__weather-icon--thunder .memo-cal__weather-glyph {
+  color: #4a9eff;
+  stroke: #2f7ee8;
+}
+
+.memo-cal__weather-temp {
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .memo-cal__cell-body {
@@ -432,6 +470,8 @@
   flex-direction: column;
   gap: 3px;
   margin-top: 5px;
+  /* 为悬浮上移预留空间，避免第一条顶部被 overflow 裁切 */
+  padding-top: 3px;
   min-height: 0;
   flex: 1;
   overflow: hidden;
@@ -443,21 +483,31 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-  border-radius: 6px;
-  padding: 2px 4px;
-  background: rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 3px 4px 3px 5px;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    filter 0.15s ease;
 }
 
-.memo-cal__entry:hover {
-  background: rgba(95, 135, 255, 0.14);
+.memo-cal__entry:hover,
+.memo-cal__entry:focus-within {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 8px rgba(40, 60, 100, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .memo-cal__entry-bar {
-  flex: 0 0 3px;
+  flex: 0 0 4px;
   align-self: stretch;
-  min-height: 14px;
-  border-radius: 3px;
-  box-shadow: 0 0 6px rgba(95, 135, 255, 0.2);
+  min-height: 16px;
+  border-radius: 4px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--memo-entry-accent, #5f87ff) 55%, transparent);
 }
 
 .memo-cal__entry-name {
@@ -465,11 +515,51 @@
   min-width: 0;
   font-size: 11px;
   line-height: 1.25;
-  font-weight: 600;
-  color: #35508e;
+  font-weight: 700;
+  color: #2a3f6e;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.memo-cal__entry-delete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.75);
+  color: #b33c2a;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.memo-cal__entry:hover .memo-cal__entry-delete,
+.memo-cal__entry:focus-within .memo-cal__entry-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.memo-cal__entry-delete:hover {
+  border-color: #e07c6d;
+  background: linear-gradient(180deg, #ffefeb 0%, #ffd9d2 100%);
+}
+
+.memo-cal__entry-delete-icon {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .memo-cal__more {

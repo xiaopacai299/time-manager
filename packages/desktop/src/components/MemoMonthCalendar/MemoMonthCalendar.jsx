@@ -6,6 +6,7 @@ import {
   groupItemsByDateKey,
 } from './calendarMonth.js';
 import { buildChineseCalendarMetaMap } from './chineseCalendarMeta.js';
+import WeatherDayBadge, { hasWeatherDisplay } from './WeatherDayBadge.jsx';
 import './MemoMonthCalendar.css';
 
 const MEMO_ACCENT_COLORS = ['#5f87ff', '#3bb68f', '#e07c6d', '#9b7ee8', '#e8a23b', '#4db6d8'];
@@ -16,6 +17,28 @@ function memoAccentColor(id) {
     hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   }
   return MEMO_ACCENT_COLORS[hash % MEMO_ACCENT_COLORS.length];
+}
+
+/** @param {string} hex */
+function memoEntrySurfaceStyle(hex) {
+  const raw = String(hex || '#5f87ff').replace('#', '');
+  const full =
+    raw.length === 3
+      ? raw
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : raw.padEnd(6, '0').slice(0, 6);
+  const n = Number.parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return {
+    '--memo-entry-accent': hex,
+    background: `linear-gradient(135deg, rgba(${r}, ${g}, ${b}, 0.34) 0%, rgba(${r}, ${g}, ${b}, 0.16) 100%)`,
+    borderColor: `rgba(${r}, ${g}, ${b}, 0.52)`,
+    boxShadow: `0 1px 4px rgba(${r}, ${g}, ${b}, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45)`,
+  };
 }
 
 function weekNumberInMonth(year, monthIndex, day) {
@@ -34,7 +57,8 @@ function weekNumberInMonth(year, monthIndex, day) {
  * @param {(dateKey: string) => void} props.onSelectDate
  * @param {(dateKey: string) => void} props.onAddForDate 点击空白日期格
  * @param {(item: object) => void} props.onEditItem 点击格内条目
- * @param {Record<string, { text: string, title?: string }>} [props.weatherByDate]
+ * @param {(item: object) => void} [props.onDeleteItem] 删除格内条目
+ * @param {Record<string, { kind?: string, label?: string, tempMax?: number | null, title?: string }>} [props.weatherByDate]
  * @param {string} [props.weatherLocationLabel]
  * @param {boolean} [props.weatherLoading]
  * @param {{ locationMode?: string, cityName?: string, locationLabel?: string }} [props.weatherSettings]
@@ -55,6 +79,7 @@ export default function MemoMonthCalendar({
   onSelectDate,
   onAddForDate,
   onEditItem,
+  onDeleteItem,
 }) {
   const [weatherPanelOpen, setWeatherPanelOpen] = useState(false);
   const [draftMode, setDraftMode] = useState('ip');
@@ -132,12 +157,13 @@ export default function MemoMonthCalendar({
     weatherSettings?.locationLabel ||
     (weatherSettings?.locationMode === 'manual' ? weatherSettings?.cityName : '') ||
     '';
+  const todayWeather = weatherByDate?.[todayKey];
+
   const locationBtnLabel = weatherLoading
     ? displayCity
       ? `${displayCity}…`
       : '定位中…'
     : displayCity || '定位中…';
-
   return (
     <div className="memo-cal">
       <div className="memo-cal__panel">
@@ -226,7 +252,9 @@ export default function MemoMonthCalendar({
               ) : null}
             </div>
             <button type="button" className="memo-cal__today-btn" onClick={goToday}>
-              <span className="memo-cal__today-dot" aria-hidden="true" />
+              {hasWeatherDisplay(todayWeather) ? (
+                <WeatherDayBadge weather={todayWeather} size="md" iconOnly />
+              ) : null}
               今天
             </button>
           </div>
@@ -264,7 +292,7 @@ export default function MemoMonthCalendar({
             const weekdayIndex =
               (new Date(cellYear, cellMonth - 1, cellDay).getDay() + 6) % 7;
             const isWeekend = weekdayIndex >= 5;
-            const weather = weatherByDate?.[cell.dateKey];
+            const weather = cell.inCurrentMonth ? weatherByDate?.[cell.dateKey] : null;
 
             return (
               <button
@@ -291,8 +319,9 @@ export default function MemoMonthCalendar({
                 <div className="memo-cal__cell-head">
                   <div className="memo-cal__day-row">
                     <span className="memo-cal__day">{cell.day}</span>
-                    {meta?.restBadge || meta?.festivalLabel || weather?.text ? (
+                    {hasWeatherDisplay(weather) || meta?.restBadge || meta?.festivalLabel ? (
                       <span className="memo-cal__mark-group">
+                        <WeatherDayBadge weather={weather} />
                         {meta?.restBadge ? (
                           <span
                             className={[
@@ -310,11 +339,6 @@ export default function MemoMonthCalendar({
                             {meta.festivalLabel}
                           </span>
                         ) : null}
-                        {weather?.text ? (
-                          <span className="memo-cal__weather" title={weather.title || weather.text}>
-                            {weather.text}
-                          </span>
-                        ) : null}
                       </span>
                     ) : null}
                     {isToday ? (
@@ -325,26 +349,46 @@ export default function MemoMonthCalendar({
                   </div>
                 </div>
                 <div className="memo-cal__cell-body">
-                  {visible.map((item) => (
-                    <div
-                      key={item.id}
-                      className="memo-cal__entry"
-                      title={String(item.name || '')}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditItem?.(item);
-                      }}
-                    >
-                      <span
-                        className="memo-cal__entry-bar"
-                        style={{ backgroundColor: memoAccentColor(item.id) }}
-                        aria-hidden="true"
-                      />
-                      <span className="memo-cal__entry-name">
-                        {String(item.name || '备忘录').trim()}
-                      </span>
-                    </div>
-                  ))}
+                  {visible.map((item) => {
+                    const accent = memoAccentColor(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className="memo-cal__entry"
+                        style={memoEntrySurfaceStyle(accent)}
+                        title={String(item.name || '')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditItem?.(item);
+                        }}
+                      >
+                        <span
+                          className="memo-cal__entry-bar"
+                          style={{ backgroundColor: accent }}
+                          aria-hidden="true"
+                        />
+                        <span className="memo-cal__entry-name">
+                          {String(item.name || '备忘录').trim()}
+                        </span>
+                        {onDeleteItem ? (
+                          <button
+                            type="button"
+                            className="memo-cal__entry-delete"
+                            aria-label={`删除 ${String(item.name || '备忘录').trim()}`}
+                            title="删除"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteItem(item);
+                            }}
+                          >
+                            <span className="memo-cal__entry-delete-icon" aria-hidden="true">
+                              ×
+                            </span>
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                   {more > 0 ? (
                     <span className="memo-cal__more">还有 {more} 条</span>
                   ) : null}

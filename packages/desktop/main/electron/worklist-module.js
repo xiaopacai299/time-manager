@@ -150,11 +150,11 @@ export function createWorklistModule({
     const id = String(raw.id || '').trim();
     if (!id) return null;
     const content = String(raw.content ?? '').trim().slice(0, 50000);
-    if (!content) return null;
     const name =
       String(raw.name || '')
         .trim()
         .slice(0, 200) || memoNameFallbackFromContent(content);
+    if (!name) return null;
     const icon = sanitizeWorklistIcon(raw.icon);
     const reminderAt = normalizeWorklistDatetime(raw.reminderAt);
     const createdAt = normalizeWorklistDatetime(raw.createdAt) || chinaStorageIsoNow();
@@ -192,7 +192,7 @@ export function createWorklistModule({
       reminderNotified: false,
     });
     if (!entry) {
-      return { ok: false, error: '请填写备忘录内容', list: getMemoList() };
+      return { ok: false, error: '请填写备忘录名称', list: getMemoList() };
     }
     petState.memoList = [...getMemoList(), entry];
     markDirtyMemoItem?.(entry);
@@ -226,7 +226,7 @@ export function createWorklistModule({
       reminderNotified: reminderChanged ? false : existing.reminderNotified,
     });
     if (!entry) {
-      return { ok: false, error: '请填写备忘录内容', list: getMemoList() };
+      return { ok: false, error: '请填写备忘录名称', list: getMemoList() };
     }
     petState.memoList = getMemoList().map((item) => (item.id === id ? entry : item));
     markDirtyMemoItem?.(entry);
