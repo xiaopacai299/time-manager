@@ -1,29 +1,36 @@
 :root {
-  --wm-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
-  --wm-text: rgba(22, 32, 52, 0.94);
-  --wm-text-muted: rgba(58, 72, 98, 0.72);
+  --wm-font: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --wm-font-display: 'Outfit', 'Noto Sans SC', system-ui, sans-serif;
+  --wm-text: rgba(18, 28, 48, 0.96);
+  --wm-text-muted: rgba(52, 68, 98, 0.72);
   --wm-accent: #5f87ff;
   --wm-accent-deep: #4062d6;
-  --wm-page-bg: #edf2ff;
+  --wm-accent-violet: #8b7ee8;
+  --wm-accent-mint: #3bb68f;
+  --wm-page-bg: #e8eeff;
+  --wm-blur-xl: blur(48px) saturate(1.85);
   --wm-blur-md: blur(28px) saturate(1.58);
-  --wm-glass-bg: rgba(255, 255, 255, 0.22);
-  --wm-glass-bg-strong: rgba(255, 255, 255, 0.36);
+  --wm-glass-bg: rgba(255, 255, 255, 0.2);
+  --wm-glass-bg-strong: rgba(255, 255, 255, 0.42);
   --wm-glass-border: rgba(112, 130, 176, 0.22);
-  --wm-glass-border-light: rgba(255, 255, 255, 0.64);
-  --wm-glass-shadow: 0 16px 44px rgba(32, 48, 88, 0.1);
-  --wm-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.62);
-  --wm-mesh-a: radial-gradient(ellipse 125% 82% at 10% -8%, rgba(130, 168, 255, 0.42), transparent 56%);
-  --wm-mesh-b: radial-gradient(ellipse 100% 70% at 90% 12%, rgba(218, 195, 255, 0.36), transparent 52%);
-  --wm-mesh-c: radial-gradient(ellipse 88% 56% at 48% 106%, rgba(140, 228, 238, 0.28), transparent 50%);
-  --wm-mesh-base: linear-gradient(172deg, #f5f8ff 0%, #eef3fc 36%, #e4ecfa 68%, #dce5f7 100%);
-  --wm-btn-primary: linear-gradient(168deg, #b0bcff 0%, #93a4ff 26%, #748dff 58%, #637de8 100%);
+  --wm-glass-border-light: rgba(255, 255, 255, 0.72);
+  --wm-glass-shadow: 0 20px 50px rgba(32, 48, 88, 0.12);
+  --wm-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --wm-mesh-a: radial-gradient(ellipse 120% 80% at 8% -5%, rgba(130, 168, 255, 0.55), transparent 58%);
+  --wm-mesh-b: radial-gradient(ellipse 90% 65% at 92% 8%, rgba(218, 195, 255, 0.45), transparent 55%);
+  --wm-mesh-c: radial-gradient(ellipse 80% 50% at 50% 108%, rgba(140, 228, 238, 0.35), transparent 52%);
+  --wm-mesh-d: radial-gradient(ellipse 60% 40% at 70% 40%, rgba(95, 135, 255, 0.18), transparent 60%);
+  --wm-mesh-base: linear-gradient(165deg, #f6f9ff 0%, #eef3fc 38%, #e2eaf8 100%);
+  --wm-btn-primary: linear-gradient(168deg, #b8c4ff 0%, #8fa4ff 28%, #6f8dff 58%, #5a78e8 100%);
   --wm-btn-3d-primary:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 1px rgba(35, 55, 130, 0.12),
-    0 4px 14px rgba(60, 90, 200, 0.2),
-    0 10px 28px rgba(70, 105, 210, 0.12);
-  --wm-section-pad: clamp(64px, 10vw, 120px);
-  --wm-content-max: 1120px;
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(35, 55, 130, 0.14),
+    0 6px 20px rgba(60, 90, 200, 0.28),
+    0 16px 40px rgba(70, 105, 210, 0.16);
+  --wm-section-pad: clamp(72px, 11vw, 128px);
+  --wm-content-max: 1180px;
+  --wm-radius-lg: 22px;
+  --wm-radius-xl: 28px;
 }
 
 *,
@@ -42,13 +49,28 @@ body {
   font-family: var(--wm-font);
   color: var(--wm-text);
   background: var(--wm-page-bg);
-  background-image: var(--wm-mesh-a), var(--wm-mesh-b), var(--wm-mesh-c), var(--wm-mesh-base);
+  background-image: var(--wm-mesh-a), var(--wm-mesh-b), var(--wm-mesh-c), var(--wm-mesh-d), var(--wm-mesh-base);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
   min-height: 100vh;
+}
+
+.site {
+  position: relative;
+}
+
+.site::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
 }
 
 a {
@@ -62,8 +84,8 @@ img {
 }
 
 code {
-  font-size: 0.9em;
-  padding: 2px 6px;
+  font-size: 0.88em;
+  padding: 2px 7px;
   border-radius: 6px;
   background: rgba(95, 135, 255, 0.12);
   color: var(--wm-accent-deep);

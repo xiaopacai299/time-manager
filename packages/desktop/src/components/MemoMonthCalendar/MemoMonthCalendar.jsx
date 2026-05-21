@@ -294,11 +294,17 @@ export default function MemoMonthCalendar({
             const isWeekend = weekdayIndex >= 5;
             const weather = cell.inCurrentMonth ? weatherByDate?.[cell.dateKey] : null;
 
+            const selectCell = () => {
+              onSelectDate?.(cell.dateKey);
+              onAddForDate?.(cell.dateKey);
+            };
+
             return (
-              <button
+              <div
                 key={cell.dateKey}
-                type="button"
                 role="gridcell"
+                tabIndex={0}
+                aria-selected={isSelected}
                 className={[
                   'memo-cal__cell',
                   !cell.inCurrentMonth ? 'memo-cal__cell--outside' : '',
@@ -311,9 +317,12 @@ export default function MemoMonthCalendar({
                 ]
                   .filter(Boolean)
                   .join(' ')}
-                onClick={() => {
-                  onSelectDate?.(cell.dateKey);
-                  onAddForDate?.(cell.dateKey);
+                onClick={selectCell}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectCell();
+                  }
                 }}
               >
                 <div className="memo-cal__cell-head">
@@ -398,7 +407,7 @@ export default function MemoMonthCalendar({
                     +
                   </span>
                 ) : null}
-              </button>
+              </div>
             );
           })}
         </div>

@@ -1,5 +1,6 @@
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
+import Showcase from './components/Showcase.jsx';
 import Features from './components/Features.jsx';
 import Advantages from './components/Advantages.jsx';
 import SyncStrip from './components/SyncStrip.jsx';
@@ -13,6 +14,7 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
+        <Showcase />
         <Features />
         <Advantages />
         <SyncStrip />

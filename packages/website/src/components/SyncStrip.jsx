@@ -6,9 +6,7 @@ export default function SyncStrip() {
   return (
     <section className="section sync" id="sync">
       <Reveal className="section__head section__head--center">
-        <p className="section__eyebrow">Sync</p>
-        <h2>桌面 + 手机 + 云端</h2>
-        <p>同一账号，增量同步工作清单、日记、备忘录与时间记录。</p>
+        <h2>多端同步</h2>
       </Reveal>
 
       <div className="sync__flow">
@@ -28,7 +26,6 @@ export default function SyncStrip() {
               >
                 <span className="sync__node-icon">{p.icon}</span>
                 <strong>{p.name}</strong>
-                <p>{p.desc}</p>
               </motion.div>
             </Reveal>
           ))}

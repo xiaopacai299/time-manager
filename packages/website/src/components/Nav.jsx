@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { NAV_ITEMS } from '../data/siteContent.js';
+import { APP_ICON, APP_NAME, NAV_ITEMS } from '../data/siteContent.js';
 
 export default function Nav() {
   return (
@@ -10,13 +10,8 @@ export default function Nav() {
       transition={{ duration: 0.55, ease: [0.33, 1, 0.68, 1] }}
     >
       <a className="site-nav__brand" href="#top">
-        <span className="site-nav__logo" aria-hidden="true">
-          WM
-        </span>
-        <span>
-          Work Master
-          <small>时间管家</small>
-        </span>
+        <img className="site-nav__logo" src={APP_ICON} alt="" width={36} height={36} />
+        <span>{APP_NAME}</span>
       </a>
       <nav className="site-nav__links" aria-label="页面导航">
         {NAV_ITEMS.map((item) => (

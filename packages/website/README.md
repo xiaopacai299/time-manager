@@ -1,4 +1,4 @@
-# Work Master 官网
+# 橘子ING 官网
 
 产品宣传落地页，技术栈：Vite + React + Framer Motion。
 
@@ -25,7 +25,11 @@ pnpm website:build
 编辑 `src/data/siteContent.js` 中 `DOWNLOAD_LINKS`：
 
 1. 构建桌面安装包：`pnpm desktop:build` → `packages/desktop/release/`
-2. 将安装包复制到 `public/downloads/`，例如 `work-master-setup.exe`
-3. 设置 `href: '/downloads/work-master-setup.exe'`
+2. 将安装包复制到 `public/downloads/`
+3. 设置 `href: '/downloads/你的安装包文件名.exe'`
 
 移动端 APK 同理：`pnpm mobile:build:android:apk` 后放到 `public/downloads/`。
+
+## 站点图标
+
+官网图标来自 `packages/desktop/build/icon.png`，更新桌面端图标后请同步复制到 `packages/website/public/icon.png`。

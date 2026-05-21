@@ -1,118 +1,104 @@
 import { motion } from 'framer-motion';
-
-const floatTransition = {
-  duration: 5,
-  repeat: Infinity,
-  repeatType: 'reverse',
-  ease: 'easeInOut',
-};
+import { APP_NAME } from '../data/siteContent.js';
+import ScreenshotFrame from './ScreenshotFrame.jsx';
 
 export default function Hero() {
   return (
     <section className="hero" id="top">
+      <div className="hero__grid-lines" aria-hidden="true" />
       <div className="hero__mesh" aria-hidden="true">
         <motion.span
           className="hero__orb hero__orb--a"
-          animate={{ x: [0, 24, -12, 0], y: [0, -18, 10, 0] }}
-          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+          animate={{ x: [0, 32, -16, 0], y: [0, -24, 12, 0] }}
+          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.span
           className="hero__orb hero__orb--b"
-          animate={{ x: [0, -30, 16, 0], y: [0, 22, -8, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          animate={{ x: [0, -40, 20, 0], y: [0, 28, -10, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.span
           className="hero__orb hero__orb--c"
-          animate={{ scale: [1, 1.08, 0.96, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+          animate={{ scale: [1, 1.12, 0.94, 1], rotate: [0, 8, -6, 0] }}
+          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
-      <div className="hero__grid">
+      <div className="hero__inner">
         <motion.div
           className="hero__copy"
-          initial={{ opacity: 0, x: -32 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.75, delay: 0.1 }}
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.05 }}
         >
-          <p className="hero__eyebrow">Desktop Pet · Time & Focus</p>
-          <h1>
-            让时间管理
-            <br />
-            <span className="hero__gradient-text">温柔而高级</span>
-          </h1>
-          <p className="hero__lead">
-            Work Master（时间管家）把专注统计、四象限清单、备忘录月历、日记与 AI
-            助手，收进一只常驻桌面的玻璃风宠物里——陪你专注，而不打断心流。
-          </p>
+          <h1 className="hero__gradient-text">{APP_NAME}</h1>
+          <p className="hero__lead">桌面宠物 · 任务备忘 · 时间统计</p>
           <div className="hero__actions">
-            <a className="btn btn--primary" href="#download">
-              立即下载
+            <a className="btn btn--primary btn--lg" href="#download">
+              免费下载
             </a>
-            <a className="btn btn--ghost" href="#features">
-              探索功能
+            <a className="btn btn--ghost btn--lg" href="#showcase">
+              浏览实机界面
             </a>
           </div>
           <ul className="hero__stats">
             <li>
-              <strong>10+</strong>
-              <span>核心模块</span>
+              <strong>7+</strong>
+              <span>核心窗口</span>
             </li>
             <li>
               <strong>3</strong>
-              <span>端数据同步</span>
+              <span>端同步</span>
             </li>
             <li>
               <strong>0</strong>
-              <span>广告打扰</span>
+              <span>广告</span>
             </li>
           </ul>
         </motion.div>
 
         <motion.div
           className="hero__visual"
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          initial={{ opacity: 0, y: 40, rotateX: 8 }}
+          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+          transition={{ duration: 0.9, delay: 0.15 }}
         >
+          <div className="hero__visual-glow" aria-hidden="true" />
           <motion.div
-            className="hero__pet-card"
-            animate={{ y: [0, -10, 0] }}
-            transition={floatTransition}
+            className="hero__main-shot"
+            animate={{ y: [0, -12, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <div className="hero__pet-face" aria-hidden="true">
-              <span className="hero__pet-eye" />
-              <span className="hero__pet-eye" />
-            </div>
-            <div className="hero__pet-bubble">已连续专注 42 分钟，起来走走？</div>
-            <div className="hero__pet-panel">
-              <div className="hero__pet-row">
-                <span>今日 Top</span>
-                <strong>VS Code</strong>
-              </div>
-              <div className="hero__pet-bar">
-                <span style={{ width: '78%' }} />
-              </div>
-              <div className="hero__pet-chips">
-                <span>工作清单</span>
-                <span>备忘录</span>
-                <span>AI</span>
-              </div>
-            </div>
+            <ScreenshotFrame
+              src="/screenshots/memo-calendar.png"
+              alt="备忘录月历实机界面"
+              variant="hero"
+              tilt
+            />
           </motion.div>
           <motion.div
-            className="hero__float-card hero__float-card--memo"
-            animate={{ y: [0, 8, 0], rotate: [0, 2, 0] }}
-            transition={{ ...floatTransition, duration: 6 }}
+            className="hero__float-shot hero__float-shot--matrix"
+            animate={{ y: [0, 10, 0], rotate: [0, -2, 0] }}
+            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
           >
-            <span>📅</span> 劳动节 · ☀26°
+            <ScreenshotFrame
+              src="/screenshots/worklist-matrix.png"
+              alt="四象限工作清单"
+              caption="今日计划"
+              variant="inset"
+            />
           </motion.div>
           <motion.div
-            className="hero__float-card hero__float-card--sync"
-            animate={{ y: [0, -6, 0] }}
-            transition={{ ...floatTransition, duration: 7, delay: 0.4 }}
+            className="hero__float-shot hero__float-shot--ai"
+            animate={{ y: [0, -8, 0], rotate: [0, 3, 0] }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
           >
-            <span>☁️</span> 已同步到手机
+            <ScreenshotFrame
+              src="/screenshots/ai-chat.png"
+              alt="AI 对话"
+              caption="AI 对话"
+              variant="inset"
+            />
           </motion.div>
         </motion.div>
       </div>
