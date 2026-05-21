@@ -19,7 +19,8 @@ export function createMenuModule({
   onOpenStatsWindow,
   onOpenDiary,
   onOpenStickyLinks,
-  // onEmitPetAction,
+  onEmitPetAction,
+  angryActionMenu = [],
   onToggleAutoLaunch,
   appDisplayName = '橘子ING',
 }) {
@@ -98,6 +99,16 @@ export function createMenuModule({
     ]);
   }
 
+  function buildTestSubmenu() {
+    const angryItems = angryActionMenu.map((item) => ({
+      label: item.label,
+      click: () => onEmitPetAction?.(item.id),
+    }))
+    return [
+      { label: '生气', submenu: angryItems.length ? angryItems : [{ label: '（未配置）', enabled: false }] },
+    ]
+  }
+
   function buildPetContextMenu() {
     const petState = getPetState();
     const loginItemSettings = app.getLoginItemSettings();
@@ -147,15 +158,10 @@ export function createMenuModule({
         label: '设置',
         click: () => onOpenSettings(),
       },
-      // {
-      //   label: '动作测试',
-      //   submenu: [
-      //     { label: '休息 rest', click: () => onEmitPetAction('rest') },
-      //     { label: '工作 work', click: () => onEmitPetAction('work') },
-      //     { label: '提醒 remind', click: () => onEmitPetAction('remind') },
-      //     { label: '报警 long-work', click: () => onEmitPetAction('long-work') },
-      //   ],
-      // },
+      {
+        label: '测试',
+        submenu: buildTestSubmenu(),
+      },
       { type: 'separator' },
       {
         label: '开机自动启动',

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import lottie from 'lottie-web'
-import { getPetDefinition } from '../pets/registry'
+import { DEFAULT_PET_ID, getPetDefinition } from '../pets/registry'
 
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
 
@@ -8,7 +8,12 @@ const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
  * 底层 bad-cat / 休息变体；追逐 run-cat。
  * 休息：半速 + 休息 JSON 剔除 Lapa、保留 cup 并水平镜像；叠加层仅爪与白烟轻摆。
  */
-export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOTION, selectedPet = 'black-coal' }) {
+export default function AnimatedPet({
+  mood = 'work',
+  petMotion = DEFAULT_PET_MOTION,
+  selectedPet = DEFAULT_PET_ID,
+  overrideImageUrl = null,
+}) {
   const idleRef = useRef(null)
   const chaseRef = useRef(null)
   const idleAnimRef = useRef(null)
@@ -21,6 +26,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
   const ChaseEffectsComponent = petDef.chaseEffectsComponent
 
   useEffect(() => {
+    if (petDef.renderMode === 'image' || !petDef.chaseAnimation) return undefined
     const chaseEl = chaseRef.current
     if (!chaseEl) return undefined
 
@@ -48,6 +54,7 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
   }, [petDef])
 
   useEffect(() => {
+    if (petDef.renderMode === 'image') return undefined
     const idleEl = idleRef.current
     const chaseAnim = chaseAnimRef.current
     if (!idleEl || !chaseAnim) return undefined
@@ -126,6 +133,23 @@ export default function AnimatedPet({ mood = 'work', petMotion = DEFAULT_PET_MOT
     const dirScale = petMotion.mirrorX ? -1 : 1
     return petDef.invertChaseFacing ? dirScale * -1 : dirScale
   }, [petMotion.mirrorX, petDef])
+
+  const displayImageUrl = overrideImageUrl || (petDef.renderMode === 'image' ? petDef.imageUrl : null)
+  if (displayImageUrl) {
+    return (
+      <div
+        className={`pet-visual pet-visual--image ${overrideImageUrl ? 'pet-visual--override' : ''} ${moodClass} ${chasing ? 'pet-visual--chasing' : ''}`}
+        role="img"
+        aria-label="桌面宠物"
+      >
+        <div className="pet-visual__bob">
+          <div className="pet-visual__facing-wrap" style={wrapStyle}>
+            <img src={displayImageUrl} className="pet-visual__image" alt="" draggable={false} />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`pet-visual ${moodClass} ${chasing ? 'pet-visual--chasing' : ''}`} role="img" aria-label="桌面宠物动画">

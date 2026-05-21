@@ -32,7 +32,7 @@ function PetAiChatPanelInner({
   llmSkills,
   onClose,
   layout,
-  selectedPet = 'black-coal',
+  selectedPet = 'sakura-girl',
   /** 独立窗口内跳转到 `#pet-ai-chat/skills` 编辑技能 */
   onOpenSkillsEditor,
 }, ref) {

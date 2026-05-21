@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import lottie from 'lottie-web'
 import './SettingsWindowApp.css'
-import { PET_LIST } from './pets/registry'
+import { DEFAULT_PET_ID, PET_LIST } from './pets/registry'
 import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from './configKeys'
 
 const PET_AI_CHAT_BG_PRESET_OPTIONS = [
@@ -38,7 +38,7 @@ function PetLottieIcon({ animationData }) {
 }
 
 export default function SettingsWindowApp() {
-  const [selectedPet, setSelectedPet] = useState('black-coal')
+  const [selectedPet, setSelectedPet] = useState(DEFAULT_PET_ID)
   const [bubbleTexts, setBubbleTexts] = useState(DEFAULT_BUBBLE_TEXTS)
   const [remindContinuousMins, setRemindContinuousMins] = useState(Math.round(REMIND_CONTINUOUS_MS / 60000))
   const [longWorkContinuousMins, setLongWorkContinuousMins] = useState(Math.round(LONG_WORK_CONTINUOUS_MS / 60000))
@@ -60,7 +60,7 @@ export default function SettingsWindowApp() {
     let mounted = true
     window.timeManagerAPI?.getPetSettings?.().then((data) => {
       if (!mounted || !data) return
-      setSelectedPet(String(data.selectedPet || 'black-coal'))
+      setSelectedPet(String(data.selectedPet || DEFAULT_PET_ID))
       const next = data.bubbleTexts && typeof data.bubbleTexts === 'object' ? data.bubbleTexts : {}
       setBubbleTexts({
         work: String(next.work || ''),
@@ -260,7 +260,9 @@ export default function SettingsWindowApp() {
                 setSelectedPet(pet.id)
               }}
             >
-              {pet.previewAnimation ? (
+              {pet.renderMode === 'image' && pet.previewImage ? (
+                <img src={pet.previewImage} className="settings-pet-icon settings-pet-icon--image" alt="" />
+              ) : pet.previewAnimation ? (
                 <PetLottieIcon animationData={pet.previewAnimation} />
               ) : (
                 <span className="settings-pet-icon" aria-hidden="true">🐾</span>

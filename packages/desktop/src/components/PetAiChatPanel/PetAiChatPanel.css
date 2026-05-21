@@ -133,6 +133,12 @@
   pointer-events: none;
 }
 
+.pet-ai-panel__avatar-lottie--image {
+  object-fit: cover;
+  object-position: center 18%;
+  border-radius: 6px;
+}
+
 .pet-ai-panel__avatar--user {
   background: linear-gradient(160deg, #f0f4fa 0%, #e2e9f4 100%);
 }

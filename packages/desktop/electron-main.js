@@ -23,6 +23,7 @@ import os from 'os';
 import { TimeMonitorService } from './main/time-monitor-service.js';
 import { createWorklistModule } from './main/electron/worklist-module.js';
 import { createFavoritesModule } from './main/electron/favorites-module.js';
+import { PET_ANGRY_ACTION_MENU } from './main/electron/pet-angry-actions.js';
 import {
   createQuickLinksModule,
   defaultStickyLinks,
@@ -374,7 +375,7 @@ const petState = {
     autoScrollSpeed: 20,
   },
   petSettings: {
-    selectedPet: 'black-coal',
+    selectedPet: 'sakura-girl',
     bubbleTexts: {
       work: '',
       rest: '',
@@ -1252,7 +1253,7 @@ function loadPetState() {
           ? Number(parsed.petSettings.longWorkContinuousMs)
           : LONG_WORK_CONTINUOUS_MS;
         petState.petSettings = {
-          selectedPet: String(parsed.petSettings.selectedPet || 'black-coal'),
+          selectedPet: String(parsed.petSettings.selectedPet || 'sakura-girl'),
           bubbleTexts: {
             work: String(bubbleTextsRaw.work || ''),
             rest: String(bubbleTextsRaw.rest || ''),
@@ -1568,6 +1569,7 @@ const menuModule = createMenuModule({
   onOpenStatsWindow: () => openStatsDetailWindow(),
   onOpenDiary: () => openDiaryWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
+  angryActionMenu: PET_ANGRY_ACTION_MENU,
   onToggleAutoLaunch: () => toggleAutoLaunch(),
 });
 
@@ -2129,7 +2131,7 @@ function setupIpc() {
     const petAiChatBg = mergePetAiChatBgSettings(input, prevPs);
     console.log('[DEBUG] mergePetAiChatBgSettings result:', petAiChatBg);
     petState.petSettings = {
-      selectedPet: String(input.selectedPet || prevPs.selectedPet || 'black-coal'),
+      selectedPet: String(input.selectedPet || prevPs.selectedPet || 'sakura-girl'),
       bubbleTexts: {
         work: String(bubbleTextsRaw.work ?? prevPs?.bubbleTexts?.work ?? '').slice(0, 120),
         rest: String(bubbleTextsRaw.rest ?? prevPs?.bubbleTexts?.rest ?? '').slice(0, 120),

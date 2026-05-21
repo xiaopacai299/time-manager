@@ -215,6 +215,49 @@
   pointer-events: none;
 }
 
+.pet-visual--image {
+  width: 108px;
+  height: 128px;
+}
+
+.pet-visual--override.pet-visual--image {
+  width: 112px;
+  height: 132px;
+}
+
+.pet-visual--override .pet-visual__bob {
+  animation: petAngryShake 0.45s ease-in-out infinite;
+}
+
+@keyframes petAngryShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px) rotate(-1.2deg);
+  }
+  75% {
+    transform: translateX(2px) rotate(1.2deg);
+  }
+}
+
+.pet-visual--image .pet-visual__facing-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+.pet-visual__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .pet-visual__bob {
   width: 100%;
   height: 100%;

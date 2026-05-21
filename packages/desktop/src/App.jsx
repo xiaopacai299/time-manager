@@ -53,7 +53,8 @@ async function fetchStartupQuoteOnce() {
 }
 
 function App() {
-  const { snapshot, petState, isBridgeReady, transientAction, petMotion } = useTimeManagerPetBridge()
+  const { snapshot, petState, isBridgeReady, transientAction, transientImageOverride, petMotion } =
+    useTimeManagerPetBridge()
   usePetTempInteractive(petState.clickThrough)
   const mood = usePetMood(snapshot, transientAction, petState?.petSettings)
   const topApps = useMemo(() => topAppsFromPerAppToday(snapshot.perAppToday), [snapshot.perAppToday])
@@ -116,7 +117,8 @@ function App() {
         <PetAvatarArea
           mood={mood}
           petMotion={petMotion}
-          selectedPet={petState?.petSettings?.selectedPet || 'black-coal'}
+          selectedPet={petState?.petSettings?.selectedPet || 'sakura-girl'}
+          overrideImageUrl={transientImageOverride}
         />
       </section>
       {startupQuote ? (

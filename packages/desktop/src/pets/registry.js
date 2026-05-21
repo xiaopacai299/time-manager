@@ -1,3 +1,5 @@
+import sakuraGirlImage from '../assets/pets/sakura-girl.png?url'
+import sakuraGirlTongueImage from '../assets/pets/sakura-girl-tongue.png?url'
 import badCatAnimation from '../assets/bad-cat.json'
 import runCatAnimation from '../assets/run-cat.json'
 import turtleAnimation from '../assets/turtle.json'
@@ -12,7 +14,43 @@ import RunCatTailSparks from '../components/RunCatTailSparks'
 
 const badCatRestAnimation = getBadCatRestAnimationData()
 
+export const DEFAULT_PET_ID = 'sakura-girl'
+
 export const PET_REGISTRY = {
+  'sakura-girl': {
+    id: 'sakura-girl',
+    name: '樱酱',
+    enabled: true,
+    renderMode: 'image',
+    imageUrl: sakuraGirlImage,
+    previewImage: sakuraGirlImage,
+    previewAnimation: null,
+    effectsComponent: null,
+    idleByMood: {},
+    chaseAnimation: null,
+    chaseEffectsComponent: null,
+    chaseSpeed: 1,
+    invertChaseFacing: false,
+    idleSegmentsByMood: {},
+    idleSpeedByMood: {},
+  },
+  'sakura-girl-tongue': {
+    id: 'sakura-girl-tongue',
+    name: '樱酱·吐舌',
+    enabled: true,
+    renderMode: 'image',
+    imageUrl: sakuraGirlTongueImage,
+    previewImage: sakuraGirlTongueImage,
+    previewAnimation: null,
+    effectsComponent: null,
+    idleByMood: {},
+    chaseAnimation: null,
+    chaseEffectsComponent: null,
+    chaseSpeed: 1,
+    invertChaseFacing: false,
+    idleSegmentsByMood: {},
+    idleSpeedByMood: {},
+  },
   'black-coal': {
     id: 'black-coal',
     name: '黑煤球',
@@ -133,5 +171,5 @@ export const PET_REGISTRY = {
 export const PET_LIST = Object.values(PET_REGISTRY)
 
 export function getPetDefinition(selectedPet) {
-  return PET_REGISTRY[selectedPet] || PET_REGISTRY['black-coal']
+  return PET_REGISTRY[selectedPet] || PET_REGISTRY[DEFAULT_PET_ID]
 }
