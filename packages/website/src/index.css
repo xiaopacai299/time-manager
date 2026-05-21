@@ -40,7 +40,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 body {
@@ -50,7 +50,6 @@ body {
   color: var(--wm-text);
   background: var(--wm-page-bg);
   background-image: var(--wm-mesh-a), var(--wm-mesh-b), var(--wm-mesh-c), var(--wm-mesh-d), var(--wm-mesh-base);
-  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -68,9 +67,8 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.35;
+  opacity: 0.14;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
 }
 
 a {
@@ -91,8 +89,35 @@ code {
   color: var(--wm-accent-deep);
 }
 
+/* 滚动入场：单一 IO + CSS，比 Framer whileInView 更省主线程 */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-y, 24px), 0);
+  transition:
+    opacity 0.55s cubic-bezier(0.33, 1, 0.68, 1) var(--reveal-delay, 0s),
+    transform 0.55s cubic-bezier(0.33, 1, 0.68, 1) var(--reveal-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.reveal--visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  will-change: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero__orb,
+  .hero__float-anim {
+    animation: none !important;
   }
 }

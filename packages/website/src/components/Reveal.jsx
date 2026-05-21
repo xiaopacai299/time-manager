@@ -1,23 +1,25 @@
-import { motion } from 'framer-motion';
-
-const ease = [0.33, 1, 0.68, 1];
+import { useEffect, useRef } from 'react';
+import { observeReveal } from '../utils/revealObserver.js';
 
 export default function Reveal({
   children,
   className = '',
   delay = 0,
   y = 28,
-  once = true,
 }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('--reveal-y', `${y}px`);
+    el.style.setProperty('--reveal-delay', `${delay}s`);
+    observeReveal(el);
+  }, [delay, y]);
+
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once, amount: 0.2 }}
-      transition={{ duration: 0.65, delay, ease }}
-    >
+    <div ref={ref} className={`reveal ${className}`.trim()}>
       {children}
-    </motion.div>
+    </div>
   );
 }

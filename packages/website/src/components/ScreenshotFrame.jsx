@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 /**
  * @param {object} props
  * @param {string} props.src
@@ -16,10 +14,8 @@ export default function ScreenshotFrame({
   tilt = false,
 }) {
   return (
-    <motion.figure
+    <figure
       className={`shot-frame shot-frame--${variant}${tilt ? ' shot-frame--tilt' : ''}`}
-      whileHover={{ y: -6 }}
-      transition={{ type: 'spring', stiffness: 280, damping: 22 }}
     >
       <div className="shot-frame__chrome" aria-hidden="true">
         <span />
@@ -31,6 +27,6 @@ export default function ScreenshotFrame({
         <div className="shot-frame__sheen" aria-hidden="true" />
       </div>
       {caption ? <figcaption className="shot-frame__caption">{caption}</figcaption> : null}
-    </motion.figure>
+    </figure>
   );
 }

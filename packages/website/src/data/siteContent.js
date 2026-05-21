@@ -1,4 +1,4 @@
-/** 产品名称与图标（图标源：packages/desktop/build/icon.png） */
+/** 产品名称与图标（见 public/icon.png，由 icon-source.png 抠底生成） */
 export const APP_NAME = '橘子ING';
 export const APP_ICON = '/icon.png';
 

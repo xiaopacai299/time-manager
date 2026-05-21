@@ -1,16 +1,11 @@
-import { motion } from 'framer-motion';
 import { DOWNLOAD_LINKS } from '../data/siteContent.js';
 import Reveal from './Reveal.jsx';
 
-function DownloadCard({ platform, data }) {
+function DownloadCard({ data }) {
   const hasLink = Boolean(String(data.href || '').trim());
 
   return (
-    <motion.article
-      className="download-card"
-      whileHover={{ y: -8 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-    >
+    <article className="download-card">
       <div className="download-card__glow" aria-hidden="true" />
       <h3>{data.label}</h3>
       <p className="download-card__hint">{data.hint}</p>
@@ -21,7 +16,7 @@ function DownloadCard({ platform, data }) {
       ) : (
         <span className="download-card__soon">安装包待发布</span>
       )}
-    </motion.article>
+    </article>
   );
 }
 
@@ -34,13 +29,12 @@ export default function Download() {
 
       <div className="download__grid">
         <Reveal delay={0.05}>
-          <DownloadCard platform="windows" data={DOWNLOAD_LINKS.windows} />
+          <DownloadCard data={DOWNLOAD_LINKS.windows} />
         </Reveal>
         <Reveal delay={0.12}>
-          <DownloadCard platform="android" data={DOWNLOAD_LINKS.android} />
+          <DownloadCard data={DOWNLOAD_LINKS.android} />
         </Reveal>
       </div>
-
     </section>
   );
 }

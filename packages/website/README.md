@@ -32,4 +32,12 @@ pnpm website:build
 
 ## 站点图标
 
-官网图标来自 `packages/desktop/build/icon.png`，更新桌面端图标后请同步复制到 `packages/website/public/icon.png`。
+1. 将新图标放到 `public/icon-source.png`（当前为橘子ING 官方图）
+2. 生成透明底 favicon / 导航图标：
+
+```bash
+cd packages/website
+node scripts/strip-icon-bg.mjs
+```
+
+输出为 `public/icon.png`，供顶栏、页脚与浏览器标签使用。

@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { FEATURE_GROUPS } from '../data/siteContent.js';
 import Reveal from './Reveal.jsx';
 
@@ -19,17 +18,13 @@ export default function Features() {
           <div className="features__grid">
             {group.items.map((item, index) => (
               <Reveal key={item.title} delay={0.08 + index * 0.05}>
-                <motion.article
-                  className="feature-card"
-                  whileHover={{ y: -6, scale: 1.01 }}
-                  transition={{ type: 'spring', stiffness: 320, damping: 22 }}
-                >
+                <article className="feature-card">
                   <span className="feature-card__icon" aria-hidden="true">
                     {item.icon}
                   </span>
                   <h4>{item.title}</h4>
                   <span className="feature-card__shine" aria-hidden="true" />
-                </motion.article>
+                </article>
               </Reveal>
             ))}
           </div>

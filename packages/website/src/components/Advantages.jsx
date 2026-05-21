@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { ADVANTAGES } from '../data/siteContent.js';
 import Reveal from './Reveal.jsx';
 
@@ -12,14 +11,10 @@ export default function Advantages() {
       <div className="advantages__grid">
         {ADVANTAGES.map((item, index) => (
           <Reveal key={item.title} delay={index * 0.06}>
-            <motion.div
-              className="advantage-card"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 24 }}
-            >
+            <div className="advantage-card">
               <span className="advantage-card__icon">{item.icon}</span>
               <h3>{item.title}</h3>
-            </motion.div>
+            </div>
           </Reveal>
         ))}
       </div>

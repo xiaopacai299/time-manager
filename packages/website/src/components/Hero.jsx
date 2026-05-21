@@ -1,36 +1,35 @@
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import { APP_NAME } from '../data/siteContent.js';
 import ScreenshotFrame from './ScreenshotFrame.jsx';
 
 export default function Hero() {
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        el.classList.toggle('hero--inview', entry.isIntersecting);
+      },
+      { threshold: 0.05 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="hero" id="top">
+    <section className="hero hero--inview" id="top" ref={sectionRef}>
       <div className="hero__grid-lines" aria-hidden="true" />
       <div className="hero__mesh" aria-hidden="true">
-        <motion.span
-          className="hero__orb hero__orb--a"
-          animate={{ x: [0, 32, -16, 0], y: [0, -24, 12, 0] }}
-          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.span
-          className="hero__orb hero__orb--b"
-          animate={{ x: [0, -40, 20, 0], y: [0, 28, -10, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.span
-          className="hero__orb hero__orb--c"
-          animate={{ scale: [1, 1.12, 0.94, 1], rotate: [0, 8, -6, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        <span className="hero__orb hero__orb--a" />
+        <span className="hero__orb hero__orb--b" />
+        <span className="hero__orb hero__orb--c" />
       </div>
 
       <div className="hero__inner">
-        <motion.div
-          className="hero__copy"
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.05 }}
-        >
+        <div className="hero__copy hero__enter">
           <h1 className="hero__gradient-text">{APP_NAME}</h1>
           <p className="hero__lead">桌面宠物 · 任务备忘 · 时间统计</p>
           <div className="hero__actions">
@@ -55,52 +54,35 @@ export default function Hero() {
               <span>广告</span>
             </li>
           </ul>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="hero__visual"
-          initial={{ opacity: 0, y: 40, rotateX: 8 }}
-          animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          transition={{ duration: 0.9, delay: 0.15 }}
-        >
+        <div className="hero__visual hero__enter hero__enter--late">
           <div className="hero__visual-glow" aria-hidden="true" />
-          <motion.div
-            className="hero__main-shot"
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          >
+          <div className="hero__main-shot hero__float-anim hero__float-anim--main">
             <ScreenshotFrame
               src="/screenshots/memo-calendar.png"
               alt="备忘录月历实机界面"
               variant="hero"
               tilt
             />
-          </motion.div>
-          <motion.div
-            className="hero__float-shot hero__float-shot--matrix"
-            animate={{ y: [0, 10, 0], rotate: [0, -2, 0] }}
-            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-          >
+          </div>
+          <div className="hero__float-shot hero__float-shot--matrix hero__float-anim hero__float-anim--matrix">
             <ScreenshotFrame
               src="/screenshots/worklist-matrix.png"
               alt="四象限工作清单"
               caption="今日计划"
               variant="inset"
             />
-          </motion.div>
-          <motion.div
-            className="hero__float-shot hero__float-shot--ai"
-            animate={{ y: [0, -8, 0], rotate: [0, 3, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-          >
+          </div>
+          <div className="hero__float-shot hero__float-shot--ai hero__float-anim hero__float-anim--ai">
             <ScreenshotFrame
               src="/screenshots/ai-chat.png"
               alt="AI 对话"
               caption="AI 对话"
               variant="inset"
             />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );
