@@ -7,6 +7,7 @@
 从仓库根目录：
 
     pnpm install
+    pnpm shared:build    # 若改过 @time-manger/shared
     pnpm desktop:dev
 
 或进入本目录：
@@ -14,11 +15,17 @@
     pnpm install
     pnpm electron-start
 
+启动前会自动执行 `pnpm run main:check`（主进程 `node --check`），避免语法错误拖到运行时才发现。
+
 ## 打包
 
+    pnpm shared:build
+    pnpm desktop:ico     # 换过图标时
     pnpm desktop:build
 
 产物：`packages/desktop/release/`（`.gitignore` 忽略）。
+
+**开发态与打包态差异、任务栏/图标/路径踩坑**：见 [documents/DEV_AND_PACKAGING.md](./documents/DEV_AND_PACKAGING.md)。
 
 ## 目录
 

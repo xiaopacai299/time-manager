@@ -21,6 +21,7 @@ export function createMenuModule({
   onOpenStickyLinks,
   // onEmitPetAction,
   onToggleAutoLaunch,
+  appDisplayName = '橘子ING',
 }) {
   let tray = null;
 
@@ -180,7 +181,7 @@ export function createMenuModule({
       }
       image = image.resize({ width: 16, height: 16 });
       tray = new Tray(image);
-      tray.setToolTip('work master');
+      tray.setToolTip(appDisplayName);
       tray.setContextMenu(buildTrayMenu());
       tray.on('click', () => {
         const statsWindow = getStatsWindow();

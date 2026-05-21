@@ -1,3 +1,5 @@
+import { applyWindowTaskbarIcon } from '../app-icons.js';
+
 export function createFavoritesModule({
   petState,
   persistPetState,
@@ -9,6 +11,7 @@ export function createFavoritesModule({
   fs,
   createHash,
   iconPath,
+  windowIcon,
   __dirname,
   loadPetRenderer,
 }) {
@@ -347,7 +350,7 @@ export function createFavoritesModule({
       height: 750,
       show: false,
       title: '收藏夹',
-      icon: iconPath,
+      icon: windowIcon || iconPath,
       autoHideMenuBar: true,
       resizable: true,
       webPreferences: {
@@ -356,9 +359,11 @@ export function createFavoritesModule({
         webSecurity: false,
       },
     });
+    applyWindowTaskbarIcon(favoritesWindow, windowIcon, iconPath);
 
     favoritesWindow.once('ready-to-show', () => {
       if (!favoritesWindow || favoritesWindow.isDestroyed()) return;
+      applyWindowTaskbarIcon(favoritesWindow, windowIcon, iconPath);
       favoritesWindow.setMenuBarVisibility(false);
       favoritesWindow.show();
       broadcastFavoritesUpdate();

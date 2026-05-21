@@ -25,9 +25,9 @@ function prepareWindowsReleaseDir() {
   } catch {
     return
   }
-  /** 「work master」名字带空格，需要带空格的 IM 参数；同时尝试常见命名兜底。 */
   const candidates = [
     productName && `${productName}.exe`,
+    '橘子ING.exe',
     'work master.exe',
     'work-master.exe',
     'time-pet.exe',
@@ -50,7 +50,7 @@ function prepareWindowsReleaseDir() {
       if (i === attempts - 1) {
         console.error(
           `[electron-build] 无法删除 ${unpacked}：${err?.message || err}\n` +
-            '原因通常是上一版「work master.exe」仍在运行，或 release/win-unpacked 目录被资源管理器/杀毒软件占用。\n' +
+            '原因通常是上一版桌面端仍在运行，或 release/win-unpacked 目录被资源管理器/杀毒软件占用。\n' +
             '请关闭桌面端（含托盘图标右键退出）与该文件夹后重试。',
         )
         process.exit(1)

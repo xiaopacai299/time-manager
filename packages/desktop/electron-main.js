@@ -13,6 +13,7 @@ import {
   screen,
   safeStorage,
 } from 'electron';
+import './main/init-app-branding.js';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { createRequire } from 'module';
@@ -34,7 +35,9 @@ import {
   normalizeWeatherSettings,
 } from './main/electron/weather-module.js';
 import { debugLog } from './main/debug-log.js';
+import { resolveAppIcons, applyWindowTaskbarIcon } from './main/app-icons.js';
 import {
+  APP_DISPLAY_NAME,
   chinaStorageIsoNow,
   computeYearWorkHeatmap,
   getLocalDateKey,
@@ -117,12 +120,8 @@ const PET_COMPACT_HEIGHT = 210;
 const PET_RENDERER_ORIGIN = 'http://localhost:4567';
 const STATS_DETAIL_WINDOW_WIDTH = DEFAULT_WINDOW_WIDTH;
 const STATS_DETAIL_WINDOW_HEIGHT = DEFAULT_WINDOW_HEIGHT;
-const APP_ICON_CANDIDATES = [
-  path.join(__dirname, 'build', 'icon.ico'),
-  path.join(__dirname, 'build', 'icon.png'),
-  path.join(__dirname, 'assets', 'tray-icon.png'),
-];
-const APP_ICON_PATH = APP_ICON_CANDIDATES.find((p) => fs.existsSync(p)) || APP_ICON_CANDIDATES[2];
+const { iconFilePath: APP_ICON_PATH, iconImage: APP_ICON_IMAGE } =
+  resolveAppIcons(nativeImage);
 
 /**
  * 获取宠物窗口的 HTML 文件路径
@@ -273,7 +272,7 @@ function openStatsDetailWindow() {
     height: STATS_DETAIL_WINDOW_HEIGHT,
     show: false,
     title: '使用统计',
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     // window.timeManager挂载，在页面中被消费
     webPreferences: {
@@ -286,6 +285,7 @@ function openStatsDetailWindow() {
 
   statsWindow.once('ready-to-show', () => {
     if (!statsWindow || statsWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(statsWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     statsWindow.setMenuBarVisibility(false);
     statsWindow.show();
   });
@@ -319,7 +319,7 @@ function openDiaryWindow() {
     height: DEFAULT_WINDOW_HEIGHT,
     show: false,
     title: '写日记',
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -330,6 +330,7 @@ function openDiaryWindow() {
 
   diaryWindow.once('ready-to-show', () => {
     if (!diaryWindow || diaryWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(diaryWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     diaryWindow.setMenuBarVisibility(false);
     diaryWindow.show();
   });
@@ -1505,6 +1506,7 @@ const worklistModule = createWorklistModule({
   BrowserWindow,
   Notification,
   iconPath: APP_ICON_PATH,
+  windowIcon: APP_ICON_IMAGE,
   path,
   __dirname,
   loadPetRenderer,
@@ -1522,6 +1524,7 @@ const favoritesModule = createFavoritesModule({
   fs,
   createHash,
   iconPath: APP_ICON_PATH,
+  windowIcon: APP_ICON_IMAGE,
   __dirname,
   loadPetRenderer,
 });
@@ -1533,6 +1536,7 @@ const quickLinksModule = createQuickLinksModule({
   shell,
   path,
   iconPath: APP_ICON_PATH,
+  windowIcon: APP_ICON_IMAGE,
   __dirname,
   loadPetRenderer,
 });
@@ -1548,6 +1552,7 @@ const menuModule = createMenuModule({
   fs,
   __dirname,
   app,
+  appDisplayName: APP_DISPLAY_NAME,
   getMainWindow: () => mainWindow,
   getStatsWindow: () => statsWindow,
   getPetState: () => petState,
@@ -1645,7 +1650,7 @@ function createMainWindow() {
     skipTaskbar: true,
     hasShadow: false,
     show: false,
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -1686,6 +1691,7 @@ function createMainWindow() {
 
   mainWindow.once('ready-to-show', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(mainWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     // show() 在 Windows 上比 showInactive 更可靠，避免窗口在屏外或层级异常时「存在但看不见」
     mainWindow.setMenuBarVisibility(false);
     mainWindow.show();
@@ -1876,7 +1882,7 @@ function openSettingsWindow() {
     height: DEFAULT_WINDOW_HEIGHT,
     show: false,
     title: '设置',
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     resizable: true,
     webPreferences: {
@@ -1887,6 +1893,7 @@ function openSettingsWindow() {
   });
   settingsWindow.once('ready-to-show', () => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(settingsWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     settingsWindow.setMenuBarVisibility(false);
     settingsWindow.show();
   });
@@ -1907,7 +1914,7 @@ function openLoginWindow() {
     height: DEFAULT_WINDOW_HEIGHT,
     show: false,
     title: '登录',
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     resizable: true,
     webPreferences: {
@@ -1918,6 +1925,7 @@ function openLoginWindow() {
   });
   loginWindow.once('ready-to-show', () => {
     if (!loginWindow || loginWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(loginWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     loginWindow.setMenuBarVisibility(false);
     loginWindow.show();
   });
@@ -1940,7 +1948,7 @@ function openReaderWindow() {
     minHeight: 420,
     show: false,
     title: '摸鱼阅读',
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     frame: false,
     transparent: true,
@@ -1957,6 +1965,7 @@ function openReaderWindow() {
   });
   readerWindow.once('ready-to-show', () => {
     if (!readerWindow || readerWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(readerWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     readerWindow.setMenuBarVisibility(false);
     readerWindow.show();
   });
@@ -2006,7 +2015,7 @@ function togglePetAiChatWindow() {
     ...aiBounds,
     show: false,
     title: 'AI 对话',
-    icon: APP_ICON_PATH,
+    icon: APP_ICON_IMAGE,
     autoHideMenuBar: true,
     resizable: true,
     minWidth: PET_AI_CHAT_MIN_WIDTH,
@@ -2020,6 +2029,7 @@ function togglePetAiChatWindow() {
 
   petAiChatWindow.once('ready-to-show', () => {
     if (!petAiChatWindow || petAiChatWindow.isDestroyed()) return;
+    applyWindowTaskbarIcon(petAiChatWindow, APP_ICON_IMAGE, APP_ICON_PATH);
     petAiChatWindow.setMenuBarVisibility(false);
     petAiChatWindow.show();
   });
@@ -2654,17 +2664,6 @@ app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return;
 
   try {
-    if (process.platform === 'win32') {
-      // 开发态用 execPath，避免通知显示为 Electron；打包后用固定 AppUserModelID
-      app.setAppUserModelId(
-        app.isPackaged ? 'com.timemanager.pet' : process.execPath
-      );
-    }
-    try {
-      app.setName('work master');
-    } catch {
-      // 忽略：部分环境不允许重复设置
-    }
     appendLaunchLog('app ready, starting main flow');
     try {
       const login = app.getLoginItemSettings();

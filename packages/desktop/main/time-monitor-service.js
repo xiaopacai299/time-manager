@@ -77,7 +77,12 @@ export class TimeMonitorService extends EventEmitter {
   isTrackerWindow(processName, windowTitle) {
     const p = normalizeProcessName(processName);
     const t = String(windowTitle || '').toLowerCase();
-    return p === 'electron' || t.includes('time manager') || t.includes('time-manger');
+    return (
+      p === 'electron' ||
+      t.includes('橘子ing') ||
+      t.includes('time manager') ||
+      t.includes('time-manger')
+    );
   }
 
   shouldTrackApp(processName) {

@@ -2,4 +2,5 @@ node_modules
 dist
 dist-ssr
 release
+.dev-electron
 *.local

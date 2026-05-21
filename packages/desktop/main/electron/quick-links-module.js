@@ -71,6 +71,8 @@ function looksLikeStickyTarget(u) {
   return false;
 }
 
+import { applyWindowTaskbarIcon } from '../app-icons.js';
+
 export function createQuickLinksModule({
   petState,
   persistPetState,
@@ -78,6 +80,7 @@ export function createQuickLinksModule({
   shell,
   path,
   iconPath,
+  windowIcon,
   __dirname,
   loadPetRenderer,
 }) {
@@ -249,7 +252,7 @@ export function createQuickLinksModule({
       minHeight: 480,
       show: false,
       title: '便签',
-      icon: iconPath,
+      icon: windowIcon || iconPath,
       autoHideMenuBar: true,
       resizable: true,
       webPreferences: {
@@ -258,9 +261,11 @@ export function createQuickLinksModule({
         webSecurity: false,
       },
     });
+    applyWindowTaskbarIcon(stickyWindow, windowIcon, iconPath);
 
     stickyWindow.once('ready-to-show', () => {
       if (!stickyWindow || stickyWindow.isDestroyed()) return;
+      applyWindowTaskbarIcon(stickyWindow, windowIcon, iconPath);
       stickyWindow.setMenuBarVisibility(false);
       stickyWindow.show();
       broadcastStickyLinksUpdate();

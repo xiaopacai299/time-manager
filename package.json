@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "desktop:dev": "pnpm --filter @time-manger/desktop electron-start",
+    "desktop:dev": "pnpm shared:build && pnpm --filter @time-manger/desktop electron-start",
     "desktop:dev:debug": "pnpm --filter @time-manger/desktop electron-start-debug-log",
     "desktop:devtool":"pnpm --filter @time-manger/desktop react-start --open",
     "desktop:build": "pnpm --filter @time-manger/desktop electron-build",

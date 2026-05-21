@@ -1,4 +1,4 @@
-/** 产品名称与图标（见 public/icon.png，由 icon-source.png 抠底生成） */
+/** 与 @time-manger/shared 的 APP_DISPLAY_NAME 保持一致 */
 export const APP_NAME = '橘子ING';
 export const APP_ICON = '/icon.png';
 

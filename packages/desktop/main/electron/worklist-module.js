@@ -5,6 +5,7 @@ import {
   normalizeChinaStorageIso,
   normalizeWorklistQuadrant,
 } from '@time-manger/shared';
+import { applyWindowTaskbarIcon } from '../app-icons.js';
 
 export function createWorklistModule({
   petState,
@@ -15,6 +16,7 @@ export function createWorklistModule({
   BrowserWindow,
   Notification,
   iconPath,
+  windowIcon,
   path,
   __dirname,
   loadPetRenderer,
@@ -496,7 +498,7 @@ export function createWorklistModule({
       alwaysOnTop: true,
       autoHideMenuBar: true,
       title: '工作确认',
-      icon: iconPath,
+      icon: windowIcon || iconPath,
       backgroundColor: '#fff7f2',
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
@@ -504,9 +506,11 @@ export function createWorklistModule({
         webSecurity: false,
       },
     });
+    applyWindowTaskbarIcon(estimateConfirmWindow, windowIcon, iconPath);
 
     estimateConfirmWindow.once('ready-to-show', () => {
       if (!estimateConfirmWindow || estimateConfirmWindow.isDestroyed()) return;
+      applyWindowTaskbarIcon(estimateConfirmWindow, windowIcon, iconPath);
       estimateConfirmWindow.setMenuBarVisibility(false);
       estimateConfirmWindow.show();
       estimateConfirmWindow.focus();
@@ -565,7 +569,7 @@ export function createWorklistModule({
       useContentSize: true,
       show: false,
       title: '工作清单',
-      icon: iconPath,
+      icon: windowIcon || iconPath,
       autoHideMenuBar: true,
       resizable: true,
       webPreferences: {
@@ -574,10 +578,12 @@ export function createWorklistModule({
         webSecurity: false,
       },
     });
+    applyWindowTaskbarIcon(worklistWindow, windowIcon, iconPath);
     worklistWindow.setMenuBarVisibility(false);
 
     let revealed = false;
     worklistWindow.once('ready-to-show', () => {
+      applyWindowTaskbarIcon(worklistWindow, windowIcon, iconPath);
       if (revealed) return;
       revealed = true;
       revealWorklistWindow();
@@ -602,7 +608,7 @@ export function createWorklistModule({
       height: 750,
       show: false,
       title: '导出日志',
-      icon: iconPath,
+      icon: windowIcon || iconPath,
       autoHideMenuBar: true,
       resizable: true,
       webPreferences: {
@@ -611,9 +617,11 @@ export function createWorklistModule({
         webSecurity: false,
       },
     });
+    applyWindowTaskbarIcon(exportWindow, windowIcon, iconPath);
 
     exportWindow.once('ready-to-show', () => {
       if (!exportWindow || exportWindow.isDestroyed()) return;
+      applyWindowTaskbarIcon(exportWindow, windowIcon, iconPath);
       exportWindow.setMenuBarVisibility(false);
       exportWindow.show();
     });

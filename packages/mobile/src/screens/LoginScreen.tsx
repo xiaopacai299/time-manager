@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useTopInset } from "../hooks/useScreenInsets";
 import { normalizeApiBase } from "../api/apiClient";
 import { DEFAULT_PUBLIC_API_BASE } from "../config/publicApiBase";
+import { APP_DISPLAY_NAME } from "@time-manger/shared";
 const { width: W } = Dimensions.get("window");
 
 const ACCENT = "#6B5B95";
@@ -71,7 +72,7 @@ export function LoginScreen() {
         >
           <View style={styles.hero}>
             <Text style={styles.kicker}>时间与专注</Text>
-            <Text style={styles.brandMark}>Time Manager</Text>
+            <Text style={styles.brandMark}>{APP_DISPLAY_NAME}</Text>
             <View style={styles.ruleRow}>
               <View style={styles.ruleLine} />
               <Text style={styles.ruleDot}>◆</Text>
