@@ -135,10 +135,14 @@ export default function AnimatedPet({
   }, [petMotion.mirrorX, petDef])
 
   const displayImageUrl = overrideImageUrl || (petDef.renderMode === 'image' ? petDef.imageUrl : null)
+  const imageLayoutClass = petDef.imageLayout
+    ? `pet-visual--image-${petDef.imageLayout}`
+    : ''
+
   if (displayImageUrl) {
     return (
       <div
-        className={`pet-visual pet-visual--image ${overrideImageUrl ? 'pet-visual--override' : ''} ${moodClass} ${chasing ? 'pet-visual--chasing' : ''}`}
+        className={`pet-visual pet-visual--image ${imageLayoutClass} ${overrideImageUrl ? 'pet-visual--override' : ''} ${moodClass} ${chasing ? 'pet-visual--chasing' : ''}`}
         role="img"
         aria-label="桌面宠物"
       >

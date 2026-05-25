@@ -1,5 +1,6 @@
 import sakuraGirlImage from '../assets/pets/sakura-girl.png?url'
 import sakuraGirlTongueImage from '../assets/pets/sakura-girl-tongue.png?url'
+import empressGirlImage from '../assets/pets/empress-girl.png?url'
 import badCatAnimation from '../assets/bad-cat.json'
 import runCatAnimation from '../assets/run-cat.json'
 import turtleAnimation from '../assets/turtle.json'
@@ -14,9 +15,27 @@ import RunCatTailSparks from '../components/RunCatTailSparks'
 
 const badCatRestAnimation = getBadCatRestAnimationData()
 
-export const DEFAULT_PET_ID = 'sakura-girl'
+export const DEFAULT_PET_ID = 'empress-girl'
 
 export const PET_REGISTRY = {
+  'empress-girl': {
+    id: 'empress-girl',
+    name: '女帝',
+    enabled: true,
+    renderMode: 'image',
+    imageLayout: 'full-body',
+    imageUrl: empressGirlImage,
+    previewImage: empressGirlImage,
+    previewAnimation: null,
+    effectsComponent: null,
+    idleByMood: {},
+    chaseAnimation: null,
+    chaseEffectsComponent: null,
+    chaseSpeed: 1,
+    invertChaseFacing: false,
+    idleSegmentsByMood: {},
+    idleSpeedByMood: {},
+  },
   'sakura-girl': {
     id: 'sakura-girl',
     name: '樱酱',

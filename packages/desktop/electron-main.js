@@ -95,7 +95,7 @@ const PET_WINDOW_WIDTH = 620;
 const PET_WINDOW_HEIGHT = 640;
 /** 展开模式但不含统计面板：只有气泡 + 宠物 */
 const PET_NO_STATS_WIDTH = 200;
-const PET_NO_STATS_HEIGHT = 220;
+const PET_NO_STATS_HEIGHT = 280;
 const DEFAULT_WINDOW_WIDTH = 1100;
 const DEFAULT_WINDOW_HEIGHT = 750;
 const PET_AI_CHAT_MARGIN = 20;
@@ -118,7 +118,7 @@ function getPetAiChatWindowBounds() {
   return { x, y, width, height };
 }
 const PET_COMPACT_WIDTH = 190;
-const PET_COMPACT_HEIGHT = 210;
+const PET_COMPACT_HEIGHT = 280;
 const PET_RENDERER_ORIGIN = 'http://localhost:4567';
 const STATS_DETAIL_WINDOW_WIDTH = DEFAULT_WINDOW_WIDTH;
 const STATS_DETAIL_WINDOW_HEIGHT = DEFAULT_WINDOW_HEIGHT;
@@ -376,7 +376,7 @@ const petState = {
     autoScrollSpeed: 20,
   },
   petSettings: {
-    selectedPet: 'sakura-girl',
+    selectedPet: 'empress-girl',
     bubbleTexts: {
       work: '',
       rest: '',
@@ -1255,7 +1255,7 @@ function loadPetState() {
           ? Number(parsed.petSettings.longWorkContinuousMs)
           : LONG_WORK_CONTINUOUS_MS;
         petState.petSettings = {
-          selectedPet: String(parsed.petSettings.selectedPet || 'sakura-girl'),
+          selectedPet: String(parsed.petSettings.selectedPet || 'empress-girl'),
           bubbleTexts: {
             work: String(bubbleTextsRaw.work || ''),
             rest: String(bubbleTextsRaw.rest || ''),
@@ -2133,7 +2133,7 @@ function setupIpc() {
     const petAiChatBg = mergePetAiChatBgSettings(input, prevPs);
     console.log('[DEBUG] mergePetAiChatBgSettings result:', petAiChatBg);
     petState.petSettings = {
-      selectedPet: String(input.selectedPet || prevPs.selectedPet || 'sakura-girl'),
+      selectedPet: String(input.selectedPet || prevPs.selectedPet || 'empress-girl'),
       bubbleTexts: {
         work: String(bubbleTextsRaw.work ?? prevPs?.bubbleTexts?.work ?? '').slice(0, 120),
         rest: String(bubbleTextsRaw.rest ?? prevPs?.bubbleTexts?.rest ?? '').slice(0, 120),

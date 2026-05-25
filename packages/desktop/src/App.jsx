@@ -117,7 +117,7 @@ function App() {
         <PetAvatarArea
           mood={mood}
           petMotion={petMotion}
-          selectedPet={petState?.petSettings?.selectedPet || 'sakura-girl'}
+          selectedPet={petState?.petSettings?.selectedPet || 'empress-girl'}
           overrideImageUrl={transientImageOverride}
         />
       </section>

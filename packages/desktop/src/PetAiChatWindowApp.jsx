@@ -89,7 +89,7 @@ export default function PetAiChatWindowApp() {
               layout="window"
               hasOpenAiKey={Boolean(petState?.petSettings?.hasOpenAiKey)}
               llmSkills={petState?.petSettings?.llmSkills}
-              selectedPet={petState?.petSettings?.selectedPet || 'sakura-girl'}
+              selectedPet={petState?.petSettings?.selectedPet || 'empress-girl'}
               onOpenSkillsEditor={goSkills}
             />
           </div>
