@@ -53,8 +53,16 @@ async function fetchStartupQuoteOnce() {
 }
 
 function App() {
-  const { snapshot, petState, isBridgeReady, transientAction, transientImageOverride, petMotion } =
-    useTimeManagerPetBridge()
+  const {
+    snapshot,
+    petState,
+    isBridgeReady,
+    transientAction,
+    transientImageOverride,
+    imageSequenceFrames,
+    clearImageSequence,
+    petMotion,
+  } = useTimeManagerPetBridge()
   usePetTempInteractive(petState.clickThrough)
   const mood = usePetMood(snapshot, transientAction, petState?.petSettings)
   const topApps = useMemo(() => topAppsFromPerAppToday(snapshot.perAppToday), [snapshot.perAppToday])
@@ -119,6 +127,8 @@ function App() {
           petMotion={petMotion}
           selectedPet={petState?.petSettings?.selectedPet || 'empress-girl'}
           overrideImageUrl={transientImageOverride}
+          imageSequenceFrames={imageSequenceFrames}
+          onImageSequenceEnd={clearImageSequence}
         />
       </section>
       {startupQuote ? (

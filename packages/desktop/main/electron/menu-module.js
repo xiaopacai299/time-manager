@@ -21,6 +21,7 @@ export function createMenuModule({
   onOpenStickyLinks,
   onEmitPetAction,
   angryActionMenu = [],
+  yawnActionMenu = [],
   onToggleAutoLaunch,
   appDisplayName = '橘子ING',
 }) {
@@ -100,11 +101,17 @@ export function createMenuModule({
   }
 
   function buildTestSubmenu() {
+    const yawnItems = yawnActionMenu.map((item) => ({
+      label: item.label,
+      click: () => onEmitPetAction?.(item.id),
+    }))
     const angryItems = angryActionMenu.map((item) => ({
       label: item.label,
       click: () => onEmitPetAction?.(item.id),
     }))
     return [
+      ...(yawnItems.length ? yawnItems : [{ label: '打哈欠', enabled: false }]),
+      { type: 'separator' },
       { label: '生气', submenu: angryItems.length ? angryItems : [{ label: '（未配置）', enabled: false }] },
     ]
   }

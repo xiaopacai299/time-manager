@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import lottie from 'lottie-web'
 import { DEFAULT_PET_ID, getPetDefinition } from '../pets/registry'
+import PetImageSequencePlayer from './PetImageSequencePlayer/index.jsx'
 
 const DEFAULT_PET_MOTION = { running: false, mirrorX: false }
 
@@ -13,6 +14,8 @@ export default function AnimatedPet({
   petMotion = DEFAULT_PET_MOTION,
   selectedPet = DEFAULT_PET_ID,
   overrideImageUrl = null,
+  imageSequenceFrames = null,
+  onImageSequenceEnd,
 }) {
   const idleRef = useRef(null)
   const chaseRef = useRef(null)
@@ -138,6 +141,19 @@ export default function AnimatedPet({
   const imageLayoutClass = petDef.imageLayout
     ? `pet-visual--image-${petDef.imageLayout}`
     : ''
+
+  if (imageSequenceFrames?.length) {
+    return (
+      <PetImageSequencePlayer
+        frames={imageSequenceFrames}
+        imageLayoutClass={imageLayoutClass}
+        moodClass={moodClass}
+        chasing={chasing}
+        wrapStyle={wrapStyle}
+        onComplete={onImageSequenceEnd}
+      />
+    )
+  }
 
   if (displayImageUrl) {
     return (

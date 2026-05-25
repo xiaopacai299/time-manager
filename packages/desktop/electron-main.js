@@ -24,6 +24,7 @@ import { TimeMonitorService } from './main/time-monitor-service.js';
 import { createWorklistModule } from './main/electron/worklist-module.js';
 import { createFavoritesModule } from './main/electron/favorites-module.js';
 import { PET_ANGRY_ACTION_MENU } from './main/electron/pet-angry-actions.js';
+import { PET_YAWN_ACTION_MENU } from './main/electron/pet-yawn-actions.js';
 import {
   createQuickLinksModule,
   defaultStickyLinks,
@@ -1572,6 +1573,7 @@ const menuModule = createMenuModule({
   onOpenDiary: () => openDiaryWindow(),
   onEmitPetAction: (action) => emitPetAction(action),
   angryActionMenu: PET_ANGRY_ACTION_MENU,
+  yawnActionMenu: PET_YAWN_ACTION_MENU,
   onToggleAutoLaunch: () => toggleAutoLaunch(),
 });
 

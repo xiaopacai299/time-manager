@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EMPTY_SNAPSHOT } from '../constants/emptySnapshot'
 import { getPetAngryActionImage, isPetAngryAction } from '../constants/petAngryActions'
+import {
+  getPetYawnFrames,
+  isPetYawnAction,
+  preloadPetImageUrls,
+} from '../constants/petYawnActions'
+import { PET_YAWN_ACTION_ID } from '../../main/electron/pet-yawn-actions.js'
 import { PET_VIEW_VARIANT_SET } from '../constants/petViewVariants'
 import { LONG_WORK_CONTINUOUS_MS, REMIND_CONTINUOUS_MS } from '../configKeys'
 
@@ -44,6 +50,7 @@ export function useTimeManagerPetBridge() {
   const [petState, setPetState] = useState(DEFAULT_PET_STATE)
   const [transientAction, setTransientAction] = useState('')
   const [transientImageOverride, setTransientImageOverride] = useState(null)
+  const [imageSequenceFrames, setImageSequenceFrames] = useState(null)
   const [petMotion, setPetMotion] = useState(DEFAULT_PET_MOTION)
   const actionTimerRef = useRef(null)
 
@@ -57,6 +64,7 @@ export function useTimeManagerPetBridge() {
   const triggerMoodAction = useCallback(
     (action) => {
       clearActionTimer()
+      setImageSequenceFrames(null)
       setTransientImageOverride(null)
       setTransientAction(action)
       actionTimerRef.current = setTimeout(() => setTransientAction(''), MOOD_ACTION_MS)
@@ -69,9 +77,26 @@ export function useTimeManagerPetBridge() {
       const imageUrl = getPetAngryActionImage(actionId)
       if (!imageUrl) return
       clearActionTimer()
+      setImageSequenceFrames(null)
       setTransientAction('')
       setTransientImageOverride(imageUrl)
       actionTimerRef.current = setTimeout(() => setTransientImageOverride(null), ANGRY_ACTION_MS)
+    },
+    [clearActionTimer],
+  )
+
+  const clearImageSequence = useCallback(() => {
+    setImageSequenceFrames(null)
+  }, [])
+
+  const triggerYawnAction = useCallback(
+    (actionId) => {
+      const frames = getPetYawnFrames(actionId)
+      if (!frames.length) return
+      clearActionTimer()
+      setTransientAction('')
+      setTransientImageOverride(null)
+      setImageSequenceFrames(frames)
     },
     [clearActionTimer],
   )
@@ -93,7 +118,9 @@ export function useTimeManagerPetBridge() {
     const unbindPetAction = window.timeManagerAPI.onPetAction?.((payload) => {
       const action = payload?.action
       if (typeof action !== 'string' || !action) return
-      if (isPetAngryAction(action)) {
+      if (isPetYawnAction(action)) {
+        triggerYawnAction(action)
+      } else if (isPetAngryAction(action)) {
         triggerAngryAction(action)
       } else if (PET_VIEW_VARIANT_SET.has(action)) {
         triggerMoodAction(action)
@@ -114,7 +141,22 @@ export function useTimeManagerPetBridge() {
       if (unbindPetAction) unbindPetAction()
       if (unbindPetMotion) unbindPetMotion()
     }
-  }, [triggerAngryAction, triggerMoodAction])
+  }, [triggerAngryAction, triggerMoodAction, triggerYawnAction])
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (!document.hidden) return
+      clearActionTimer()
+      setTransientImageOverride(null)
+      setImageSequenceFrames(null)
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [clearActionTimer])
+
+  useEffect(() => {
+    preloadPetImageUrls(getPetYawnFrames(PET_YAWN_ACTION_ID)).catch(() => {})
+  }, [])
 
   useEffect(() => () => clearActionTimer(), [clearActionTimer])
 
@@ -124,7 +166,9 @@ export function useTimeManagerPetBridge() {
     isBridgeReady,
     transientAction,
     transientImageOverride,
+    imageSequenceFrames,
+    clearImageSequence,
     petMotion,
   }
 }
-
+

@@ -6,7 +6,14 @@ import { usePetAvatarInteractions } from '../../hooks/usePetAvatarInteractions'
  * 可拖拽宠物头像（样式沿用 `App.css` 的 `.pet-avatar`）。
  * 左键双击：开关独立「AI 对话」子窗口；使用统计改由宠物右键菜单打开。
  */
-export default function PetAvatarArea({ mood, petMotion, selectedPet, overrideImageUrl = null }) {
+export default function PetAvatarArea({
+  mood,
+  petMotion,
+  selectedPet,
+  overrideImageUrl = null,
+  imageSequenceFrames = null,
+  onImageSequenceEnd,
+}) {
   const {
     openPetMenu,
     onAvatarPointerDown,
@@ -40,6 +47,8 @@ export default function PetAvatarArea({ mood, petMotion, selectedPet, overrideIm
             petMotion={petMotion}
             selectedPet={selectedPet}
             overrideImageUrl={overrideImageUrl}
+            imageSequenceFrames={imageSequenceFrames}
+            onImageSequenceEnd={onImageSequenceEnd}
           />
         </PetRenderErrorBoundary>
       </section>
