@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { chinaStorageIsoNow, getLocalDateKey } from '@time-manger/shared'
+import SideDrawer from './components/SideDrawer/index.jsx'
 import './DiaryWindowApp.css'
 
 export default function DiaryWindowApp() {
@@ -11,6 +12,7 @@ export default function DiaryWindowApp() {
   const [showPasswordSettings, setShowPasswordSettings] = useState(false)
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(true)
+  const [listDrawerOpen, setListDrawerOpen] = useState(false)
 
   const today = getLocalDateKey()
 
@@ -125,6 +127,7 @@ export default function DiaryWindowApp() {
     setIsEditing(true)
     setEditingDiaryId(diary.id)
     setSelectedDiary(null)
+    setListDrawerOpen(false)
   }
 
   const updateDiary = async () => {
@@ -308,16 +311,26 @@ export default function DiaryWindowApp() {
       ) : isAuthenticated ? (
         <>
           <div className="diary-header">
-            <button 
-              className="diary-settings-btn"
-              onClick={() => setShowPasswordSettings(true)}
-            >
-              设置密码
-            </button>
+            <div className="diary-header-actions">
+              <button
+                type="button"
+                className="diary-list-btn"
+                onClick={() => setListDrawerOpen(true)}
+              >
+                日记列表
+              </button>
+              <button
+                type="button"
+                className="diary-settings-btn"
+                onClick={() => setShowPasswordSettings(true)}
+              >
+                设置密码
+              </button>
+            </div>
           </div>
           <div className="diary-container">
-            <div className="diary-left">
-              <div className="diary-list-title">写日记</div>
+            <div className="diary-main">
+              <div className="diary-date">{today}</div>
               <div className="diary-actions">
                 {isEditing && (
                   <button
@@ -334,7 +347,6 @@ export default function DiaryWindowApp() {
                 onChange={(e) => setCurrentDiary(e.target.value)}
                 placeholder="写下今天的心情..."
               />
-              <div className="diary-date">{today}</div>
               <button
                 className="diary-save-btn"
                 onClick={isEditing ? updateDiary : saveDiary}
@@ -342,44 +354,53 @@ export default function DiaryWindowApp() {
                 {isEditing ? '更新日记' : '保存日记'}
               </button>
             </div>
-            <div className="diary-right">
-              <div className="diary-list-title">日记列表</div>
-              <div className="diary-list">
-                {diaries.length === 0 ? (
-                  <div className="diary-empty">暂无日记，开始写第一篇吧</div>
-                ) : (
-                  diaries.map((diary) => (
-                    <div key={diary.id} className="diary-item">
-                      <div className="diary-item-content">
-                        <div className="diary-item-date">{diary.date}</div>
-                        <div className="diary-item-preview">{getDiaryPreview(diary.content)}</div>
-                      </div>
-                      <div className="diary-item-actions">
-                        <button
-                          className="diary-action-btn diary-action-detail"
-                          onClick={() => setSelectedDiary(diary)}
-                        >
-                          详情
-                        </button>
-                        <button
-                          className="diary-action-btn diary-action-edit"
-                          onClick={() => editDiary(diary)}
-                        >
-                          编辑
-                        </button>
-                        <button
-                          className="diary-action-btn diary-action-delete"
-                          onClick={() => deleteDiary(diary.id)}
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
+          <SideDrawer
+            open={listDrawerOpen}
+            onClose={() => setListDrawerOpen(false)}
+            title="日记列表"
+          >
+            <div className="diary-list">
+              {diaries.length === 0 ? (
+                <div className="diary-empty">暂无日记，开始写第一篇吧</div>
+              ) : (
+                diaries.map((diary) => (
+                  <div key={diary.id} className="diary-item">
+                    <div className="diary-item-content">
+                      <div className="diary-item-date">{diary.date}</div>
+                      <div className="diary-item-preview">{getDiaryPreview(diary.content)}</div>
+                    </div>
+                    <div className="diary-item-actions">
+                      <button
+                        type="button"
+                        className="diary-action-btn diary-action-detail"
+                        onClick={() => {
+                          setSelectedDiary(diary)
+                          setListDrawerOpen(false)
+                        }}
+                      >
+                        详情
+                      </button>
+                      <button
+                        type="button"
+                        className="diary-action-btn diary-action-edit"
+                        onClick={() => editDiary(diary)}
+                      >
+                        编辑
+                      </button>
+                      <button
+                        type="button"
+                        className="diary-action-btn diary-action-delete"
+                        onClick={() => deleteDiary(diary.id)}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </SideDrawer>
           {selectedDiary && (
             <div className="diary-detail">
               <div className="diary-detail-title">日记详情</div>

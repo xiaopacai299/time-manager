@@ -7,6 +7,7 @@ import {
   normalizeWorklistQuadrant,
 } from "@time-manger/shared";
 import MemoMonthCalendar from "./components/MemoMonthCalendar/index.jsx";
+import PanelEmptyState from "./components/PanelEmptyState/index.jsx";
 import "./WorkListWindowApp.css";
 
 const PRESET_ICONS = ["📋", "📝", "💼", "⏰", "✅", "🎯", "📌", "☕"];
@@ -40,6 +41,61 @@ const MONTH_LABELS = [
 ];
 
 const MAX_IMAGE_BYTES = 350 * 1024;
+
+function isWorklistItemCompleted(item) {
+  return String(item?.completionResult || "").trim() === "completed";
+}
+
+/** 今日清单完成度 → 短状态（完整说明放 title） */
+function getTodayProgressStatus(total, completed, percent) {
+  if (total <= 0) {
+    return {
+      label: "待命",
+      tier: "idle",
+      title: "今日尚无清单项",
+    };
+  }
+  if (percent >= 100) {
+    return {
+      label: "已收官",
+      tier: "done",
+      title: `今日 ${completed}/${total} 项已全部完成`,
+    };
+  }
+  if (percent >= 75) {
+    return {
+      label: "冲刺",
+      tier: "high",
+      title: `已完成 ${completed}/${total} 项`,
+    };
+  }
+  if (percent >= 50) {
+    return {
+      label: "过半",
+      tier: "mid",
+      title: `已完成 ${completed}/${total} 项`,
+    };
+  }
+  if (percent >= 25) {
+    return {
+      label: "推进",
+      tier: "grow",
+      title: `已完成 ${completed}/${total} 项`,
+    };
+  }
+  if (percent > 0) {
+    return {
+      label: "起步",
+      tier: "start",
+      title: `已完成 ${completed}/${total} 项`,
+    };
+  }
+  return {
+    label: "待启",
+    tier: "zero",
+    title: `今日 ${total} 项待完成`,
+  };
+}
 
 export default function WorkListWindowApp() {
   const [items, setItems] = useState([]);
@@ -231,9 +287,17 @@ export default function WorkListWindowApp() {
   );
 
   const listTitle = useMemo(
-    () => `工作清单 (${todayItems.length}) · ${selectedListDate}`,
-    [todayItems.length, selectedListDate]
+    () => `工作清单 (${todayItems.length})`,
+    [todayItems.length]
   );
+
+  const todayProgress = useMemo(() => {
+    const total = todayItems.length;
+    const completed = todayItems.filter(isWorklistItemCompleted).length;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const status = getTodayProgressStatus(total, completed, percent);
+    return { total, completed, percent, ...status };
+  }, [todayItems]);
   const memoListTitle = useMemo(
     () => `备忘录 (${memoItems.length})`,
     [memoItems.length]
@@ -1260,10 +1324,38 @@ export default function WorkListWindowApp() {
         <div className="worklist-wrap worklist-content worklist-content--today worklist-content--tab-switch">
           <section className="worklist-pane worklist-pane--today">
             <div className="worklist-today-header">
-              <h1 className="worklist-title">{listTitle}</h1>
+              <div className="worklist-today-header-leading">
+                <h1 className="worklist-title">{listTitle}</h1>
+                <div
+                  className="worklist-today-progress"
+                  title={todayProgress.title}
+                  aria-label={`今日完成 ${todayProgress.completed} / ${todayProgress.total}，${todayProgress.percent}%`}
+                >
+                  <div
+                    className="worklist-today-progress__track"
+                    role="progressbar"
+                    aria-valuenow={todayProgress.percent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className={`worklist-today-progress__fill worklist-today-progress__fill--${todayProgress.tier}`}
+                      style={{ width: `${todayProgress.percent}%` }}
+                    />
+                  </div>
+                  <span
+                    className={`worklist-today-progress__status worklist-today-progress__status--${todayProgress.tier}`}
+                  >
+                    <span
+                      className="worklist-today-progress__status-dot"
+                      aria-hidden="true"
+                    />
+                    {todayProgress.label}
+                  </span>
+                </div>
+              </div>
               <div className="worklist-today-header-actions">
                 <label className="worklist-date-filter">
-                  <span onMouseDown={onDateFilterMouseDown}>查看日期</span>
                   <input
                     type="date"
                     value={selectedListDate}
@@ -1349,12 +1441,13 @@ export default function WorkListWindowApp() {
                           </header>
                           <div className="worklist-quadrant-list">
                             {quadrantItems.length === 0 ? (
-                              <span
-                                className="worklist-quadrant-empty"
-                                aria-hidden="true"
-                              >
-                                —
-                              </span>
+                              <PanelEmptyState
+                                variant={q}
+                                fill
+                                title={meta.hint}
+                                ariaLabel={`${meta.label} · ${meta.hint}`}
+                                className="worklist-quadrant-empty-slot"
+                              />
                             ) : (
                               quadrantItems.map((item) =>
                                 renderWorklistCard(item)

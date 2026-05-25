@@ -190,11 +190,197 @@
 .worklist-memo-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
   margin-bottom: 8px;
+}
+
+.worklist-today-header-leading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.worklist-today-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  max-width: min(420px, 52vw);
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.worklist-today-progress__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  line-height: 1.1;
+  gap: 2px;
+}
+
+.worklist-today-progress__frac {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #2a3f66;
+  letter-spacing: 0.02em;
+}
+
+.worklist-today-progress__pct {
+  font-size: 10px;
+  font-weight: 700;
+  color: #5a6f94;
+  font-variant-numeric: tabular-nums;
+}
+
+.worklist-today-progress__track {
+  flex: 1;
+  min-width: 72px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(72, 98, 150, 0.14);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(30, 45, 80, 0.12);
+}
+
+.worklist-today-progress__fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  transition: width 0.35s ease;
+  background: linear-gradient(90deg, #7b92c8 0%, #5b7fe8 55%, #667eea 100%);
+}
+
+.worklist-today-progress__fill--idle {
+  width: 0 !important;
+  background: rgba(90, 111, 148, 0.25);
+}
+
+.worklist-today-progress__fill--zero {
+  background: linear-gradient(90deg, #94a3b8 0%, #64748b 100%);
+}
+
+.worklist-today-progress__fill--start {
+  background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.worklist-today-progress__fill--grow,
+.worklist-today-progress__fill--mid {
+  background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.worklist-today-progress__fill--high {
+  background: linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%);
+}
+
+.worklist-today-progress__fill--done {
+  background: linear-gradient(90deg, #34d399 0%, #10b981 55%, #059669 100%);
+}
+
+.worklist-today-progress__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.worklist-today-progress__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.worklist-today-progress__status--idle {
+  color: #5a6f94;
+  background: rgba(238, 243, 255, 0.9);
+  border-color: rgba(180, 198, 240, 0.75);
+}
+
+.worklist-today-progress__status--idle .worklist-today-progress__status-dot {
+  background: #94a3b8;
+}
+
+.worklist-today-progress__status--zero {
+  color: #64748b;
+  background: rgba(241, 245, 249, 0.95);
+  border-color: rgba(148, 163, 184, 0.6);
+}
+
+.worklist-today-progress__status--zero .worklist-today-progress__status-dot {
+  background: #94a3b8;
+}
+
+.worklist-today-progress__status--start {
+  color: #92400e;
+  background: rgba(255, 251, 235, 0.95);
+  border-color: rgba(251, 191, 36, 0.65);
+}
+
+.worklist-today-progress__status--start .worklist-today-progress__status-dot {
+  background: #f59e0b;
+}
+
+.worklist-today-progress__status--grow,
+.worklist-today-progress__status--mid {
+  color: #1e40af;
+  background: rgba(239, 246, 255, 0.95);
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+.worklist-today-progress__status--grow .worklist-today-progress__status-dot,
+.worklist-today-progress__status--mid .worklist-today-progress__status-dot {
+  background: #3b82f6;
+}
+
+.worklist-today-progress__status--high {
+  color: #5b21b6;
+  background: rgba(245, 243, 255, 0.96);
+  border-color: rgba(167, 139, 250, 0.55);
+}
+
+.worklist-today-progress__status--high .worklist-today-progress__status-dot {
+  background: #8b5cf6;
+  animation: worklist-progress-pulse 1.4s ease-in-out infinite;
+}
+
+.worklist-today-progress__status--done {
+  color: #065f46;
+  background: rgba(236, 253, 245, 0.96);
+  border-color: rgba(52, 211, 153, 0.55);
+}
+
+.worklist-today-progress__status--done .worklist-today-progress__status-dot {
+  background: #10b981;
+}
+
+@keyframes worklist-progress-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
 }
 
 .worklist-today-header-actions {
@@ -460,16 +646,9 @@
   box-sizing: border-box;
 }
 
-.worklist-quadrant-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 300;
-  color: rgba(90, 111, 148, 0.35);
-  line-height: 1;
-  user-select: none;
+.worklist-quadrant-empty-slot {
+  min-height: 52px;
+  padding: 4px 2px 6px;
 }
 
 /* 今日计划 · 紧凑任务卡 */
@@ -1213,6 +1392,11 @@
   color: #425683;
   line-height: 1.45;
   word-break: break-all;
+}
+
+.worklist-today-header-leading .worklist-title {
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .worklist-title {

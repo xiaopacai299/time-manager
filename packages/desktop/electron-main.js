@@ -45,6 +45,7 @@ import {
   listDateFromIso,
   normalizeChinaStorageIso,
   normalizeWorklistQuadrant,
+  shouldExcludePerAppTodayItem,
 } from '@time-manger/shared';
 
 // 主进程默认阈值（毫秒）。不要依赖 src 目录，避免打包后模块缺失。
@@ -844,6 +845,7 @@ function updateDirtyTimeRecords(snapshot) {
     const deviceId = getSyncDeviceId();
     const now = chinaStorageIsoNow();
     for (const appRecord of perAppToday) {
+      if (shouldExcludePerAppTodayItem(appRecord)) continue;
       const appKey = String(appRecord.appId || '').trim();
       if (!appKey) continue;
       const stableKey = `${dayKey}|${appKey}`;

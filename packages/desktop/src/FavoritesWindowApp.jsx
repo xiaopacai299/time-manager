@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import PanelEmptyState from './components/PanelEmptyState/index.jsx'
 import { dropPathsFromDataTransfer } from './dropPathsFromDataTransfer.js'
 import './FavoritesWindowApp.css'
 
@@ -82,9 +83,17 @@ export default function FavoritesWindowApp() {
       <div className="favorites-wrap">
         {/* <div className="favorites-tips">双击图标打开应用，右键图标可删除。</div> */}
         <div className="favorites-msg">{message}</div>
-        <div className="favorites-list">
+        <div
+          className={`favorites-list${!items.length ? ' favorites-list--empty' : ''}`}
+        >
           {!items.length ? (
-            <div className="favorites-empty">暂无收藏，拖一个应用进来试试</div>
+            <PanelEmptyState
+              variant="accent"
+              fill
+              title="拖入应用快捷方式 (.lnk) 即可收藏"
+              ariaLabel="暂无收藏，拖一个应用进来试试"
+              caption="暂无收藏，拖一个应用进来试试"
+            />
           ) : (
             items.map((item) => (
               <FavoriteItem

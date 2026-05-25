@@ -1,3 +1,8 @@
+import {
+  resolvePerAppDisplayName,
+  shouldExcludePerAppTodayItem,
+} from '@time-manger/shared'
+
 /**
  * 按窗口标题后缀/进程名聚合今日应用时长，取 Top 8（展示时可再 slice）。
  * 1. 使用：`src/App.jsx`、`PetStatsPanel`
@@ -6,10 +11,9 @@ export function topAppsFromPerAppToday(perAppToday) {
   const groupedApps = new Map()
 
   ;(perAppToday || []).forEach((item) => {
-    const windowTitle = (item.windowTitle || '').trim()
-    const titleParts = windowTitle.split('-')
-    const titleAfterDash = titleParts.length > 1 ? titleParts[titleParts.length - 1].trim() : windowTitle
-    const appName = titleAfterDash || item.processName || item.appId
+    if (shouldExcludePerAppTodayItem(item)) return
+
+    const appName = resolvePerAppDisplayName(item)
     const groupKey = appName.toLowerCase()
 
     const existing = groupedApps.get(groupKey)

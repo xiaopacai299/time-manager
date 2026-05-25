@@ -12,7 +12,7 @@ import {
 import Svg, { Path, Circle } from "react-native-svg";
 import { useAuth } from "../hooks/useAuth";
 import { useTopInset } from "../hooks/useScreenInsets";
-import type { TimeRecordPayload } from "@time-manger/shared";
+import { isExcludedStatsAppName, type TimeRecordPayload } from "@time-manger/shared";
 
 type Props = {
   navigation: { goBack: () => void };
@@ -166,11 +166,19 @@ export function AppStatsScreen({ navigation }: Props) {
     void load();
   }, [load]);
 
-  const sorted = useMemo(
-    () => [...records].sort((a, b) => b.durationMs - a.durationMs),
-    [records]
+  const statsRecords = useMemo(
+    () => records.filter((r) => !isExcludedStatsAppName(r.appName)),
+    [records],
   );
-  const total = useMemo(() => records.reduce((s, r) => s + r.durationMs, 0), [records]);
+
+  const sorted = useMemo(
+    () => [...statsRecords].sort((a, b) => b.durationMs - a.durationMs),
+    [statsRecords],
+  );
+  const total = useMemo(
+    () => statsRecords.reduce((s, r) => s + r.durationMs, 0),
+    [statsRecords],
+  );
   const maxMs = useMemo(() => sorted[0]?.durationMs ?? 1, [sorted]);
 
   const chartSize = Math.min(SCREEN_W - 56, 280);
@@ -206,7 +214,7 @@ export function AppStatsScreen({ navigation }: Props) {
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={ACCENT} />
           </View>
-        ) : records.length === 0 ? (
+        ) : statsRecords.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>还没有记录</Text>
             <Text style={styles.emptySub}>桌面端同步或产生今日时间数据后，下拉即可刷新</Text>
